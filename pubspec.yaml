@@ -1,0 +1,57 @@
+name: planto
+description: PlanTo — group trip planning that finds the date for you.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State & routing
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+
+  # Backend
+  supabase_flutter: ^2.8.0
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+
+  # Local packages
+  planto_calendar:
+    path: packages/planto_calendar
+
+  # Utils
+  intl: any
+  collection: ^1.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true          # enables flutter gen-l10n from l10n.yaml
+  assets:
+    - assets/images/
+  # Uncomment after putting the four Inter .ttf files in assets/fonts/.
+  # See assets/fonts/README.md. Until then the platform default is used, so
+  # a fresh clone builds without downloading anything.
+  # fonts:
+  #   - family: Inter
+  #     fonts:
+  #       - asset: assets/fonts/Inter-Regular.ttf
+  #         weight: 400
+  #       - asset: assets/fonts/Inter-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/Inter-SemiBold.ttf
+  #         weight: 600
+  #       - asset: assets/fonts/Inter-Bold.ttf
+  #         weight: 700

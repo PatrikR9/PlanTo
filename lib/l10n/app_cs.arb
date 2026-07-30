@@ -1,0 +1,42 @@
+{
+  "@@locale": "cs",
+  "appName": "PlanTo",
+
+  "navTrips": "Výlety",
+  "navDiscover": "Objevovat",
+  "navProfile": "Profil",
+
+  "tripsEmptyTitle": "Zatím žádné výlety",
+  "tripsEmptyMessage": "Založte výlet a pošlete odkaz kamarádům. Termín najdeme za vás.",
+  "tripsNew": "Nový výlet",
+
+  "commonRetry": "Zkusit znovu",
+  "commonCancel": "Zrušit",
+  "commonSave": "Uložit",
+  "errorGeneric": "Něco se pokazilo. Zkuste to prosím znovu.",
+  "errorOffline": "Nejste připojeni k internetu.",
+
+  "participantJoined": "{gender, select, f{{name} se připojila} m{{name} se připojil} other{{name} se připojil(a)}}",
+  "@participantJoined": {
+    "description": "Czech past tense agrees with the subject's gender, so this MUST be an ICU select rather than string concatenation. This is why profiles.gender exists.",
+    "placeholders": {
+      "name": { "type": "String" },
+      "gender": { "type": "String" }
+    }
+  },
+
+  "participantsFree": "{count, plural, =0{Nikdo nemá volno} =1{1 člověk má volno} few{{count} lidé mají volno} other{{count} lidí má volno}}",
+  "@participantsFree": {
+    "description": "Czech has three plural forms (one / few 2-4 / other). Never use a simple singular-plural switch.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "weatherScoreSemantic": "Počasí {score} ze 100, {band}",
+  "@weatherScoreSemantic": {
+    "description": "Screen-reader label for the score ring. The band word is required — colour alone is not an accessible signal.",
+    "placeholders": {
+      "score": { "type": "int" },
+      "band": { "type": "String" }
+    }
+  }
+}

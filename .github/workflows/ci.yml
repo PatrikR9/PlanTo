@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 4 */3 * *'   # every 3 days, defeats Supabase auto-pause
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Analyse & test
+    # Linux runners only. macOS minutes bill at 10x and there is no iOS build
+    # until V2 (architecture section 8.5).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --fatal-infos
+      - run: flutter test --coverage
+
+      # Guardrail from the cost register, section C3: a single AGPL dependency
+      # linked into the APK would oblige us to publish the source.
+      - name: Reject GPL/AGPL dependencies
+        run: |
+          flutter pub deps --style=compact > deps.txt
+          if grep -Eiq '(^|[^a-z])a?gpl' deps.txt; then
+            echo "::error::GPL/AGPL dependency detected"; exit 1
+          fi
+
+  database:
+    name: Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase db start
+      - run: supabase db lint
+      - name: Solver + RLS tests
+        run: psql "$(supabase status -o env | grep DB_URL | cut -d= -f2-)" \
+               -v ON_ERROR_STOP=1 -f supabase/tests/availability_test.sql
+
+  keepalive:
+    # Supabase free projects pause after 7 days idle. This is the cheapest
+    # possible defence (cost register, section C4).
+    name: Keep Supabase awake
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+               -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" > /dev/null

@@ -1,0 +1,149 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/error/error_mapper.dart';
+import '../../../core/error/failure.dart';
+import '../../../core/network/supabase_providers.dart';
+import '../domain/busy_interval.dart';
+
+/// One day of group availability, as computed by group_free_days().
+class DayAvailability {
+  const DayAvailability({
+    required this.day,
+    required this.freeCount,
+    required this.totalCount,
+    required this.freeUserIds,
+    required this.busyUserIds,
+    required this.isWeekend,
+    required this.isHoliday,
+  });
+
+  final DateTime day;
+  final int freeCount;
+  final int totalCount;
+  final List<String> freeUserIds;
+  final List<String> busyUserIds;
+  final bool isWeekend;
+  final bool isHoliday;
+
+  bool get everyoneFree => totalCount > 0 && freeCount == totalCount;
+  double get ratio => totalCount == 0 ? 0 : freeCount / totalCount;
+}
+
+abstract interface class AvailabilityRepository {
+  /// Replaces this user's intervals for the trip. Replace rather than append:
+  /// a re-sync after the user deletes a meeting must remove it here too.
+  Future<void> uploadMine(String tripId, List<BusyInterval> intervals);
+  Future<List<DayAvailability>> forTrip(String tripId);
+  Future<void> markShared(String tripId);
+  Future<void> deleteMine(String tripId);
+}
+
+class SupabaseAvailabilityRepository implements AvailabilityRepository {
+  const SupabaseAvailabilityRepository(this._client);
+
+  final SupabaseClient _client;
+
+  String get _uid => _client.auth.currentUser!.id;
+
+  @override
+  Future<void> uploadMine(String tripId, List<BusyInterval> intervals) =>
+      guard(() async {
+        await _client
+            .from('busy_intervals')
+            .delete()
+            .eq('trip_id', tripId)
+            .eq('user_id', _uid);
+
+        if (intervals.isEmpty) return;
+
+        await _client.from('busy_intervals').insert(<Map<String, dynamic>>[
+          for (final BusyInterval i in intervals)
+            <String, dynamic>{
+              'trip_id': tripId,
+              'user_id': _uid,
+              // Postgres range literal. '[)' matches the half-open convention
+              // used everywhere else in the schema.
+              'period': '[${i.start.toUtc().toIso8601String()},'
+                  '${i.end.toUtc().toIso8601String()})',
+              'is_all_day': i.isAllDay,
+            },
+        ]);
+      });
+
+  @override
+  Future<List<DayAvailability>> forTrip(String tripId) => guard(() async {
+        final List<dynamic> rows = await _client.rpc<List<dynamic>>(
+          'group_free_days',
+          params: <String, dynamic>{'p_trip': tripId},
+        );
+
+        return rows.cast<Map<String, dynamic>>().map((Map<String, dynamic> r) {
+          return DayAvailability(
+            day: DateTime.parse(r['day'] as String),
+            freeCount: (r['free_count'] as int?) ?? 0,
+            totalCount: (r['total_count'] as int?) ?? 0,
+            freeUserIds:
+                (r['free_user_ids'] as List<dynamic>? ?? const <dynamic>[])
+                    .cast<String>(),
+            busyUserIds:
+                (r['busy_user_ids'] as List<dynamic>? ?? const <dynamic>[])
+                    .cast<String>(),
+            isWeekend: (r['is_weekend'] as bool?) ?? false,
+            isHoliday: (r['is_holiday'] as bool?) ?? false,
+          );
+        }).toList()
+          ..sort((DayAvailability a, DayAvailability b) =>
+              a.day.compareTo(b.day));
+      });
+
+  @override
+  Future<void> markShared(String tripId) => guard(
+        () => _client
+            .from('trip_participants')
+            .update(<String, dynamic>{'calendar_shared': true})
+            .eq('trip_id', tripId)
+            .eq('user_id', _uid),
+      );
+
+  @override
+  Future<void> deleteMine(String tripId) => guard(() async {
+        await _client
+            .from('busy_intervals')
+            .delete()
+            .eq('trip_id', tripId)
+            .eq('user_id', _uid);
+        await _client
+            .from('trip_participants')
+            .update(<String, dynamic>{'calendar_shared': false})
+            .eq('trip_id', tripId)
+            .eq('user_id', _uid);
+      });
+}
+
+class UnconfiguredAvailabilityRepository implements AvailabilityRepository {
+  const UnconfiguredAvailabilityRepository();
+  Never _fail() => throw const ServerFailure(code: 'NO_BACKEND');
+
+  @override
+  Future<void> uploadMine(String t, List<BusyInterval> i) async => _fail();
+  @override
+  Future<List<DayAvailability>> forTrip(String t) async => <DayAvailability>[];
+  @override
+  Future<void> markShared(String t) async => _fail();
+  @override
+  Future<void> deleteMine(String t) async {}
+}
+
+final Provider<AvailabilityRepository> availabilityRepositoryProvider =
+    Provider<AvailabilityRepository>((Ref ref) {
+  final SupabaseClient? client = ref.watch(supabaseClientProvider);
+  if (client == null) return const UnconfiguredAvailabilityRepository();
+  return SupabaseAvailabilityRepository(client);
+});
+
+final FutureProviderFamily<List<DayAvailability>, String>
+    availabilityProvider =
+    FutureProvider.family<List<DayAvailability>, String>((Ref ref, String id) {
+  return ref.watch(availabilityRepositoryProvider).forTrip(id);
+});

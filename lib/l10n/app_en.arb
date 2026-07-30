@@ -1,0 +1,22 @@
+{
+  "@@locale": "en",
+  "appName": "PlanTo",
+
+  "navTrips": "Trips",
+  "navDiscover": "Discover",
+  "navProfile": "Profile",
+
+  "tripsEmptyTitle": "No trips yet",
+  "tripsEmptyMessage": "Create a trip and send the link to your friends. We'll find the date.",
+  "tripsNew": "New trip",
+
+  "commonRetry": "Try again",
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorOffline": "You're offline.",
+
+  "participantJoined": "{name} joined",
+  "participantsFree": "{count, plural, =0{Nobody is free} =1{1 person is free} other{{count} people are free}}",
+  "weatherScoreSemantic": "Weather {score} out of 100, {band}"
+}

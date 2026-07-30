@@ -1,0 +1,19 @@
+name: planto_calendar
+description: Narrow platform channel that reads busy/free times only — never event contents.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: app.planto.calendar
+        pluginClass: PlantoCalendarPlugin

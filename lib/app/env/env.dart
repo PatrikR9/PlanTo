@@ -1,0 +1,65 @@
+/// Compile-time configuration. Values arrive via --dart-define-from-file so
+/// nothing sensitive is committed and every flavour builds from one source.
+///
+/// The Supabase anon key is public by design — it ships inside the app bundle
+/// and that is fine, because RLS is what protects the data. It is not a
+/// secret, but it is also not a licence to skip policies. No third-party API
+/// key ever appears here; those live only in Edge Function secrets.
+enum Flavour { dev, stg, prod }
+
+abstract final class Env {
+  static const String _flavour =
+      String.fromEnvironment('FLAVOUR', defaultValue: 'dev');
+
+  static Flavour get flavour => switch (_flavour) {
+        'prod' => Flavour.prod,
+        'stg' => Flavour.stg,
+        _ => Flavour.dev,
+      };
+
+  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String supabaseAnonKey =
+      String.fromEnvironment('SUPABASE_ANON_KEY');
+
+  /// Whether a backend is wired up.
+  ///
+  /// When false the app still runs, in a local-only mode with a visible
+  /// banner. This exists so UI work is never blocked on backend setup — you
+  /// can build and review screens before the Supabase project exists.
+  /// Production builds refuse to start unconfigured (see [assertConfigured]).
+  static bool get isConfigured =>
+      supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+
+  static String get appName => switch (flavour) {
+        Flavour.prod => 'PlanTo',
+        Flavour.stg => 'PlanTo (stg)',
+        Flavour.dev => 'PlanTo (dev)',
+      };
+
+  static bool get isProd => flavour == Flavour.prod;
+
+  /// Google sign-in needs an OAuth client in Google Cloud plus the provider
+  /// switched on in Supabase. Until both exist the button is hidden rather
+  /// than shown and broken — a dead button costs more trust than a missing one.
+  static const bool googleEnabled =
+      bool.fromEnvironment('GOOGLE_SIGN_IN');
+
+  /// Supabase free-tier projects on the built-in mailer cannot edit their auth
+  /// templates (since 3 June 2026), so the email contains a magic LINK, not a
+  /// 6-digit code. Flip this to true via --dart-define once custom SMTP is
+  /// configured and the template uses {{ .Token }}; the code-entry screen is
+  /// already built and wired.
+  static const bool emailUsesOtpCode =
+      bool.fromEnvironment('EMAIL_OTP_CODE');
+
+  /// A release build with no backend is always a mistake, so fail loudly.
+  /// In dev it is a legitimate state, so only warn.
+  static void assertConfigured() {
+    if (!isConfigured && isProd) {
+      throw StateError(
+        'SUPABASE_URL / SUPABASE_ANON_KEY missing in a prod build. '
+        'Run with --dart-define-from-file=env/prod.json',
+      );
+    }
+  }
+}

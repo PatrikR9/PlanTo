@@ -1,0 +1,22 @@
+.dart_tool/
+.packages
+build/
+.idea/
+.vscode/
+*.iml
+pubspec.lock
+**/*.g.dart
+**/*.freezed.dart
+lib/l10n/app_localizations*.dart
+
+# Config & secrets — never commit
+env/*.json
+!env/*.example
+*.jks
+*.keystore
+key.properties
+android/key.properties
+service-account*.json
+.env
+.env.*
+!.env.example

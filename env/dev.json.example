@@ -1,0 +1,7 @@
+{
+  "FLAVOUR": "dev",
+  "SUPABASE_URL": "https://YOUR-PROJECT-REF.supabase.co",
+  "SUPABASE_ANON_KEY": "PASTE_THE_ANON_PUBLIC_KEY_HERE",
+  "GOOGLE_SIGN_IN": false,
+  "EMAIL_OTP_CODE": false
+}
