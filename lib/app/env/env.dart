@@ -38,6 +38,17 @@ abstract final class Env {
 
   static bool get isProd => flavour == Flavour.prod;
 
+  /// Where invite links point.
+  ///
+  /// GitHub Pages while planto.app does not exist. Configurable rather than
+  /// hard-coded because it appears in shared links: once a link is in a group
+  /// chat it lives forever, so the value has to be swappable per build without
+  /// touching code.
+  static const String inviteBase = String.fromEnvironment(
+    'INVITE_BASE',
+    defaultValue: 'https://patrikr9.github.io/PlanTo/i',
+  );
+
   /// Google sign-in needs an OAuth client in Google Cloud plus the provider
   /// switched on in Supabase. Until both exist the button is hidden rather
   /// than shown and broken — a dead button costs more trust than a missing one.

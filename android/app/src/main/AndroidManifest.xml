@@ -35,17 +35,20 @@
                 <data android:scheme="app.planto" android:host="login-callback"/>
             </intent-filter>
 
-            <!-- Invite links. android:autoVerify makes these Android App Links,
-                 which open the app directly instead of showing a chooser — but
-                 only once assetlinks.json is served from planto.app. Until then
-                 they fall back to the browser, which is the M3 landing page.
-                 Wired up in M3. -->
-            <intent-filter android:autoVerify="true">
+            <!-- Invite links, currently on GitHub Pages.
+                 android:autoVerify is deliberately OFF: verification requires
+                 /.well-known/assetlinks.json at the DOMAIN root, and a GitHub
+                 project page can only serve files under /PlanTo/. Serving it
+                 would need a repo named patrikr9.github.io, or the real
+                 domain. Without autoVerify the link still opens the app — via
+                 the "open with" chooser instead of directly. Turn it on
+                 together with planto.app. -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="planto.app"
-                      android:pathPrefix="/i/"/>
+                <data android:scheme="https" android:host="patrikr9.github.io"
+                      android:pathPrefix="/PlanTo/i/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

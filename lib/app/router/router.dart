@@ -32,7 +32,9 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
 
       // The invite preview must render for a signed-out user. This single
       // exception is the entire growth loop (architecture section 6).
-      if (location.startsWith('/i/')) return null;
+      if (location.startsWith('/i/') || location.startsWith('/PlanTo/i/')) {
+        return null;
+      }
 
       // Without a backend there is nothing to sign in to, so skip the guard
       // entirely and let the UI be reviewed locally.
@@ -74,6 +76,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           email: state.uri.queryParameters['email'] ?? '',
           from: state.uri.queryParameters['from'],
         ),
+      ),
+      // GitHub Pages serves the app under /PlanTo/, so an incoming App Link
+      // arrives as /PlanTo/i/<token>. Both shapes resolve to the same screen.
+      GoRoute(
+        path: '/PlanTo/i/:token',
+        builder: (BuildContext context, GoRouterState state) =>
+            InvitePreviewScreen(token: state.pathParameters['token']!),
       ),
       GoRoute(
         path: '/i/:token',

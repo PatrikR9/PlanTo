@@ -9,6 +9,11 @@ pubspec.lock
 **/*.freezed.dart
 lib/l10n/app_localizations*.dart
 
+# Local run/analysis output
+run_log.txt
+Analyze_logs.txt
+_deltest/
+
 # Config & secrets — never commit
 env/*.json
 !env/*.example

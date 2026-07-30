@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pozvánka na výlet — PlanTo</title>
+<meta name="theme-color" content="#0F766E">
+<meta property="og:title" content="Pozvánka na výlet">
+<meta property="og:description" content="Připoj se a najdeme termín, který sedne všem.">
+<style>
+  :root { color-scheme: dark; --bg:#0B0D10; --card:#14181D; --fg:#E7E9EA;
+          --muted:#9BA3AA; --brand:#2DD4BF; --line:#FFFFFF1F; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center;
+         background:var(--bg); color:var(--fg); padding:24px;
+         font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { width:100%; max-width:420px; text-align:center; }
+  h1 { font-size:34px; line-height:1.15; margin:.25em 0 .5em; letter-spacing:-.5px; }
+  .kicker { color:var(--muted); font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px;
+          padding:16px; text-align:left; margin:24px 0; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:6px 0; }
+  .row span:first-child { color:var(--muted); }
+  a.btn, button.btn { display:block; width:100%; padding:14px 16px; border-radius:12px;
+          border:0; font-size:16px; font-weight:600; cursor:pointer;
+          text-decoration:none; text-align:center; margin-bottom:8px; }
+  .primary { background:var(--brand); color:#04231F; }
+  .ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  .muted { color:var(--muted); font-size:13px; }
+  .err { color:#F87171; }
+  .skel { height:14px; background:#FFFFFF14; border-radius:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker" id="kicker">PlanTo</p>
+  <h1 id="title"><span class="skel" style="display:block;height:28px"></span></h1>
+  <div class="card" id="card">
+    <div class="row"><span>Odjezd z</span><span id="origin">…</span></div>
+    <div class="row"><span>Kdy</span><span id="when">…</span></div>
+    <div class="row"><span>Kdo</span><span id="who">…</span></div>
+  </div>
+  <a class="btn primary" id="open" href="#">Otevřít v aplikaci</a>
+  <a class="btn ghost" id="store" href="https://github.com/PatrikR9/PlanTo">Nemám aplikaci</a>
+  <p class="muted" id="note">Připojení je bez registrace.</p>
+</div>
+
+<script>
+// GitHub Pages has no server-side routing: any unknown path returns 404.html.
+// That is exactly what we want — this file IS the invite page, and it reads the
+// token out of the URL itself.
+//
+// It calls preview_invite() directly with the anon key. That is safe by design:
+// the key is public, RLS protects the tables, and preview_invite is granted to
+// the `anon` role precisely so a person who has never installed the app can
+// still see what they were invited to. That is the whole growth loop.
+const SUPABASE_URL = "https://dehgpsnemmemnxbhujai.supabase.co";
+const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGdwc25lbW1lbW54Ymh1amFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNTM1MTIsImV4cCI6MjEwMDgyOTUxMn0.F5UOhQvSZk8HtK-h5tyHgUaEVZHaT6-8h5LbRzHjv2k";
+
+const m = location.pathname.match(/\/i\/([^/?#]+)/);
+const token = m ? decodeURIComponent(m[1]) : null;
+
+const $ = (id) => document.getElementById(id);
+const fmt = (iso) => new Date(iso).toLocaleDateString("cs-CZ",
+  { day: "numeric", month: "numeric" });
+
+function fail(msg) {
+  $("title").textContent = "Pozvánka nefunguje";
+  $("card").innerHTML = '<p class="err" style="margin:0">' + msg + "</p>";
+  $("open").style.display = "none";
+  $("note").textContent = "Nechte si od organizátora poslat nový odkaz.";
+}
+
+if (!token) {
+  (function () {
+    $("kicker").textContent = "PlanTo";
+    $("title").textContent = "Najdeme termín, který sedne všem";
+    $("card").innerHTML =
+      '<p style="margin:0;color:var(--muted)">Skupinové výlety bez ' +
+      'nekonečného domlouvání v chatu. Aplikace zjistí, kdy mají všichni ' +
+      'volno, a navrhne termín.</p>';
+    $("open").style.display = "none";
+    $("note").textContent = "Zatím v uzavřeném testování.";
+  })();
+} else {
+  // Deep link into the installed app. Android resolves this to the app if the
+  // intent filter matches; otherwise nothing happens and the page stays.
+  $("open").href = location.href;
+
+  fetch(SUPABASE_URL + "/rest/v1/rpc/preview_invite", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": ANON_KEY,
+      "Authorization": "Bearer " + ANON_KEY
+    },
+    body: JSON.stringify({ p_token: token })
+  })
+    .then((r) => r.ok ? r.json() : Promise.reject(new Error(r.status)))
+    .then((rows) => {
+      if (!rows || rows.length === 0) {
+        return fail("Odkaz vypršel nebo byl zrušen.");
+      }
+      const t = rows[0];
+      $("kicker").textContent = t.organiser_name + " vás zve";
+      $("title").textContent = t.title;
+      $("origin").textContent = t.origin_label;
+      $("when").textContent = fmt(t.window_start) + " – " + fmt(t.window_end);
+      $("who").textContent = t.participant_count +
+        (t.participant_count === 1 ? " člověk" : " lidí");
+    })
+    .catch(() => fail("Nepodařilo se pozvánku načíst. Zkuste to prosím znovu."));
+}
+</script>
+</body>
+</html>

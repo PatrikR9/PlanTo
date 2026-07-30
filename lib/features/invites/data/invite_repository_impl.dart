@@ -7,9 +7,9 @@ import '../../../core/error/failure.dart';
 import '../../../core/network/supabase_providers.dart';
 import '../domain/invite.dart';
 
-/// Public base for invite links. Must match the App Links host in
-/// AndroidManifest.xml.
-const String kInviteBase = 'https://planto.app/i';
+// Invite link base now comes from Env.inviteBase (a --dart-define), so the
+// host can change without touching code. Must stay in step with the
+// intent-filter in android/app/src/main/AndroidManifest.xml.
 
 class SupabaseInviteRepository implements InviteRepository {
   const SupabaseInviteRepository(this._client);
@@ -53,7 +53,7 @@ class SupabaseInviteRepository implements InviteRepository {
           'create_invite',
           params: <String, dynamic>{'p_trip': tripId},
         );
-        return '$kInviteBase/${token as String}';
+        return '${Env.inviteBase}/${token as String}';
       });
 
   @override

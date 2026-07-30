@@ -8,8 +8,6 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.provider.CalendarContract
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -79,8 +77,11 @@ class PlantoCalendarPlugin :
         }
     }
 
+    // Context.checkSelfPermission / Activity.requestPermissions /
+    // shouldShowRequestPermissionRationale all exist from API 23, and minSdk is
+    // 24 — so the androidx wrappers add a dependency without adding capability.
     private fun hasPermission(): Boolean =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) ==
+        context.checkSelfPermission(Manifest.permission.READ_CALENDAR) ==
             PackageManager.PERMISSION_GRANTED
 
     private fun denied(result: MethodChannel.Result) =
@@ -96,8 +97,8 @@ class PlantoCalendarPlugin :
             return result.error("IN_PROGRESS", "A request is already pending", null)
         }
         pendingResult = result
-        ActivityCompat.requestPermissions(
-            act, arrayOf(Manifest.permission.READ_CALENDAR), REQUEST_CODE
+        act.requestPermissions(
+            arrayOf(Manifest.permission.READ_CALENDAR), REQUEST_CODE
         )
     }
 
@@ -120,8 +121,8 @@ class PlantoCalendarPlugin :
             // when the user chose "don't ask again" — the app must then send
             // them to Settings rather than asking again pointlessly.
             val permanent = activity?.let {
-                !ActivityCompat.shouldShowRequestPermissionRationale(
-                    it, Manifest.permission.READ_CALENDAR
+                !it.shouldShowRequestPermissionRationale(
+                    Manifest.permission.READ_CALENDAR
                 )
             } ?: false
             result.error(

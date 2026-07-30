@@ -1,31 +1,44 @@
-group 'app.planto.calendar'
-version '0.1.0'
-
-buildscript {
-    ext.kotlin_version = '1.9.22'
-    repositories { google(); mavenCentral() }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+// Modern declarative form. The previous version of this file pinned its own
+// AGP 8.1.0 and Kotlin 1.9.22 in a `buildscript` block, while the app uses
+// AGP 9.0.1 and Kotlin 2.3.20 (see android/settings.gradle.kts). Two different
+// AGP versions on one build classpath cannot configure, which is why nothing
+// would install.
+//
+// Versions now come from the app's pluginManagement — a Flutter plugin is
+// included into the app's Gradle build, so it inherits them and cannot drift.
+plugins {
+    id "com.android.library"
+    id "org.jetbrains.kotlin.android"
 }
 
-rootProject.allprojects {
-    repositories { google(); mavenCentral() }
-}
-
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
+group = "app.planto.calendar"
+version = "0.1.0"
 
 android {
-    namespace 'app.planto.calendar'
-    compileSdk 34
+    namespace = "app.planto.calendar"
+    compileSdk = 36
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = '17' }
 
-    defaultConfig { minSdk 23 }
+    defaultConfig {
+        minSdk = 24
+    }
 }
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
+// No dependencies on purpose.
+//
+// The plugin originally used androidx ContextCompat/ActivityCompat without
+// declaring androidx.core — a library module does not get it transitively, so
+// that alone was a compile failure. Since minSdk is 24 and every one of those
+// calls exists on Context/Activity from API 23, the androidx wrappers buy
+// nothing here. Zero dependencies is one less version to reconcile in the part
+// of the codebase that is hardest to test.
