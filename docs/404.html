@@ -40,8 +40,8 @@
     <div class="row"><span>Kdy</span><span id="when">…</span></div>
     <div class="row"><span>Kdo</span><span id="who">…</span></div>
   </div>
-  <a class="btn primary" id="open" href="#">Otevřít v aplikaci</a>
-  <a class="btn ghost" id="store" href="https://github.com/PatrikR9/PlanTo">Nemám aplikaci</a>
+  <a class="btn primary" id="web" href="#">Pokračovat v prohlížeči</a>
+  <a class="btn ghost" id="open" href="#">Otevřít v aplikaci</a>
   <p class="muted" id="note">Připojení je bez registrace.</p>
 </div>
 
@@ -64,10 +64,16 @@ const $ = (id) => document.getElementById(id);
 const fmt = (iso) => new Date(iso).toLocaleDateString("cs-CZ",
   { day: "numeric", month: "numeric" });
 
+// Where the web build lives. This page is served at <base>/i/<token>, so the
+// app is one level up. Derived rather than hard-coded so it keeps working on
+// a custom domain (planto.app) without editing this file.
+const APP_BASE = location.pathname.slice(0, location.pathname.indexOf("/i/") + 1);
+
 function fail(msg) {
   $("title").textContent = "Pozvánka nefunguje";
   $("card").innerHTML = '<p class="err" style="margin:0">' + msg + "</p>";
   $("open").style.display = "none";
+  $("web").style.display = "none";
   $("note").textContent = "Nechte si od organizátora poslat nový odkaz.";
 }
 
@@ -77,6 +83,15 @@ if (!token) {
   // Deep link into the installed app. Android resolves this to the app if the
   // intent filter matches; otherwise nothing happens and the page stays.
   $("open").href = location.href;
+
+  // The way in for everybody else, which is most people: the Flutter web build
+  // deployed at APP_BASE. Flutter web uses the hash URL strategy, so the route
+  // travels in the fragment and GitHub Pages only ever has to serve index.html.
+  //
+  // Before this existed the only other button went to the GitHub repository,
+  // which is a fine place to read source code and a terrible place to be sent
+  // when somebody asked you when you are free.
+  $("web").href = APP_BASE + "#/i/" + encodeURIComponent(token);
 
   fetch(SUPABASE_URL + "/rest/v1/rpc/preview_invite", {
     method: "POST",

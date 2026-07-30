@@ -53,13 +53,12 @@ class _ConnectCalendarSheetState extends ConsumerState<ConnectCalendarSheet> {
 
   Future<void> _connect() async {
     setState(() => _error = null);
-    final bool ok = await ref
-        .read(calendarSyncControllerProvider.notifier)
-        .sync(
-          tripId: widget.tripId,
-          windowStart: widget.windowStart,
-          windowEnd: widget.windowEnd,
-        );
+    final bool ok =
+        await ref.read(calendarSyncControllerProvider.notifier).sync(
+              tripId: widget.tripId,
+              windowStart: widget.windowStart,
+              windowEnd: widget.windowEnd,
+            );
     if (!mounted) return;
 
     if (ok) {
@@ -104,7 +103,6 @@ class _ConnectCalendarSheetState extends ConsumerState<ConnectCalendarSheet> {
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),
           const SizedBox(height: Sp.lg),
-
           const _Point(
             icon: Icons.check_circle_outline,
             good: true,
@@ -123,9 +121,9 @@ class _ConnectCalendarSheetState extends ConsumerState<ConnectCalendarSheet> {
           const _Point(
             icon: Icons.block,
             good: false,
-            text: 'Ostatní ve skupině vaše bloky nevidí — jen počet volných dnů',
+            text:
+                'Ostatní ve skupině vaše bloky nevidí — jen počet volných dnů',
           ),
-
           if (!source.isSupported) ...<Widget>[
             const SizedBox(height: Sp.lg),
             Container(
@@ -141,7 +139,6 @@ class _ConnectCalendarSheetState extends ConsumerState<ConnectCalendarSheet> {
               ),
             ),
           ],
-
           if (_error != null) ...<Widget>[
             const SizedBox(height: Sp.md),
             Container(
@@ -157,7 +154,6 @@ class _ConnectCalendarSheetState extends ConsumerState<ConnectCalendarSheet> {
               ),
             ),
           ],
-
           const SizedBox(height: Sp.xl),
           PtButton(
             label: 'Připojit kalendář',
@@ -167,7 +163,9 @@ class _ConnectCalendarSheetState extends ConsumerState<ConnectCalendarSheet> {
           ),
           const SizedBox(height: Sp.xs),
           PtButton(
-            label: 'Zadám ručně',
+            // Closing lands back on the availability grid, which is where the
+            // manual path already is. No dead end.
+            label: 'Vyplním ručně',
             variant: PtButtonVariant.text,
             expand: true,
             onPressed: busy ? null : () => Navigator.of(context).pop(),

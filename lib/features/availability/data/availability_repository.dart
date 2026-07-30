@@ -5,6 +5,7 @@ import '../../../core/error/error_mapper.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/network/supabase_providers.dart';
 import '../domain/busy_interval.dart';
+import '../domain/manual_busy_block.dart';
 
 /// One day of group availability, as computed by group_free_days().
 class DayAvailability {
@@ -37,6 +38,20 @@ abstract interface class AvailabilityRepository {
   Future<List<DayAvailability>> forTrip(String tripId);
   Future<void> markShared(String tripId);
   Future<void> deleteMine(String tripId);
+
+  /// Manual fallback: whole days or parts of days this user cannot make.
+  ///
+  /// No timezone conversion on the client — the RPC interprets each date and
+  /// wall-clock time in the *trip's* timezone, which is the only correct
+  /// reading and the only one a travelling user gets right. Passing an empty
+  /// list is meaningful ("nothing blocks me") and still marks them as having
+  /// shared.
+  Future<void> setManualBlocks(String tripId, List<ManualBusyBlock> blocks);
+
+  /// What this user previously entered, so reopening the editor is not a
+  /// blank slate. Read through an RPC because SELECT on busy_intervals is
+  /// revoked from every role — even for your own rows.
+  Future<List<ManualBusyBlock>> myBlocks(String tripId);
 }
 
 class SupabaseAvailabilityRepository implements AvailabilityRepository {
@@ -93,8 +108,8 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
             isHoliday: (r['is_holiday'] as bool?) ?? false,
           );
         }).toList()
-          ..sort((DayAvailability a, DayAvailability b) =>
-              a.day.compareTo(b.day));
+          ..sort(
+              (DayAvailability a, DayAvailability b) => a.day.compareTo(b.day),);
       });
 
   @override
@@ -119,6 +134,32 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
             .eq('trip_id', tripId)
             .eq('user_id', _uid);
       });
+
+  @override
+  Future<void> setManualBlocks(String tripId, List<ManualBusyBlock> blocks) =>
+      guard(() async {
+        await _client.rpc<void>(
+          'set_manual_busy',
+          params: <String, dynamic>{
+            'p_trip': tripId,
+            'p_blocks': <Map<String, dynamic>>[
+              for (final ManualBusyBlock b in blocks) b.toJson(),
+            ],
+          },
+        );
+      });
+
+  @override
+  Future<List<ManualBusyBlock>> myBlocks(String tripId) => guard(() async {
+        final List<dynamic> rows = await _client.rpc<List<dynamic>>(
+          'my_busy_blocks',
+          params: <String, dynamic>{'p_trip': tripId},
+        );
+        return rows
+            .cast<Map<String, dynamic>>()
+            .map(ManualBusyBlock.fromRow)
+            .toList();
+      });
 }
 
 class UnconfiguredAvailabilityRepository implements AvailabilityRepository {
@@ -133,6 +174,11 @@ class UnconfiguredAvailabilityRepository implements AvailabilityRepository {
   Future<void> markShared(String t) async => _fail();
   @override
   Future<void> deleteMine(String t) async {}
+  @override
+  Future<void> setManualBlocks(String t, List<ManualBusyBlock> b) async =>
+      _fail();
+  @override
+  Future<List<ManualBusyBlock>> myBlocks(String t) async => <ManualBusyBlock>[];
 }
 
 final Provider<AvailabilityRepository> availabilityRepositoryProvider =
@@ -142,8 +188,14 @@ final Provider<AvailabilityRepository> availabilityRepositoryProvider =
   return SupabaseAvailabilityRepository(client);
 });
 
-final FutureProviderFamily<List<DayAvailability>, String>
-    availabilityProvider =
+final FutureProviderFamily<List<DayAvailability>, String> availabilityProvider =
     FutureProvider.family<List<DayAvailability>, String>((Ref ref, String id) {
   return ref.watch(availabilityRepositoryProvider).forTrip(id);
+});
+
+/// The caller's own blocks — imported and hand-entered alike — for
+/// prefilling the availability editor.
+final FutureProviderFamily<List<ManualBusyBlock>, String> myBlocksProvider =
+    FutureProvider.family<List<ManualBusyBlock>, String>((Ref ref, String id) {
+  return ref.watch(availabilityRepositoryProvider).myBlocks(id);
 });

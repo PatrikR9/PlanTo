@@ -60,7 +60,7 @@ void main() {
         ),
       ]);
       expect(out.single.start, windowStart,
-          reason: 'a year of calendar history must never leave the device');
+          reason: 'a year of calendar history must never leave the device',);
     });
 
     test('drops anything entirely outside the window', () {

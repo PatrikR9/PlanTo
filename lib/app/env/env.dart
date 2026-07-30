@@ -52,16 +52,14 @@ abstract final class Env {
   /// Google sign-in needs an OAuth client in Google Cloud plus the provider
   /// switched on in Supabase. Until both exist the button is hidden rather
   /// than shown and broken — a dead button costs more trust than a missing one.
-  static const bool googleEnabled =
-      bool.fromEnvironment('GOOGLE_SIGN_IN');
+  static const bool googleEnabled = bool.fromEnvironment('GOOGLE_SIGN_IN');
 
   /// Supabase free-tier projects on the built-in mailer cannot edit their auth
   /// templates (since 3 June 2026), so the email contains a magic LINK, not a
   /// 6-digit code. Flip this to true via --dart-define once custom SMTP is
   /// configured and the template uses {{ .Token }}; the code-entry screen is
   /// already built and wired.
-  static const bool emailUsesOtpCode =
-      bool.fromEnvironment('EMAIL_OTP_CODE');
+  static const bool emailUsesOtpCode = bool.fromEnvironment('EMAIL_OTP_CODE');
 
   /// A release build with no backend is always a mistake, so fail loudly.
   /// In dev it is a legitimate state, so only warn.

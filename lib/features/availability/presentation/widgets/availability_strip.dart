@@ -80,8 +80,7 @@ class AvailabilityStrip extends StatelessWidget {
                             : context.colors.onSurfaceVariant,
                       ),
                     ),
-                    Text(numFmt.format(d.day),
-                        style: context.texts.labelLarge),
+                    Text(numFmt.format(d.day), style: context.texts.labelLarge),
                     const SizedBox(height: Sp.xxs),
                     Text(
                       '${d.freeCount}/${d.totalCount}',

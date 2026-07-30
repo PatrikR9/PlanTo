@@ -78,11 +78,11 @@ class SupabaseAuthRepository implements AuthRepository {
                 redirectTo: kIsWeb ? null : kOAuthRedirect,
               )
             : _client.auth.signInWithOAuth(
-          OAuthProvider.google,
-          // On web Supabase returns to the current origin; on Android it
-          // needs the app's own scheme.
-          redirectTo: kIsWeb ? null : kOAuthRedirect,
-        ),
+                OAuthProvider.google,
+                // On web Supabase returns to the current origin; on Android it
+                // needs the app's own scheme.
+                redirectTo: kIsWeb ? null : kOAuthRedirect,
+              ),
       );
 
   @override
@@ -109,7 +109,8 @@ class UnconfiguredAuthRepository implements AuthRepository {
   @override
   Future<void> sendEmailOtp(String email) async => _fail();
   @override
-  Future<void> verifyEmailOtp({required String email, required String token}) async =>
+  Future<void> verifyEmailOtp(
+          {required String email, required String token,}) async =>
       _fail();
   @override
   Future<void> signInWithGoogle() async => _fail();

@@ -4,10 +4,47 @@ enum TripStatus { draft, planning, dateLocked, confirmed, completed, cancelled }
 
 enum TransportPref { public, car, either }
 
+/// How the trip is planned.
+///
+/// The day solver answers "which date suits everyone", which is right for a
+/// weekend away and wrong for "kino ve čtvrtek" — for a two-hour thing the
+/// answer is a start time, not a date. Both produce the same shape of
+/// candidate ([start, end)), so everything downstream is shared.
+enum TripGranularity {
+  day('day'),
+  time('time');
+
+  const TripGranularity(this.wire);
+
+  final String wire;
+
+  static TripGranularity fromWire(String? v) =>
+      v == 'time' ? TripGranularity.time : TripGranularity.day;
+}
+
+/// Minutes between proposed start times, in [TripGranularity.time].
+///
+/// 15 lets somebody say "17:45"; 60 keeps the list short. It is a real
+/// trade-off, so it is the user's to make.
+const List<int> kSlotSteps = <int>[15, 30, 45, 60];
+
+/// Offered activity lengths, in minutes. Anything longer is a day trip and
+/// should be planned as one.
+const List<int> kSlotLengths = <int>[30, 45, 60, 90, 120, 180, 240, 360];
+
 /// Activity tags. Kept as an enum rather than free strings so the planner and
 /// the packing rules engine agree on a vocabulary — the rules in
 /// `packing_rules.predicate` match on exactly these values.
-enum ActivityTag { hiking, city, lake, castle, museum, cafe, festival, viewpoint }
+enum ActivityTag {
+  hiking,
+  city,
+  lake,
+  castle,
+  museum,
+  cafe,
+  festival,
+  viewpoint
+}
 
 @immutable
 class Trip {
@@ -25,11 +62,19 @@ class Trip {
     required this.participantCount,
     required this.calendarSharedCount,
     required this.createdBy,
+    required this.isOrganiser,
+    required this.granularity,
+    required this.slotStepMinutes,
+    required this.dayStart,
+    required this.dayEnd,
+    this.slotMinutes,
     this.description,
     this.budgetPerPerson,
     this.earliestWake,
     this.destinationId,
     this.destinationFree,
+    this.lockedStart,
+    this.lockedEnd,
   });
 
   final String id;
@@ -49,10 +94,44 @@ class Trip {
   final String? destinationFree;
   final int participantCount;
 
+  final TripGranularity granularity;
+
+  /// How long the activity lasts. Null in day mode, where [durationDays] says
+  /// it instead.
+  final int? slotMinutes;
+  final int slotStepMinutes;
+
+  /// The usable part of a day. A board-game evening needs the window to reach
+  /// 23:00; a sunrise hike needs 05:00. Hard-coding 07:00–21:00 was fine only
+  /// while everything was a day trip.
+  final Duration dayStart;
+  final Duration dayEnd;
+
   /// How many participants have shared availability. Drives the single most
   /// important nudge in the product: "waiting on 2 people".
   final int calendarSharedCount;
   final String createdBy;
+
+  /// Whether the current user is the organiser of THIS trip.
+  ///
+  /// Not `createdBy == myId`: the two can diverge (an organiser can be handed
+  /// over) and the client should not be the place that decides who may lock a
+  /// date. This mirrors trip_participants.role, and every organiser-only RPC
+  /// re-checks it server-side regardless.
+  final bool isOrganiser;
+
+  /// Start of the locked slot. Null until the organiser locks.
+  final DateTime? lockedStart;
+
+  /// EXCLUSIVE end. In day mode the last day of the trip is lockedEnd minus a
+  /// day; in time mode it is the moment the activity finishes. Named to make
+  /// the off-by-one impossible to miss at the call site.
+  final DateTime? lockedEnd;
+
+  bool get isTimed => granularity == TripGranularity.time;
+  bool get isDateLocked => lockedStart != null;
+
+  Duration get slotDuration => Duration(minutes: slotMinutes ?? 120);
 
   bool get isDestinationDecided =>
       destinationId != null || (destinationFree?.isNotEmpty ?? false);

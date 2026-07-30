@@ -15,3 +15,5 @@ drop type if exists transport_pref cascade;
 drop type if exists participant_role cascade;
 drop type if exists participant_status cascade;
 drop type if exists vote_value cascade;
+drop type if exists date_vote cascade;
+drop type if exists trip_granularity cascade;

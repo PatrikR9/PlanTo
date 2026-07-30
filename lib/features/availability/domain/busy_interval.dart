@@ -35,7 +35,8 @@ class BusyInterval {
   int get hashCode => Object.hash(start, end, isAllDay);
 
   @override
-  String toString() => 'Busy(${start.toIso8601String()} → ${end.toIso8601String()})';
+  String toString() =>
+      'Busy(${start.toIso8601String()} → ${end.toIso8601String()})';
 }
 
 /// Turns raw device events into the minimum set of intervals worth uploading.
@@ -111,7 +112,6 @@ abstract final class BusyIntervals {
       return DateTime(t.year, t.month, t.day, t.hour, t.minute);
     }
     final int m = t.minute - (t.minute % granularity.inMinutes);
-    return DateTime(t.year, t.month, t.day, t.hour, m)
-        .add(granularity);
+    return DateTime(t.year, t.month, t.day, t.hour, m).add(granularity);
   }
 }

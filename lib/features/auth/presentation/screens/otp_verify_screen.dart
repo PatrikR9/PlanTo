@@ -49,7 +49,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
         ..clearSnackBars()
         ..showSnackBar(SnackBar(
           content: Text(e is Failure ? e.userMessage : Failure.genericMessage),
-        ));
+        ),);
     });
 
     return Scaffold(

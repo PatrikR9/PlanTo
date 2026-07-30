@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Session;
 
 import '../../core/network/supabase_providers.dart';
+import '../../features/availability/presentation/screens/manual_availability_screen.dart';
 import '../../features/auth/presentation/screens/otp_verify_screen.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/trips/presentation/screens/create_trip_screen.dart';
@@ -105,12 +106,24 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: '${Routes.trips}/:tripId',
         name: Routes.tripDetailName,
         parentNavigatorKey: rootKey,
-        builder: (BuildContext context, GoRouterState state) => TripDetailScreen(
+        builder: (BuildContext context, GoRouterState state) =>
+            TripDetailScreen(
           tripId: state.pathParameters['tripId']!,
           // Inner tabs are query params so a notification can deep-link
           // straight to /trips/abc?tab=dates.
           tab: state.uri.queryParameters['tab'] ?? 'overview',
         ),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'availability',
+            name: Routes.availabilityName,
+            parentNavigatorKey: rootKey,
+            builder: (BuildContext context, GoRouterState state) =>
+                ManualAvailabilityScreen(
+              tripId: state.pathParameters['tripId']!,
+            ),
+          ),
+        ],
       ),
 
       ShellRoute(

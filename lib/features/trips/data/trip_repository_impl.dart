@@ -14,7 +14,8 @@ const String _tripColumns = '''
 id, title, description, status, origin_label, window_start, window_end,
 duration_days, transport, budget_per_person, currency, activity_tags,
 earliest_wake, destination_id, destination_free, created_by,
-participant_count, calendar_shared_count
+participant_count, calendar_shared_count, locked_start, locked_end, my_role,
+granularity, slot_minutes, slot_step_minutes, day_start, day_end
 ''';
 
 class SupabaseTripRepository implements TripRepository {
@@ -60,6 +61,11 @@ class SupabaseTripRepository implements TripRepository {
             'p_description': draft.description,
             'p_earliest_wake': _timeOfDay(draft.earliestWake),
             'p_currency': draft.currency,
+            'p_granularity': draft.granularity.wire,
+            'p_slot_minutes': draft.slotMinutes,
+            'p_slot_step_minutes': draft.slotStepMinutes,
+            'p_day_start': _timeOfDay(draft.dayStart),
+            'p_day_end': _timeOfDay(draft.dayEnd),
           },
         );
         return id as String;
@@ -87,7 +93,8 @@ Trip _toTrip(Map<String, dynamic> row) {
     budgetPerPerson: (row['budget_per_person'] as num?)?.toDouble(),
     currency: (row['currency'] as String?) ?? 'CZK',
     activityTags: <ActivityTag>[
-      for (final Object? t in (row['activity_tags'] as List<dynamic>? ?? const <dynamic>[]))
+      for (final Object? t
+          in (row['activity_tags'] as List<dynamic>? ?? const <dynamic>[]))
         if (_tag(t as String) case final ActivityTag tag) tag,
     ],
     earliestWake: _parseTime(row['earliest_wake'] as String?),
@@ -96,8 +103,22 @@ Trip _toTrip(Map<String, dynamic> row) {
     participantCount: (row['participant_count'] as int?) ?? 0,
     calendarSharedCount: (row['calendar_shared_count'] as int?) ?? 0,
     createdBy: row['created_by'] as String,
+    isOrganiser: row['my_role'] == 'organiser',
+    granularity: TripGranularity.fromWire(row['granularity'] as String?),
+    slotMinutes: row['slot_minutes'] as int?,
+    slotStepMinutes: (row['slot_step_minutes'] as int?) ?? 30,
+    dayStart:
+        _parseTime(row['day_start'] as String?) ?? const Duration(hours: 7),
+    dayEnd: _parseTime(row['day_end'] as String?) ?? const Duration(hours: 21),
+    // These are timestamptz now, not dates: in time mode the lock carries a
+    // clock time, so toLocal() is right and dropping it would be wrong.
+    lockedStart: _parseInstant(row['locked_start'] as String?),
+    lockedEnd: _parseInstant(row['locked_end'] as String?),
   );
 }
+
+DateTime? _parseInstant(String? v) =>
+    v == null ? null : DateTime.parse(v).toLocal();
 
 TripStatus _status(String v) => switch (v) {
       'draft' => TripStatus.draft,

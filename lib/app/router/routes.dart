@@ -21,6 +21,14 @@ abstract final class Routes {
   static const String tripDetailName = 'tripDetail';
   static const String inviteName = 'invite';
 
+  /// Manual availability grid. A route rather than a modal because the
+  /// "somebody hasn't shared availability" notification has to deep-link
+  /// straight here — that nudge is the difference between a trip that gets
+  /// planned and one that stalls.
+  static const String availabilityName = 'availability';
+
   static String tripDetail(String tripId, {String tab = 'overview'}) =>
       '$trips/$tripId?tab=$tab';
+
+  static String availability(String tripId) => '$trips/$tripId/availability';
 }

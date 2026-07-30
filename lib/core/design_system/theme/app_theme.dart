@@ -87,7 +87,8 @@ abstract final class AppTheme {
         shape: const RoundedRectangleBorder(borderRadius: Radii.chipAll),
         side: BorderSide(color: ext.hairline),
       ),
-      dividerTheme: DividerThemeData(color: ext.hairline, space: 1, thickness: 1),
+      dividerTheme:
+          DividerThemeData(color: ext.hairline, space: 1, thickness: 1),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         backgroundColor: scheme.surface,

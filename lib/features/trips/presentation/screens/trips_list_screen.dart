@@ -51,9 +51,7 @@ class TripsListScreen extends ConsumerWidget {
                         'Pro zakládání vlastních výletů se přihlaste.'
                     : 'Založte výlet a pošlete odkaz kamarádům.\n'
                         'Termín najdeme za vás.',
-                icon: isGuest
-                    ? Icons.person_outline
-                    : Icons.hiking_outlined,
+                icon: isGuest ? Icons.person_outline : Icons.hiking_outlined,
                 actionLabel: isGuest
                     ? 'Přihlásit se'
                     : (canCreate ? 'Naplánovat něco' : null),

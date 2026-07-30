@@ -181,3 +181,260 @@ on together with `planto.app`.
 - **The client never talks to a third party directly.** That is what makes "no API keys in the app" structurally true rather than aspirational.
 - **The free tier calls no AI.** If a path a free user can reach needs an LLM, stop.
 - **Every repository has an `Unconfigured…` variant** so the app runs, and screens can be reviewed, with no backend at all.
+
+---
+
+## 10. Session 2 — 30 July 2026: invite links live, M5 built
+
+### What was actually wrong with the invite link
+
+Nothing in the code. `docs/` had never been committed — the repository had a
+single commit — and GitHub Pages was not enabled, so
+`https://patrikr9.github.io/PlanTo/i/<token>` returned GitHub's own 404 rather
+than `docs/404.html`. Both fixed; the invite page now loads and
+`preview_invite` answers with the anon key from a browser with no app
+installed. The growth loop works.
+
+### Migration `20260730120000_m5_dates.sql`
+
+| Object | Why |
+|---|---|
+| `busy_intervals.source_kind` | `calendar` vs `manual`, so the grid can prefill without presenting calendar-derived intervals as something the user typed. Mutually exclusive per (trip, user): both writers replace the whole set, because merging "calendar says free, person says busy" has no correct answer |
+| `set_manual_busy_days(uuid, date[])` | Days in, full local-midnight ranges out. **The timezone conversion is server-side on purpose**: the client has no tz database (a dependency plus ~900 kB), Postgres has one, and `trips.timezone` is authoritative. Doing it on the device is also wrong for anyone travelling. An empty array is a real answer and still sets `calendar_shared` |
+| `my_manual_busy_days(uuid)` | `SELECT` on `busy_intervals` is revoked from every role, including for your own rows. Reading back what you ticked therefore needs a function |
+| `date_votes` + `cast_date_vote` | Three states. "Maybe" is the honest answer to most dates and a poll that forces yes/no collects a number nobody believes. `p_vote null` withdraws |
+| `date_candidates(uuid, int)` | Ranked days **with** tallies and the caller's own vote, in one round trip. Supersedes `top_free_days`, which is dropped — its quorum filter showed an empty screen to exactly the groups that most needed to see why their options were bad. One ranking formula, one place |
+| `lock_trip_date` / `unlock_trip_date` | Organiser-only, re-checked server-side. Voting informs the decision, it does not make it: a poll that auto-wins on a plurality picks whatever the two fastest repliers said |
+| `trips_list` + `locked_start`, `locked_end`, `my_role` | `locked_date` is a `daterange`; PostgREST returns the literal `[2026-09-12,2026-09-14)` and parsing that in Dart is a bug waiting to happen. `my_role` replaces `createdBy == myId`, which is the wrong check the moment an organiser is handed over |
+
+`locked_date` is **half-open**: the last day of the trip is `locked_end - 1`.
+`Trip.lockedEnd` is named for that and `trip_test.dart` asserts it.
+
+### Flutter
+
+- `features/dates/` — new feature. `DateCandidate`, `DateRepository`,
+  `DatesController`, `DateCandidateCard`, `DatesTab`. The Dates tab replaces
+  the read-only list: ranked cards with a vote control, live tallies, a locked
+  banner and an organiser-only lock/unlock.
+- `ManualAvailabilityScreen` — screen 21, on route
+  `/trips/:tripId/availability`. A route rather than a modal because the
+  "somebody hasn't shared availability" notification has to deep-link straight
+  into it.
+- `ConnectCalendarSheet` — "Zadám ručně" used to just close the sheet, which
+  read as the app ignoring the answer. It now opens the grid. The manual path
+  is also offered on the Overview tab without refusing a permission first.
+
+**Why the manual grid matters more than it looks:** it removes the single
+point of failure in an unproven Kotlin plugin. The whole availability → dates →
+vote → lock flow can now be exercised end to end on web, with no calendar
+permission and no device.
+
+The ring on a date card shows **availability**, not the composite score. The
+score decides the order; availability is the one number on the card a person
+can check against what they already know about the group.
+
+### Two design choices worth remembering
+
+- The Dates tab shows the "nothing to compute yet" state when
+  `calendarSharedCount == 0`, not when the candidate list is empty. The solver
+  treats an unknown schedule as free, so with nobody answered every day would
+  read "everyone free" — true to the data and completely misleading as a
+  proposal.
+- Voting is *not* blocked while a date is locked. That is UI state, not
+  authorisation, and blocking it server-side would add a failure path for a
+  case the UI already prevents.
+
+### Still unverified
+
+Everything in this section was written without a Flutter SDK on the assistant
+side. Nothing here has been compiled or run. Before pushing:
+`dart format lib test`, `flutter analyze --fatal-infos`, `flutter test`,
+`supabase db push`, then `psql -f supabase/tests/dates_test.sql`.
+
+---
+
+## 11. Session 3 — granularity: days or hours
+
+### The model change
+
+A candidate is now a `[starts_at, ends_at)` range in both modes. A day-mode
+candidate is simply one whose range happens to be whole days. That is the
+whole trick: one vote table, one lock, one ranking formula, one card, one
+screen — instead of a second feature bolted alongside the first.
+
+| Column | |
+|---|---|
+| `trips.granularity` | `day` \| `time` |
+| `trips.slot_minutes` | how long the activity is; null in day mode |
+| `trips.slot_step_minutes` | 15 / 30 / 45 / 60 — how far apart proposed starts are |
+| `trips.day_start`, `day_end` | the usable part of a day, per trip |
+| `trips.locked_range` | `tstzrange`, replaces `locked_date daterange` |
+| `date_votes.slot_start` | `timestamptz`, replaces `day date` |
+
+`date_votes` was dropped and rebuilt rather than migrated: one day old, no
+real rows, and a backfill would add a code path that never runs again.
+
+### The solver
+
+`trip_candidates(uuid, int)` replaces `date_candidates`. plpgsql with an `IF`
+rather than one statement with a `UNION`, so the planner never prepares the
+slot branch for a day-mode trip.
+
+**Day branch.** A multi-day trip is feasible only if *every* day of the block
+works for the person. Evaluating just the first day proposes a Saturday for a
+three-day trip when two people work on the Monday — the bug the test now
+guards.
+
+**Slot branch.** Slots are generated on the step grid, then consecutive slots
+with an *identical free set* are merged into one candidate (gaps and islands
+over `lag()`). Without that, a 14-hour day at a 15-minute step produces 52
+near-identical cards; with it the group sees "Pá 11. 9., 12:00–13:30, volno až
+do 17:00" once. `window_ends_at` carries the end of the run, which is what
+tells people they could start later.
+
+### Optimisation, concretely
+
+- `range_agg` per participant runs **once** per request; everything after it is
+  in-memory multirange algebra. That single CTE is the only table access per
+  user.
+- Vote tallies moved from three correlated subqueries per candidate to one
+  grouped scan (`_vote_tally`). Twenty candidates: 60 index probes → 1 scan.
+- `free_days` is referenced three times in the day branch, so Postgres
+  materialises it and the availability solver runs once, not three times.
+- The ranking formula lives in `_candidate_score` — one definition, used by
+  both branches and by the `ORDER BY`.
+- `create_trip` refuses a time-mode window longer than six weeks. Not a
+  product limit: it is `days × slots × participants` rows, and at a 15-minute
+  step a year is 35 000 slots.
+- `date_votes (trip_id, slot_start)` index covers the only read path.
+- Both helper functions are `revoke execute … from public`; `_vote_tally`
+  re-checks membership anyway, because a security definer helper that trusts
+  its caller is exactly how these leak.
+
+### Availability is now one screen with two ways to fill it
+
+`my_manual_busy` became `my_busy_blocks` and no longer filters to
+`source_kind = 'manual'`. Importing the calendar drops its blocks straight
+into the grid where they can be corrected, which matters because the calendar
+is never quite right — it does not know about the dentist you have not booked
+yet. Hiding the imported blocks would have made the import look like it did
+nothing, and saving afterwards would have silently wiped it.
+
+`set_manual_busy(uuid, jsonb)` replaces `set_manual_busy_days(uuid, date[])`;
+a `date[]` cannot say "Tuesday between 9 and 17". Elements are
+`{"day":"…"}` or `{"day":"…","from":"09:00","to":"17:00"}`, converted to
+instants server-side in the **trip's** timezone.
+
+`ConnectCalendarSheet` is now only the explain-first permission step, opened
+from that screen. Trip Overview has one button, not two: making somebody pick
+a path before they have seen either was a decision asked too early.
+
+### Invite flow
+
+Redeeming an invite now lands on `/trips/:id/availability`, not the trip
+overview. Joining is not what the organiser needs from that person — their
+availability is, and every screen between the tap and that answer is where the
+funnel leaks. `go` builds the trip detail underneath, so Back is sensible.
+
+### Still unverified
+
+Written with no Flutter SDK and no database on the assistant side. Before
+pushing: `dart format lib test`, `flutter analyze --fatal-infos`,
+`flutter test`, `supabase db push`, then both files in `supabase/tests/`.
+
+---
+
+## 12. Session 4 — the invite dead end, and weather
+
+### The invite bug was not a bug
+
+`docs/404.html` had exactly two buttons: "Otevřít v aplikaci", which reloads
+the same URL and does nothing without the Android app installed, and "Nemám
+aplikaci", which went to `github.com/PatrikR9/PlanTo`. So an invitee who
+wanted to say when they were free ended up reading source code. Nothing was
+broken; there was simply no path from the landing page into the product.
+
+**Fix: the web build is now deployed.** `.github/workflows/pages.yml` builds
+`flutter build web --base-href /PlanTo/`, copies `docs/404.html` in as the
+unknown-path handler, and publishes through GitHub Pages. The landing page's
+primary button now goes to `<base>#/i/<token>` — Flutter web uses the hash URL
+strategy, so the route travels in the fragment and Pages only ever has to
+serve `index.html`. No SPA-redirect trick, no extra Dart.
+
+`docs/index.html` was deleted: it was a copy of the invite page, and the
+Flutter build owns that filename now.
+
+**This changes a recorded constraint.** "Android only, Chrome is a dev target"
+becomes "Android only, plus a web build that exists so an invite works before
+the app is on Play". Reading the device calendar still does not work on the
+web — there is no API — so those people use the manual editor, which is
+exactly the case it was built for. The availability screen now says so plainly
+instead of showing a button that cannot fire.
+
+Two setup steps: repository secrets `SUPABASE_URL` and `SUPABASE_ANON_KEY`,
+and Settings → Pages → Source → **GitHub Actions**. The workflow fails with a
+readable message if the secrets are missing, because a prod build without a
+backend throws on startup and would otherwise deploy a white screen.
+
+### M6 — weather
+
+The wedge was never "here is the forecast". It is "Saturday 84, Sunday 41 — go
+Saturday", so the forecast is a term in the ranking, not decoration on a card.
+
+| Piece | |
+|---|---|
+| `weather_daily` | cache on a **0.1° grid**, not per trip. Open-Meteo's model resolution is ~11 km, so a finer key would cost requests and buy nothing — every trip leaving Prague shares one entry |
+| `_weather_score` | starts at 100, subtracts named penalties. Additive and capped so every lost point has one cause the UI can name. Returns **null** with no data |
+| `_activity_profile` | 27 °C is perfect for a lake and punishing on a climb. One profile per trip, from the tags |
+| `_daylight_factor` | time mode asks how much of the *slot* is in daylight (an 18:00 walk in December scores zero); day mode asks how much daylight the day has at all |
+| `weather` Edge Function | the only writer, and the only thing that talks to Open-Meteo |
+
+**The decision worth remembering: unknown is not bad.** Open-Meteo stops at 16
+days and people plan further, so most candidates in a wide window have no
+forecast. Dropping the missing terms would push every unknown date below every
+sunny one and the screen would read "November is bad" when the truth is "we do
+not know yet". So `_candidate_score` renormalises the applicable weights to sum
+to 1, and an unknown date competes on what *is* known. `_weather_score`
+returns null rather than 100 for the same reason — with no data every penalty
+is zero, and a naive implementation would call an unknown day perfect.
+
+**Low API usage, concretely.** `weather_request` tells the Edge Function
+whether anything in range is missing or older than six hours; if not it
+returns without touching Open-Meteo. Six hours because that is roughly how
+often the underlying model runs. The Dates tab can be opened fifty times and
+cost fifty round trips to our own function and zero to theirs.
+
+**Licence.** `api.open-meteo.com` is free for **non-commercial** use. Before
+PlanTo takes a euro this must point at a self-hosted instance on the VPS. One
+line changes — the URL is already `Deno.env.get("OPEN_METEO_URL")`.
+
+### Unverified
+
+No Flutter SDK, no database and no Deno on the assistant side. In particular
+the exact Open-Meteo daily variable names are from memory; the function passes
+their own `reason` string straight through, so one run says whether any of
+them is wrong.
+
+    dart format lib test
+    flutter analyze --fatal-infos
+    flutter test
+    supabase db push
+    supabase functions deploy weather
+    psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/weather_test.sql
+
+### Two traps hit on the first push (31 July / 1 Aug)
+
+1. **`CREATE OR REPLACE FUNCTION` cannot change a return type**, and for
+   `RETURNS TABLE` the output columns *are* the return type. `trip_candidates`
+   gained seven weather columns, so Postgres refused. Fixed with an explicit
+   `DROP FUNCTION IF EXISTS trip_candidates(uuid, int)` first — and the grant
+   has to be reissued, because dropping takes it with it.
+
+   Worth knowing because the failure is misleading: `supabase db push` reports
+   it as "failed to execute statement" with no reason, and the statement it
+   prints is 200 lines of solver that looks like the problem.
+
+2. **Adding a parameter with a default creates an ambiguous overload.**
+   `_candidate_score` went from four arguments to six with the last two
+   defaulted, which made every existing four-argument call resolve to two
+   candidate functions. The old signature has to be dropped, not left to rot.

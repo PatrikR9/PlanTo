@@ -27,7 +27,8 @@ Failure mapError(Object error, [StackTrace? stackTrace]) {
         // Postgres insufficient_privilege — almost always an RLS policy
         // rejection, which from the user's side means "not signed in properly".
         '42501' => AuthFailure(cause: error, stackTrace: stackTrace),
-        '23505' => const ValidationFailure(message: 'Tento záznam už existuje.'),
+        '23505' =>
+          const ValidationFailure(message: 'Tento záznam už existuje.'),
         _ => ServerFailure(code: code, cause: error, stackTrace: stackTrace),
       },
     _ => ServerFailure(cause: error, stackTrace: stackTrace),

@@ -10,7 +10,8 @@ sealed class Failure implements Exception {
   final Object? cause;
   final StackTrace? stackTrace;
 
-  static const String genericMessage = 'Něco se pokazilo. Zkuste to prosím znovu.';
+  static const String genericMessage =
+      'Něco se pokazilo. Zkuste to prosím znovu.';
 
   /// The provider's own words. Useless to a user, essential to a developer —
   /// "Anonymous sign-ins are disabled" is a dashboard toggle, not a bug, and
@@ -27,11 +28,9 @@ sealed class Failure implements Exception {
   String get userMessage => switch (this) {
         NetworkFailure() => 'Nejste připojeni k internetu.',
         AuthFailure() => 'Přihlaste se prosím znovu.',
-        EmailAlreadyRegisteredFailure() =>
-          'Na tento e-mail už účet existuje.',
-        EmailRateLimitFailure() =>
-          'Odesílání e-mailů je dočasně vyčerpané. '
-              'Zkuste to za hodinu, nebo pokračujte jako host.',
+        EmailAlreadyRegisteredFailure() => 'Na tento e-mail už účet existuje.',
+        EmailRateLimitFailure() => 'Odesílání e-mailů je dočasně vyčerpané. '
+            'Zkuste to za hodinu, nebo pokračujte jako host.',
         PermissionFailure() => 'Aplikace nemá potřebné oprávnění.',
         QuotaFailure() => 'Vyčerpali jste měsíční limit.',
         EntitlementFailure() => 'Tato funkce je součástí PlanTo Pro.',
@@ -83,7 +82,8 @@ final class PermissionFailure extends Failure {
 
 /// Server-side quota exhausted (e.g. AI runs this month).
 final class QuotaFailure extends Failure {
-  const QuotaFailure({required this.limit, required this.resetsAt, super.cause});
+  const QuotaFailure(
+      {required this.limit, required this.resetsAt, super.cause,});
   final int limit;
   final DateTime resetsAt;
 }

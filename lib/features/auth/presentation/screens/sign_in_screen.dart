@@ -88,7 +88,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           'email': address,
           if (widget.from != null) 'from': widget.from!,
         },
-      ));
+      ),);
     } else {
       // No custom SMTP yet, so what arrives is a link. Sending the user to a
       // code-entry screen with no code to enter is worse than useless.
@@ -101,9 +101,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   /// upgrade). That means nothing moves them off it either, so the successful
   /// guest sign-in has to navigate on its own.
   Future<void> _continueAsGuest() async {
-    final bool ok = await ref
-        .read(signInControllerProvider.notifier)
-        .continueAsGuest();
+    final bool ok =
+        await ref.read(signInControllerProvider.notifier).continueAsGuest();
     if (!mounted || !ok) return;
     context.go(widget.from ?? Routes.trips);
   }
@@ -135,11 +134,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Icon(Icons.mark_email_read_outlined,
-                    size: 48, color: context.colors.primary),
+                    size: 48, color: context.colors.primary,),
                 const SizedBox(height: Sp.md),
                 Text('Zkontrolujte e-mail',
                     style: context.texts.titleLarge,
-                    textAlign: TextAlign.center),
+                    textAlign: TextAlign.center,),
                 const SizedBox(height: Sp.xs),
                 Text(
                   'Poslali jsme přihlašovací odkaz na $_sentTo.\n'
@@ -194,7 +193,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Icon(Icons.error_outline,
-                          size: 18, color: context.colors.onErrorContainer),
+                          size: 18, color: context.colors.onErrorContainer,),
                       const SizedBox(width: Sp.xs),
                       Expanded(
                         child: Column(
@@ -316,13 +315,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   onPressed: busy ? null : _continueAsGuest,
                 ),
               if (!isGuest)
-              Text(
-                'Bez e-mailu. Účet si můžete připojit kdykoliv později '
-                'a o nic nepřijdete.',
-                textAlign: TextAlign.center,
-                style: context.texts.labelSmall
-                    ?.copyWith(color: context.colors.onSurfaceVariant),
-              ),
+                Text(
+                  'Bez e-mailu. Účet si můžete připojit kdykoliv později '
+                  'a o nic nepřijdete.',
+                  textAlign: TextAlign.center,
+                  style: context.texts.labelSmall
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                ),
 
               const SizedBox(height: Sp.xxl),
               Text(

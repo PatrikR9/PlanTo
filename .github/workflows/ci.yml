@@ -51,8 +51,12 @@ jobs:
       - run: supabase db start
       - run: supabase db lint
       - name: Solver + RLS tests
-        run: psql "$(supabase status -o env | grep DB_URL | cut -d= -f2-)" \
-               -v ON_ERROR_STOP=1 -f supabase/tests/availability_test.sql
+        run: |
+          DB_URL="$(supabase status -o env | grep DB_URL | cut -d= -f2-)"
+          for t in supabase/tests/*.sql; do
+            echo "--- $t"
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$t"
+          done
 
   keepalive:
     # Supabase free projects pause after 7 days idle. This is the cheapest

@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../dates/data/date_repository.dart';
+import '../../trips/presentation/controllers/trips_controller.dart';
 import '../data/availability_repository.dart';
 import '../data/device_calendar_source.dart';
 import '../domain/busy_interval.dart';
 import '../domain/calendar_source.dart';
-import '../../trips/presentation/controllers/trips_controller.dart';
+import '../domain/manual_busy_block.dart';
 
 /// Runs the whole sync: permission → read → reduce → upload.
 ///
@@ -54,6 +56,8 @@ class CalendarSyncController extends AsyncNotifier<void> {
       await repo.markShared(tripId);
 
       ref.invalidate(availabilityProvider(tripId));
+      ref.invalidate(dateCandidatesProvider(tripId));
+      ref.invalidate(myBlocksProvider(tripId));
       ref.invalidate(tripProvider(tripId));
       ref.invalidate(myTripsProvider);
     });
@@ -76,4 +80,40 @@ class CalendarSyncController extends AsyncNotifier<void> {
 final AsyncNotifierProvider<CalendarSyncController, void>
     calendarSyncControllerProvider =
     AsyncNotifierProvider<CalendarSyncController, void>(
-        CalendarSyncController.new);
+        CalendarSyncController.new,);
+
+/// The manual path: the user tells us which days they cannot make.
+///
+/// Separate from [CalendarSyncController] because it shares none of its
+/// steps — no permission, no plugin, no device read — and because it must
+/// keep working when the calendar plugin is missing entirely. That is
+/// deliberate: manual entry is the fallback that makes the calendar optional
+/// rather than load-bearing.
+class ManualAvailabilityController extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  Future<bool> save({
+    required String tripId,
+    required List<ManualBusyBlock> blocks,
+  }) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(availabilityRepositoryProvider)
+          .setManualBlocks(tripId, blocks);
+
+      ref.invalidate(myBlocksProvider(tripId));
+      ref.invalidate(availabilityProvider(tripId));
+      ref.invalidate(dateCandidatesProvider(tripId));
+      ref.invalidate(tripProvider(tripId));
+      ref.invalidate(myTripsProvider);
+    });
+    return !state.hasError;
+  }
+}
+
+final AsyncNotifierProvider<ManualAvailabilityController, void>
+    manualAvailabilityControllerProvider =
+    AsyncNotifierProvider<ManualAvailabilityController, void>(
+        ManualAvailabilityController.new,);

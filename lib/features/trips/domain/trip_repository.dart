@@ -21,6 +21,11 @@ class NewTrip {
     required this.windowEnd,
     required this.durationDays,
     required this.transport,
+    this.granularity = TripGranularity.day,
+    this.slotMinutes,
+    this.slotStepMinutes = 30,
+    this.dayStart = const Duration(hours: 7),
+    this.dayEnd = const Duration(hours: 21),
     this.description,
     this.budgetPerPerson,
     this.activityTags = const <ActivityTag>[],
@@ -37,6 +42,13 @@ class NewTrip {
   final DateTime windowEnd;
   final int durationDays;
   final TransportPref transport;
+  final TripGranularity granularity;
+
+  /// Required in [TripGranularity.time]; the server rejects a null.
+  final int? slotMinutes;
+  final int slotStepMinutes;
+  final Duration dayStart;
+  final Duration dayEnd;
   final double? budgetPerPerson;
   final List<ActivityTag> activityTags;
   final Duration? earliestWake;

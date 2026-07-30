@@ -39,7 +39,15 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
       final String tripId =
           await ref.read(inviteRepositoryProvider).redeem(widget.token);
       if (!mounted) return;
-      context.go(Routes.tripDetail(tripId));
+
+      // Straight to availability, not to the trip overview.
+      //
+      // Joining is not the thing the organiser needs from this person —
+      // their availability is, and every extra screen between the tap and
+      // that answer is where the funnel leaks. `go` builds the trip detail
+      // underneath, so Back lands somewhere sensible rather than on a dead
+      // invite page.
+      context.go(Routes.availability(tripId));
     } catch (error) {
       if (!mounted) return;
       setState(() => _joining = false);
@@ -48,8 +56,8 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
         ..showSnackBar(SnackBar(
           content: Text(error is Failure
               ? error.userMessage
-              : 'Pozvánka je neplatná nebo vypršela.'),
-        ));
+              : 'Pozvánka je neplatná nebo vypršela.',),
+        ),);
     }
   }
 
@@ -122,8 +130,7 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
                     PtButton(
                       label: 'Otevřít výlet',
                       expand: true,
-                      onPressed: () =>
-                          context.go(Routes.tripDetail(p.tripId)),
+                      onPressed: () => context.go(Routes.tripDetail(p.tripId)),
                     )
                   else ...<Widget>[
                     PtButton(

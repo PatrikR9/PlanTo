@@ -112,9 +112,12 @@ class PlanToTheme extends ThemeExtension<PlanToTheme> {
       weatherFair: Color.lerp(weatherFair, other.weatherFair, t)!,
       weatherPoor: Color.lerp(weatherPoor, other.weatherPoor, t)!,
       weatherSevere: Color.lerp(weatherSevere, other.weatherSevere, t)!,
-      availabilityFull: Color.lerp(availabilityFull, other.availabilityFull, t)!,
-      availabilityPartial: Color.lerp(availabilityPartial, other.availabilityPartial, t)!,
-      availabilityNone: Color.lerp(availabilityNone, other.availabilityNone, t)!,
+      availabilityFull:
+          Color.lerp(availabilityFull, other.availabilityFull, t)!,
+      availabilityPartial:
+          Color.lerp(availabilityPartial, other.availabilityPartial, t)!,
+      availabilityNone:
+          Color.lerp(availabilityNone, other.availabilityNone, t)!,
       costLow: Color.lerp(costLow, other.costLow, t)!,
       costMid: Color.lerp(costMid, other.costMid, t)!,
       costHigh: Color.lerp(costHigh, other.costHigh, t)!,

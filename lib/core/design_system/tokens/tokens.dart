@@ -32,8 +32,7 @@ abstract final class Radii {
   static const BorderRadius inputAll = BorderRadius.all(input);
   static const BorderRadius cardAll = BorderRadius.all(card);
   static const BorderRadius pillAll = BorderRadius.all(pill);
-  static const BorderRadius sheetTop =
-      BorderRadius.vertical(top: sheet);
+  static const BorderRadius sheetTop = BorderRadius.vertical(top: sheet);
 }
 
 /// Motion. Three durations, no more.
@@ -44,7 +43,8 @@ abstract final class Motion {
 
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;
-  static const Curve emphasis = Cubic(0.05, 0.7, 0.1, 1); // M3 emphasised-decelerate
+  static const Curve emphasis =
+      Cubic(0.05, 0.7, 0.1, 1); // M3 emphasised-decelerate
 }
 
 /// Breakpoints (architecture section 7.5).

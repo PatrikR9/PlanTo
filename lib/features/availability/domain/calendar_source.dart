@@ -18,7 +18,12 @@ class CalendarInfo {
   bool get suggestedByDefault {
     final String n = name.toLowerCase();
     const List<String> noisy = <String>[
-      'birthday', 'narozenin', 'holiday', 'svátk', 'svatk', 'contacts',
+      'birthday',
+      'narozenin',
+      'holiday',
+      'svátk',
+      'svatk',
+      'contacts',
     ];
     return !noisy.any(n.contains);
   }
