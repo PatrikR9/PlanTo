@@ -188,8 +188,14 @@ begin
       using errcode = '42501';
   end if;
 
+  -- destination_id is cleared, not left alone. A trip carrying both a curated
+  -- destination and a free one has two answers to "where is this going", and
+  -- nothing in the schema says which wins — so the weather function would
+  -- read one and the transport estimate the other, and they would disagree
+  -- without either being wrong. One destination at a time.
   update trips
-     set destination_free  = p_label,
+     set destination_id    = null,
+         destination_free  = p_label,
          destination_point = case
            when p_lat is null or p_lon is null then null
            else st_setsrid(st_makepoint(p_lon, p_lat), 4326)::geography
@@ -201,6 +207,36 @@ $$;
 grant execute on function set_trip_destination(
   uuid, text, double precision, double precision
 ) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 4b. The forecast has to follow the destination too
+-- ---------------------------------------------------------------------------
+-- _trip_weather_point was written when the only destination a trip could have
+-- was a row in `destinations`, so it reads destinations.point and otherwise
+-- falls back to the origin. This migration introduced a second way to have a
+-- destination, and without this the two disagree in the worst possible
+-- direction: the Plan tab measures the distance to Špindlerův Mlýn while the
+-- Dates tab scores the weather in Prague, and both look right.
+--
+-- Same return type, so CREATE OR REPLACE is enough (trap 8 only bites when
+-- the columns change).
+create or replace function _trip_weather_point(p_trip uuid)
+returns table (lat numeric, lon numeric)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select round(st_y(coalesce(d.point, t.destination_point,
+                             t.origin_point)::geometry)::numeric, 1),
+         round(st_x(coalesce(d.point, t.destination_point,
+                             t.origin_point)::geometry)::numeric, 1)
+  from trips t
+  left join destinations d on d.id = t.destination_id
+  where t.id = p_trip and is_trip_member(p_trip);
+$$;
+
+revoke execute on function _trip_weather_point(uuid) from public;
 
 -- ---------------------------------------------------------------------------
 -- 5. Read model

@@ -322,11 +322,38 @@ belongs in a script, not in somebody's memory.
 | 3 | Supabase dashboard config | Anonymous sign-ins ON, Email ON, Site URL and Redirect URLs set to the Pages URL and `localhost:50350` |
 | 4 | Repo secrets + Pages source | `SUPABASE_URL`, `SUPABASE_ANON_KEY`; Pages → Source → GitHub Actions |
 | 5 | `ICAL_SECRET` | `supabase secrets set ICAL_SECRET="…"` or the iCal path cannot encrypt |
-| 6 | Hard-coded ref in `docs/404.html` | Everything else is configurable. Switching to prod will silently keep pointing invites at staging |
+| 6 | ~~Hard-coded ref in `docs/404.html`~~ | **Closed 4 Aug.** Placeholders substituted by `pages.yml` from the same secrets the Flutter build uses; a `grep` guard fails the step if anybody inlines them again |
 | 7 | Open-Meteo variable names | Unverified from the assistant side; the function passes their `reason` through |
 
 Carried over from session 1 and unchanged: Brevo SMTP, `planto.app`, the Google
 OAuth client, and 12 Play testers for 14 continuous days.
+
+## 14b. Tidy-up pass, 4 August
+
+The session-2 work above was written but never committed, so the first job was
+to get it into history before anything else touched it. Three commits: the
+cleanup, the feature work, the Pages fix. Nothing has been run yet — §17 still
+applies in full.
+
+Two things were wrong on the way in and are fixed:
+
+- `deno test --allow-none` in the new CI job. There is no such flag; Deno
+  grants nothing by default, so the flag was both invalid and unnecessary. The
+  job would have failed on its first run, which is a cheap failure but a
+  confusing one — an unknown argument reads like a Deno version problem.
+- **The weather and the transport estimate disagreed about where the trip was
+  going.** M7 added `trips.destination_point` for free-text destinations, but
+  `_trip_weather_point` still read only `destinations.point` via
+  `destination_id`. A trip with a destination picked from `kDestinations`
+  would have measured the distance to Špindlerův Mlýn and scored the weather
+  in Prague — and both screens would have looked entirely correct. Fixed in
+  the transport migration, since that is the migration that created the second
+  destination. `set_trip_destination` now also clears `destination_id`: a trip
+  holding both kinds of destination has two answers to "where is this going"
+  and the schema does not say which one wins.
+
+Both were caught by reading, not by running. Neither survives contact with a
+test suite, which is the argument for §17 rather than against it.
 
 ## 15. Licence debts, restated
 
