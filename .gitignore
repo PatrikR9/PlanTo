@@ -12,7 +12,9 @@ lib/l10n/app_localizations*.dart
 # Local run/analysis output
 run_log.txt
 Analyze_logs.txt
-_deltest/
+# No trailing slash: this was created as a plain file, and `_deltest/` matches
+# only a directory, so the rule silently did nothing and the file got committed.
+_deltest
 
 # Config & secrets — never commit
 env/*.json
