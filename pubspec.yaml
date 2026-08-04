@@ -27,6 +27,11 @@ dependencies:
   planto_calendar:
     path: packages/planto_calendar
 
+  # Deep links out to IDOS and maps. No timetable of our own until MOTIS is
+  # self-hosted, so the honest move is to hand people to the app they were
+  # going to check anyway.
+  url_launcher: ^6.3.1
+
   # Utils
   intl: any
   collection: ^1.19.0

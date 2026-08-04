@@ -13,7 +13,8 @@ import '../domain/trip_repository.dart';
 const String _tripColumns = '''
 id, title, description, status, origin_label, window_start, window_end,
 duration_days, transport, budget_per_person, currency, activity_tags,
-earliest_wake, destination_id, destination_free, created_by,
+earliest_wake, destination_id, destination_free,
+destination_lat, destination_lon, created_by,
 participant_count, calendar_shared_count, locked_start, locked_end, my_role,
 granularity, slot_minutes, slot_step_minutes, day_start, day_end
 ''';
@@ -100,6 +101,8 @@ Trip _toTrip(Map<String, dynamic> row) {
     earliestWake: _parseTime(row['earliest_wake'] as String?),
     destinationId: row['destination_id'] as String?,
     destinationFree: row['destination_free'] as String?,
+    destinationLat: (row['destination_lat'] as num?)?.toDouble(),
+    destinationLon: (row['destination_lon'] as num?)?.toDouble(),
     participantCount: (row['participant_count'] as int?) ?? 0,
     calendarSharedCount: (row['calendar_shared_count'] as int?) ?? 0,
     createdBy: row['created_by'] as String,

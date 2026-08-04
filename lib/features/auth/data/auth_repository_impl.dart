@@ -12,6 +12,24 @@ import '../domain/auth_repository.dart';
 /// and the redirect allowlist in the Supabase dashboard.
 const String kOAuthRedirect = 'app.planto://login-callback/';
 
+/// Where an auth link must come back to.
+///
+/// Passing `null` on the web does NOT mean "return to the current origin",
+/// which is what the code here used to assume. It means Supabase falls back
+/// to the project's **Site URL** — one fixed value, which cannot be both
+/// `http://localhost:50350/` during development and the Pages URL in
+/// production. So the magic link landed on whichever of the two was
+/// configured, and for the other one the page simply never appeared.
+///
+/// The app states its own address instead. `Uri.base` carries the real path
+/// even under the hash URL strategy, because the route lives in the fragment.
+///
+/// Both addresses have to be listed in Supabase → Authentication → URL
+/// Configuration → Redirect URLs, or the link is rewritten to the Site URL
+/// and we are back where we started.
+String get authRedirect =>
+    kIsWeb ? '${Uri.base.origin}${Uri.base.path}' : kOAuthRedirect;
+
 class SupabaseAuthRepository implements AuthRepository {
   const SupabaseAuthRepository(this._client);
 
@@ -33,7 +51,7 @@ class SupabaseAuthRepository implements AuthRepository {
           // existing user instead of creating a second one.
           await _client.auth.updateUser(
             UserAttributes(email: email.trim()),
-            emailRedirectTo: kIsWeb ? null : kOAuthRedirect,
+            emailRedirectTo: authRedirect,
           );
           return;
         }
@@ -49,7 +67,7 @@ class SupabaseAuthRepository implements AuthRepository {
           // template can be switched to {{ .Token }} and the code entry
           // screen becomes the primary path — no code change needed, both
           // work simultaneously.
-          emailRedirectTo: kIsWeb ? null : kOAuthRedirect,
+          emailRedirectTo: authRedirect,
         );
       });
 
@@ -75,13 +93,11 @@ class SupabaseAuthRepository implements AuthRepository {
             // Same reasoning as email: link, do not replace.
             ? _client.auth.linkIdentity(
                 OAuthProvider.google,
-                redirectTo: kIsWeb ? null : kOAuthRedirect,
+                redirectTo: authRedirect,
               )
             : _client.auth.signInWithOAuth(
                 OAuthProvider.google,
-                // On web Supabase returns to the current origin; on Android it
-                // needs the app's own scheme.
-                redirectTo: kIsWeb ? null : kOAuthRedirect,
+                redirectTo: authRedirect,
               ),
       );
 
@@ -89,12 +105,36 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> linkGoogle() => guard(
         () => _client.auth.linkIdentity(
           OAuthProvider.google,
-          redirectTo: kIsWeb ? null : kOAuthRedirect,
+          redirectTo: authRedirect,
         ),
       );
 
   @override
   Future<void> signOut() => guard(() => _client.auth.signOut());
+
+  // Straight through PostgREST rather than an RPC: profiles_write_self
+  // already restricts the row to its owner, and the column-level grant
+  // already restricts which columns can be written — `plan` is not one of
+  // them, which is the thing that actually mattered.
+  @override
+  Future<String?> myDisplayName() => guard(() async {
+        final String? uid = _client.auth.currentUser?.id;
+        if (uid == null) return null;
+        final Map<String, dynamic>? row = await _client
+            .from('profiles')
+            .select('display_name')
+            .eq('id', uid)
+            .maybeSingle();
+        return row?['display_name'] as String?;
+      });
+
+  @override
+  Future<void> setDisplayName(String name) => guard(() async {
+        final String? uid = _client.auth.currentUser?.id;
+        if (uid == null) return;
+        await _client.from('profiles').update(
+            <String, dynamic>{'display_name': name.trim()}).eq('id', uid);
+      });
 }
 
 /// Fails every call with a clear message when no backend is configured, so
@@ -109,8 +149,10 @@ class UnconfiguredAuthRepository implements AuthRepository {
   @override
   Future<void> sendEmailOtp(String email) async => _fail();
   @override
-  Future<void> verifyEmailOtp(
-          {required String email, required String token,}) async =>
+  Future<void> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) async =>
       _fail();
   @override
   Future<void> signInWithGoogle() async => _fail();
@@ -118,6 +160,10 @@ class UnconfiguredAuthRepository implements AuthRepository {
   Future<void> linkGoogle() async => _fail();
   @override
   Future<void> signOut() async {}
+  @override
+  Future<String?> myDisplayName() async => null;
+  @override
+  Future<void> setDisplayName(String name) async {}
 }
 
 final Provider<AuthRepository> authRepositoryProvider =

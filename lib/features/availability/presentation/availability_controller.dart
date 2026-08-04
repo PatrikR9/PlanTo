@@ -80,7 +80,8 @@ class CalendarSyncController extends AsyncNotifier<void> {
 final AsyncNotifierProvider<CalendarSyncController, void>
     calendarSyncControllerProvider =
     AsyncNotifierProvider<CalendarSyncController, void>(
-        CalendarSyncController.new,);
+  CalendarSyncController.new,
+);
 
 /// The manual path: the user tells us which days they cannot make.
 ///
@@ -116,4 +117,60 @@ class ManualAvailabilityController extends AsyncNotifier<void> {
 final AsyncNotifierProvider<ManualAvailabilityController, void>
     manualAvailabilityControllerProvider =
     AsyncNotifierProvider<ManualAvailabilityController, void>(
-        ManualAvailabilityController.new,);
+  ManualAvailabilityController.new,
+);
+
+/// The third way in: a subscription link.
+///
+/// Exists because the browser has no calendar API and most invitees arrive
+/// through the browser. Every major calendar publishes a secret iCal URL, so
+/// this needs no OAuth client, no verified domain and no token custody — and
+/// the user can revoke the link from their own calendar without telling us.
+class CalendarFeedController extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  Future<bool> sync({
+    required String tripId,
+    String? url,
+    String? label,
+  }) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(availabilityRepositoryProvider)
+          .syncFeeds(tripId, url: url, label: label);
+      _refresh(tripId);
+    });
+    return !state.hasError;
+  }
+
+  Future<bool> remove({required String feedId, required String tripId}) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard(() async {
+      await ref.read(availabilityRepositoryProvider).deleteFeed(feedId);
+      // Deliberately NOT deleting the busy intervals it produced. They are
+      // still this person's best known availability, and silently wiping them
+      // would tell the group they are free when they never said so. The
+      // editor is right there if they want to change it.
+      _refresh(tripId);
+    });
+    return !state.hasError;
+  }
+
+  void _refresh(String tripId) {
+    ref
+      ..invalidate(myFeedsProvider)
+      ..invalidate(myBlocksProvider(tripId))
+      ..invalidate(availabilityProvider(tripId))
+      ..invalidate(dateCandidatesProvider(tripId))
+      ..invalidate(tripProvider(tripId))
+      ..invalidate(myTripsProvider);
+  }
+}
+
+final AsyncNotifierProvider<CalendarFeedController, void>
+    calendarFeedControllerProvider =
+    AsyncNotifierProvider<CalendarFeedController, void>(
+  CalendarFeedController.new,
+);

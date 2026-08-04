@@ -23,6 +23,13 @@ Failure mapError(Object error, [StackTrace? stackTrace]) {
     AuthApiException(code: 'email_exists') =>
       EmailAlreadyRegisteredFailure(email: '', cause: error),
     AuthException() => AuthFailure(cause: error, stackTrace: stackTrace),
+    // An Edge Function that answers 4xx THROWS — it does not come back as a
+    // response with an error field, which is what the repositories were
+    // checking for. So every "your calendar link is a 404" arrived at the
+    // user as "Něco se pokazilo", and the one useful sentence was thrown
+    // away at the boundary.
+    FunctionException(:final dynamic details) =>
+      ValidationFailure(message: _functionMessage(details), cause: error),
     PostgrestException(:final String? code) => switch (code) {
         // Postgres insufficient_privilege — almost always an RLS policy
         // rejection, which from the user's side means "not signed in properly".
@@ -33,6 +40,21 @@ Failure mapError(Object error, [StackTrace? stackTrace]) {
       },
     _ => ServerFailure(cause: error, stackTrace: stackTrace),
   };
+}
+
+/// Digs the function's own message out of its body.
+///
+/// Supabase parses the JSON for us, so `details` is usually the decoded map.
+/// Falling back to the generic sentence is right when it is not: a raw stack
+/// trace from Deno is not something to show a person.
+String _functionMessage(Object? details) {
+  if (details is Map && details['error'] != null) {
+    return details['error'].toString();
+  }
+  if (details is String && details.isNotEmpty && details.length < 200) {
+    return details;
+  }
+  return Failure.genericMessage;
 }
 
 /// Runs [body], mapping anything it throws into a [Failure].

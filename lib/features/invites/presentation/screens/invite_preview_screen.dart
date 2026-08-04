@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
+import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../core/network/supabase_providers.dart';
 import '../../../auth/data/auth_repository_impl.dart';
@@ -53,11 +54,15 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
       setState(() => _joining = false);
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(
-          content: Text(error is Failure
-              ? error.userMessage
-              : 'Pozvánka je neplatná nebo vypršela.',),
-        ),);
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              error is Failure
+                  ? errorText(error)
+                  : 'Pozvánka je neplatná nebo vypršela.',
+            ),
+          ),
+        );
     }
   }
 

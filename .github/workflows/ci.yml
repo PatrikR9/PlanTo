@@ -58,6 +58,23 @@ jobs:
             psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$t"
           done
 
+  functions:
+    # The ICS parser decides whether somebody is reported free when they are
+    # not, which is the kind of bug a group discovers on a railway platform.
+    # It runs standalone, so it needs neither a database nor Docker.
+    name: Edge Function tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/**/*.ts
+      # No permission flags: Deno grants nothing by default, and the parser
+      # tests must not need any. If one ever asks for the network, that is the
+      # test telling you the parser started fetching something.
+      - run: deno test supabase/functions/_shared/
+
   keepalive:
     # Supabase free projects pause after 7 days idle. This is the cheapest
     # possible defence (cost register, section C4).

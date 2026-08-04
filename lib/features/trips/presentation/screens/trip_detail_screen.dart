@@ -7,6 +7,7 @@ import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../dates/presentation/screens/dates_tab.dart';
 import '../../../invites/presentation/screens/share_invite_sheet.dart';
+import '../../../transport/presentation/screens/plan_tab.dart';
 import '../../domain/trip.dart';
 import '../controllers/trips_controller.dart';
 
@@ -84,7 +85,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
           children: <Widget>[
             _Overview(trip: t),
             DatesTab(trip: t),
-            for (int i = 2; i < _tabs.length; i++)
+            PlanTab(trip: t),
+            for (int i = 3; i < _tabs.length; i++)
               Center(child: Text('${_tabs[i].label} — brzy')),
           ],
         ),
@@ -117,8 +119,10 @@ class _Overview extends ConsumerWidget {
                 style: context.texts.bodyLarge,
               ),
               const SizedBox(height: Sp.sm),
-              Text('Odjezd z ${trip.originLabel}',
-                  style: context.texts.bodyMedium,),
+              Text(
+                'Odjezd z ${trip.originLabel}',
+                style: context.texts.bodyMedium,
+              ),
             ],
           ),
         ),

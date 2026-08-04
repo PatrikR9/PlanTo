@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
-import '../../../../core/error/failure.dart';
+import '../../../../core/error/error_text.dart';
 import '../../../../core/format/cs_format.dart';
 import '../../../availability/data/availability_repository.dart';
 import '../../../availability/presentation/widgets/availability_strip.dart';
@@ -42,11 +42,13 @@ class DatesTab extends ConsumerWidget {
     final Object? error = ref.read(datesControllerProvider).error;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: Text(
-          error is Failure ? error.userMessage : Failure.genericMessage,
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            errorText(error),
+          ),
         ),
-      ),);
+      );
   }
 
   @override
@@ -145,36 +147,57 @@ class _CandidateList extends StatelessWidget {
     final DateFormat dayFmt = DateFormat('EEEE d. M.', 'cs');
     final List<Widget> out = <Widget>[];
 
+    // The server ranks by score; the screen shows time order.
+    //
+    // Those are different jobs. A list that jumps 12 Sep, 3 Nov, 19 Sep is
+    // sorted correctly and reads as noise — people scan dates the way a
+    // calendar does. So the ranking survives as a badge on the single best
+    // candidate rather than as the order of the list, and nothing is lost:
+    // the score was never the thing being compared, the days were.
+    final DateTime? bestStart =
+        candidates.isEmpty ? null : candidates.first.startsAt;
+    final List<DateCandidate> byTime = <DateCandidate>[...candidates]..sort(
+        (DateCandidate a, DateCandidate b) => a.startsAt.compareTo(b.startsAt),
+      );
+
     if (trip.isDateLocked) {
-      out.add(Padding(
-        padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 0),
-        child: _LockedBanner(trip: trip),
-      ),);
+      out.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 0),
+          child: _LockedBanner(trip: trip),
+        ),
+      );
     }
     if (trip.awaitingCalendarCount > 0) {
-      out.add(Padding(
-        padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 0),
-        child: _WaitingBanner(count: trip.awaitingCalendarCount),
-      ),);
+      out.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 0),
+          child: _WaitingBanner(count: trip.awaitingCalendarCount),
+        ),
+      );
     }
 
     out
       ..add(const SizedBox(height: Sp.md))
-      ..add(const Padding(
-        padding: EdgeInsets.symmetric(horizontal: Sp.md),
-        child: _SectionLabel('Celé rozmezí'),
-      ),)
+      ..add(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: Sp.md),
+          child: _SectionLabel('Celé rozmezí'),
+        ),
+      )
       ..add(const SizedBox(height: Sp.xs))
       ..add(AvailabilityStrip(days: strip))
       ..add(const SizedBox(height: Sp.lg))
-      ..add(const Padding(
-        padding: EdgeInsets.symmetric(horizontal: Sp.md),
-        child: _SectionLabel('Návrhy termínů'),
-      ),)
+      ..add(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: Sp.md),
+          child: _SectionLabel('Návrhy termínů'),
+        ),
+      )
       ..add(const SizedBox(height: Sp.xs));
 
     DateTime? lastDay;
-    for (final DateCandidate c in candidates) {
+    for (final DateCandidate c in byTime) {
       if (trip.isTimed && c.day != lastDay) {
         lastDay = c.day;
         out.add(
@@ -188,35 +211,39 @@ class _CandidateList extends StatelessWidget {
           ),
         );
       }
-      out.add(Padding(
-        padding: const EdgeInsets.fromLTRB(Sp.md, 0, Sp.md, Sp.xs),
-        child: DateCandidateCard(
-          // The key keeps element state (and the segmented button's ripple)
-          // attached to the right candidate when the list reorders after a
-          // vote.
-          key: ValueKey<DateTime>(c.startsAt),
-          candidate: c,
-          timed: trip.isTimed,
-          busy: busy,
-          onVote: (DateVote? v) => onVote(c, v),
-          onLock: trip.isOrganiser ? () => onLock(c) : null,
-          onUnlock: trip.isOrganiser ? onUnlock : null,
+      out.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Sp.md, 0, Sp.md, Sp.xs),
+          child: DateCandidateCard(
+            // The key keeps element state (and the segmented button's ripple)
+            // attached to the right candidate when the list reorders after a
+            // vote.
+            key: ValueKey<DateTime>(c.startsAt),
+            candidate: c,
+            timed: trip.isTimed,
+            busy: busy,
+            onVote: (DateVote? v) => onVote(c, v),
+            onLock: trip.isOrganiser ? () => onLock(c) : null,
+            onUnlock: trip.isOrganiser ? onUnlock : null,
+          ),
         ),
-      ),);
+      );
     }
 
     out
       ..add(const SizedBox(height: Sp.md))
-      ..add(Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Sp.md),
-        child: PtButton(
-          label: 'Upravit moji dostupnost',
-          variant: PtButtonVariant.text,
-          icon: Icons.edit_calendar_outlined,
-          expand: true,
-          onPressed: () => context.push(Routes.availability(trip.id)),
+      ..add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Sp.md),
+          child: PtButton(
+            label: 'Upravit moji dostupnost',
+            variant: PtButtonVariant.text,
+            icon: Icons.edit_calendar_outlined,
+            expand: true,
+            onPressed: () => context.push(Routes.availability(trip.id)),
+          ),
         ),
-      ),);
+      );
 
     return out;
   }

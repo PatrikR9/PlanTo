@@ -59,8 +59,11 @@ void main() {
           end: DateTime(2026, 9, 12, 10),
         ),
       ]);
-      expect(out.single.start, windowStart,
-          reason: 'a year of calendar history must never leave the device',);
+      expect(
+        out.single.start,
+        windowStart,
+        reason: 'a year of calendar history must never leave the device',
+      );
     });
 
     test('drops anything entirely outside the window', () {

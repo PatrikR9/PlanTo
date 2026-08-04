@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/design_system/components/components.dart';
+import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
 import '../../data/invite_repository_impl.dart';
 
@@ -82,7 +83,7 @@ class _ShareInviteSheetState extends ConsumerState<ShareInviteSheet> {
           if (_error != null)
             PtErrorState(
               message: _error is Failure
-                  ? (_error! as Failure).userMessage
+                  ? errorText(_error)
                   : Failure.genericMessage,
               onRetry: () {
                 setState(() => _error = null);

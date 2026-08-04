@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/components/components.dart';
+import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../app/env/env.dart';
 import '../../../../app/router/routes.dart';
@@ -67,11 +68,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     setState(() {
       _emailTaken = error is EmailAlreadyRegisteredFailure;
       _rateLimited = error is EmailRateLimitFailure;
-      _error = switch (error) {
-        final Failure f when kDebugMode => f.debugMessage,
-        final Failure f => f.userMessage,
-        _ => error.toString(),
-      };
+      // errorText, not kDebugMode: the build being carried around on a phone
+      // is a RELEASE apk built from env/dev.json, and that is exactly the one
+      // where "Přihlaste se prosím znovu" hid "Anonymous sign-ins are
+      // disabled" — a switch in the dashboard, not something retrying fixes.
+      _error = error is Failure ? errorText(error) : error.toString();
     });
   }
 
@@ -82,13 +83,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     if (!mounted || !ok) return;
 
     if (Env.emailUsesOtpCode) {
-      unawaited(context.pushNamed(
-        Routes.otpName,
-        queryParameters: <String, String>{
-          'email': address,
-          if (widget.from != null) 'from': widget.from!,
-        },
-      ),);
+      unawaited(
+        context.pushNamed(
+          Routes.otpName,
+          queryParameters: <String, String>{
+            'email': address,
+            if (widget.from != null) 'from': widget.from!,
+          },
+        ),
+      );
     } else {
       // No custom SMTP yet, so what arrives is a link. Sending the user to a
       // code-entry screen with no code to enter is worse than useless.
@@ -133,18 +136,36 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(Icons.mark_email_read_outlined,
-                    size: 48, color: context.colors.primary,),
+                Icon(
+                  Icons.mark_email_read_outlined,
+                  size: 48,
+                  color: context.colors.primary,
+                ),
                 const SizedBox(height: Sp.md),
-                Text('Zkontrolujte e-mail',
-                    style: context.texts.titleLarge,
-                    textAlign: TextAlign.center,),
+                Text(
+                  'Zkontrolujte e-mail',
+                  style: context.texts.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: Sp.xs),
                 Text(
-                  'Poslali jsme přihlašovací odkaz na $_sentTo.\n'
-                  'Otevřete ho na tomhle zařízení a jste uvnitř.',
+                  'Poslali jsme přihlašovací odkaz na $_sentTo.',
                   textAlign: TextAlign.center,
                   style: context.texts.bodyMedium
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                ),
+                const SizedBox(height: Sp.xs),
+                Text(
+                  // Not a nicety. Supabase uses PKCE, and the code verifier
+                  // that completes the sign-in lives in THIS browser's
+                  // storage. Opening the link on a phone when the flow
+                  // started on a laptop fails with a "code verifier not
+                  // found" nobody could act on, so the instruction has to
+                  // come before the mistake.
+                  'Otevřete ho ve stejném prohlížeči, ve kterém jste ho '
+                  'vyžádali — jinak přihlášení nedokončí.',
+                  textAlign: TextAlign.center,
+                  style: context.texts.labelSmall
                       ?.copyWith(color: context.colors.onSurfaceVariant),
                 ),
                 const SizedBox(height: Sp.xl),
@@ -192,8 +213,11 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Icon(Icons.error_outline,
-                          size: 18, color: context.colors.onErrorContainer,),
+                      Icon(
+                        Icons.error_outline,
+                        size: 18,
+                        color: context.colors.onErrorContainer,
+                      ),
                       const SizedBox(width: Sp.xs),
                       Expanded(
                         child: Column(
@@ -241,9 +265,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
               ],
 
-              // Debug-only: turns "nothing happened" into a fact you can act
-              // on. Stripped from release builds by the kDebugMode constant.
-              if (kDebugMode) ...<Widget>[
+              // Turns "nothing happened" into a fact you can act on. Gated
+              // on the flavour rather than kDebugMode, because the build that
+              // gets sideloaded onto a phone is a RELEASE apk from
+              // env/dev.json — which is precisely when you need to know
+              // whether it is even pointed at a backend. A prod build shows
+              // none of it.
+              if (!Env.isProd) ...<Widget>[
                 const SizedBox(height: Sp.sm),
                 Text(
                   Env.isConfigured

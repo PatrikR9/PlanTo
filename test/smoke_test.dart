@@ -14,8 +14,12 @@ void main() {
   group('PtScoreRing', () {
     testWidgets('renders the score and an accessible label', (tester) async {
       await tester.pumpWidget(
-        wrap(const PtScoreRing(
-            score: 84, semanticLabel: 'Počasí 84 ze 100, dobré',),),
+        wrap(
+          const PtScoreRing(
+            score: 84,
+            semanticLabel: 'Počasí 84 ze 100, dobré',
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -39,8 +43,13 @@ void main() {
     testWidgets('does not fire while loading', (tester) async {
       int taps = 0;
       await tester.pumpWidget(
-        wrap(PtButton(
-            label: 'Uložit', isLoading: true, onPressed: () => taps++,),),
+        wrap(
+          PtButton(
+            label: 'Uložit',
+            isLoading: true,
+            onPressed: () => taps++,
+          ),
+        ),
       );
       await tester.tap(find.byType(FilledButton));
       expect(taps, 0);

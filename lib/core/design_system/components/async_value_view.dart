@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../error/failure.dart';
+import '../../error/error_text.dart';
 import 'pt_states.dart';
 
 /// The single rendering contract for async data (architecture section 7.4).
@@ -37,7 +37,7 @@ class AsyncValueView<T> extends StatelessWidget {
       skipLoadingOnRefresh: true,
       loading: () => loading?.call() ?? const _DefaultSkeleton(),
       error: (Object error, StackTrace _) => PtErrorState(
-        message: error is Failure ? error.userMessage : Failure.genericMessage,
+        message: errorText(error),
         onRetry: onRetry,
       ),
       data: (T value) {

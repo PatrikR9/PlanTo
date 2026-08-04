@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
-import '../../../../core/error/failure.dart';
+import '../../../../core/error/error_text.dart';
 import '../controllers/sign_in_controller.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
@@ -47,9 +47,12 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
       final Object e = next.error!;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(
-          content: Text(e is Failure ? e.userMessage : Failure.genericMessage),
-        ),);
+        ..showSnackBar(
+          SnackBar(
+            content:
+                Text(errorText(e)),
+          ),
+        );
     });
 
     return Scaffold(

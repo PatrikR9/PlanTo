@@ -17,6 +17,7 @@ class DateCandidateCard extends StatelessWidget {
     required this.candidate,
     required this.timed,
     required this.onVote,
+    this.isBest = false,
     this.onLock,
     this.onUnlock,
     this.busy = false,
@@ -29,6 +30,11 @@ class DateCandidateCard extends StatelessWidget {
   /// else about the card is identical, which is the point of the shared
   /// candidate model.
   final bool timed;
+
+  /// Highest ranked by the engine. The list itself is in time order, so this
+  /// is where the ranking lives now — one badge instead of a running order
+  /// nobody could follow.
+  final bool isBest;
 
   /// Null withdraws the current vote.
   final void Function(DateVote? vote) onVote;
@@ -79,6 +85,24 @@ class DateCandidateCard extends StatelessWidget {
                 Semantics(
                   label: 'Zamknutý termín',
                   child: Icon(Icons.lock_outline, color: accent, size: 20),
+                )
+              else if (isBest)
+                Semantics(
+                  label: 'Nejlepší návrh',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Sp.xs,
+                      vertical: Sp.xxs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.16),
+                      borderRadius: Radii.pillAll,
+                    ),
+                    child: Text(
+                      'Nejlepší',
+                      style: context.texts.labelSmall?.copyWith(color: accent),
+                    ),
+                  ),
                 ),
             ],
           ),

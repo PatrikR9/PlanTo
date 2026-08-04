@@ -5,6 +5,7 @@ import '../../../core/error/error_mapper.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/network/supabase_providers.dart';
 import '../domain/busy_interval.dart';
+import '../domain/calendar_feed.dart';
 import '../domain/manual_busy_block.dart';
 
 /// One day of group availability, as computed by group_free_days().
@@ -52,6 +53,17 @@ abstract interface class AvailabilityRepository {
   /// blank slate. Read through an RPC because SELECT on busy_intervals is
   /// revoked from every role — even for your own rows.
   Future<List<ManualBusyBlock>> myBlocks(String tripId);
+
+  /// The iCal links this user has subscribed, minus the links themselves.
+  Future<List<CalendarFeed>> myFeeds();
+
+  /// Adds [url] if given, then re-syncs every saved feed into this trip.
+  ///
+  /// The URL goes straight to the Edge Function and is never stored on the
+  /// device: it is a credential, and the fewer places it exists the better.
+  Future<void> syncFeeds(String tripId, {String? url, String? label});
+
+  Future<void> deleteFeed(String feedId);
 }
 
 class SupabaseAvailabilityRepository implements AvailabilityRepository {
@@ -109,7 +121,8 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
           );
         }).toList()
           ..sort(
-              (DayAvailability a, DayAvailability b) => a.day.compareTo(b.day),);
+            (DayAvailability a, DayAvailability b) => a.day.compareTo(b.day),
+          );
       });
 
   @override
@@ -160,6 +173,41 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
             .map(ManualBusyBlock.fromRow)
             .toList();
       });
+
+  @override
+  Future<List<CalendarFeed>> myFeeds() => guard(() async {
+        final List<dynamic> rows =
+            await _client.rpc<List<dynamic>>('my_calendar_feeds');
+        return rows
+            .cast<Map<String, dynamic>>()
+            .map(CalendarFeed.fromRow)
+            .toList();
+      });
+
+  @override
+  Future<void> syncFeeds(String tripId, {String? url, String? label}) =>
+      guard(() async {
+        // invoke() throws FunctionException on a 4xx; error_mapper pulls the
+        // function's own sentence out of it. "Kalendář odpověděl 404" and
+        // "this feed was revoked" call for different reactions, so neither
+        // gets flattened into "something went wrong".
+        await _client.functions.invoke(
+          'ical-sync',
+          body: <String, dynamic>{
+            'trip_id': tripId,
+            if (url != null) 'url': url,
+            if (label != null) 'label': label,
+          },
+        );
+      });
+
+  @override
+  Future<void> deleteFeed(String feedId) => guard(() async {
+        await _client.rpc<void>(
+          'delete_calendar_feed',
+          params: <String, dynamic>{'p_feed': feedId},
+        );
+      });
 }
 
 class UnconfiguredAvailabilityRepository implements AvailabilityRepository {
@@ -179,6 +227,13 @@ class UnconfiguredAvailabilityRepository implements AvailabilityRepository {
       _fail();
   @override
   Future<List<ManualBusyBlock>> myBlocks(String t) async => <ManualBusyBlock>[];
+  @override
+  Future<List<CalendarFeed>> myFeeds() async => <CalendarFeed>[];
+  @override
+  Future<void> syncFeeds(String t, {String? url, String? label}) async =>
+      _fail();
+  @override
+  Future<void> deleteFeed(String f) async => _fail();
 }
 
 final Provider<AvailabilityRepository> availabilityRepositoryProvider =
@@ -198,4 +253,11 @@ final FutureProviderFamily<List<DayAvailability>, String> availabilityProvider =
 final FutureProviderFamily<List<ManualBusyBlock>, String> myBlocksProvider =
     FutureProvider.family<List<ManualBusyBlock>, String>((Ref ref, String id) {
   return ref.watch(availabilityRepositoryProvider).myBlocks(id);
+});
+
+/// Subscribed iCal links. Not per trip — a feed belongs to the person, and
+/// every trip they join reuses it.
+final FutureProvider<List<CalendarFeed>> myFeedsProvider =
+    FutureProvider<List<CalendarFeed>>((Ref ref) {
+  return ref.watch(availabilityRepositoryProvider).myFeeds();
 });

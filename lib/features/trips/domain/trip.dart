@@ -73,6 +73,8 @@ class Trip {
     this.earliestWake,
     this.destinationId,
     this.destinationFree,
+    this.destinationLat,
+    this.destinationLon,
     this.lockedStart,
     this.lockedEnd,
   });
@@ -92,6 +94,11 @@ class Trip {
   final Duration? earliestWake;
   final String? destinationId;
   final String? destinationFree;
+
+  /// Coordinates for [destinationFree]. Null means the group has named a
+  /// place but nothing can be measured to it yet — a name is not a place.
+  final double? destinationLat;
+  final double? destinationLon;
   final int participantCount;
 
   final TripGranularity granularity;
@@ -135,6 +142,10 @@ class Trip {
 
   bool get isDestinationDecided =>
       destinationId != null || (destinationFree?.isNotEmpty ?? false);
+
+  /// Decided *and* locatable. The transport estimate needs the second half.
+  bool get hasDestination =>
+      isDestinationDecided && destinationLat != null && destinationLon != null;
 
   int get awaitingCalendarCount => participantCount - calendarSharedCount;
 

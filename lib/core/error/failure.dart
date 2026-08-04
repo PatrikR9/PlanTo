@@ -82,8 +82,11 @@ final class PermissionFailure extends Failure {
 
 /// Server-side quota exhausted (e.g. AI runs this month).
 final class QuotaFailure extends Failure {
-  const QuotaFailure(
-      {required this.limit, required this.resetsAt, super.cause,});
+  const QuotaFailure({
+    required this.limit,
+    required this.resetsAt,
+    super.cause,
+  });
   final int limit;
   final DateTime resetsAt;
 }

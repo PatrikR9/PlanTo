@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
-import '../../../../core/error/failure.dart';
+import '../../../../core/error/error_text.dart';
 import '../../../../core/format/cs_format.dart';
 import '../../domain/czech_cities.dart';
 import '../../domain/trip.dart';
@@ -123,9 +123,12 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
       final Object e = next.error!;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(
-          content: Text(e is Failure ? e.userMessage : Failure.genericMessage),
-        ),);
+        ..showSnackBar(
+          SnackBar(
+            content:
+                Text(errorText(e)),
+          ),
+        );
     });
 
     return Scaffold(
@@ -301,11 +304,17 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
             SegmentedButton<TransportPref>(
               segments: const <ButtonSegment<TransportPref>>[
                 ButtonSegment<TransportPref>(
-                    value: TransportPref.public, label: Text('MHD/vlak'),),
+                  value: TransportPref.public,
+                  label: Text('MHD/vlak'),
+                ),
                 ButtonSegment<TransportPref>(
-                    value: TransportPref.car, label: Text('Auto'),),
+                  value: TransportPref.car,
+                  label: Text('Auto'),
+                ),
                 ButtonSegment<TransportPref>(
-                    value: TransportPref.either, label: Text('Je to jedno'),),
+                  value: TransportPref.either,
+                  label: Text('Je to jedno'),
+                ),
               ],
               selected: <TransportPref>{_transport},
               onSelectionChanged: (Set<TransportPref> s) =>

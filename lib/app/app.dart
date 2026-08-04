@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,7 +81,19 @@ class _LocalOnlyBanner extends StatelessWidget {
                     horizontal: Sp.md,
                   ),
                   child: Text(
-                    'Bez backendu — env/dev.json chybí',
+                    // The old wording — "env/dev.json chybí" — named the
+                    // wrong thing. The file is usually right there; what is
+                    // missing is the FLAG that reads it. SUPABASE_URL and
+                    // SUPABASE_ANON_KEY arrive through String.fromEnvironment,
+                    // which is resolved at COMPILE time, so an APK built
+                    // without --dart-define-from-file has empty strings baked
+                    // into it for good. Reinstalling cannot fix it; only
+                    // rebuilding can, and the message has to say which.
+                    kReleaseMode
+                        ? 'Bez backendu — APK sestavené bez '
+                            '--dart-define-from-file'
+                        : 'Bez backendu — spusťte s '
+                            '--dart-define-from-file=env/dev.json',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,

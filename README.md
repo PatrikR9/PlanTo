@@ -282,3 +282,18 @@ lands with the release build in M12.
 
 No application code changes at any point — the OTP screen is already built and
 both paths work simultaneously.
+
+
+## Building an APK for a phone
+
+Use the script, not `flutter build apk`:
+
+```powershell
+.\tool\build_apk.ps1
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` arrive through `String.fromEnvironment`,
+which is resolved at **compile** time. A plain `flutter build apk` bakes empty
+strings into the binary permanently: the app installs, opens, and runs in
+local-only mode with the red stripe, and no amount of reinstalling changes it.

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/design_system/components/components.dart';
-import '../../../../core/error/failure.dart';
+import '../../../../core/error/error_text.dart';
 import '../../../../core/format/cs_format.dart';
 import '../../../trips/domain/trip.dart';
 import '../../../trips/presentation/controllers/trips_controller.dart';
@@ -11,7 +11,9 @@ import '../../data/availability_repository.dart';
 import '../../data/device_calendar_source.dart';
 import '../../domain/manual_busy_block.dart';
 import '../availability_controller.dart';
-import 'connect_calendar_sheet.dart';
+import '../widgets/availability_chooser.dart';
+import '../widgets/calendar_feed_card.dart';
+import '../widgets/name_gate.dart';
 
 /// Screen 21 — one place to say when you cannot make it, filled either way.
 ///
@@ -38,6 +40,15 @@ class _ManualAvailabilityScreenState
     extends ConsumerState<ManualAvailabilityScreen> {
   List<ManualBusyBlock> _blocks = <ManualBusyBlock>[];
   bool _prefilled = false;
+
+  /// The grid is hidden until somebody asks for it. Most invitees never do:
+  /// they tap "Připojit kalendář" and the screen closes. Showing a month of
+  /// day chips to all of them made the fast path look like the slow one.
+  bool _showEditor = false;
+
+  /// Set once the name has been given in this session, so the gate does not
+  /// reappear while the provider refetches.
+  bool _named = false;
 
   List<ManualBusyBlock> _forDay(DateTime day) =>
       _blocks.where((ManualBusyBlock b) => b.day == day).toList();
@@ -80,18 +91,35 @@ class _ManualAvailabilityScreenState
     if (next != null) _replaceDay(day, next);
   }
 
+  /// Re-import from the editor, for somebody who typed a few days in and then
+  /// decided the calendar was easier after all.
   Future<void> _importCalendar(Trip trip) async {
-    await ConnectCalendarSheet.show(
-      context,
-      tripId: trip.id,
-      windowStart: trip.windowStart,
-      windowEnd: trip.windowEnd,
-    );
+    final bool ok =
+        await ref.read(calendarSyncControllerProvider.notifier).sync(
+              tripId: trip.id,
+              windowStart: trip.windowStart,
+              windowEnd: trip.windowEnd,
+            );
     if (!mounted) return;
-    // The sync wrote straight to the server, so re-read rather than guess.
-    // Letting the prefill run again is the whole point.
-    setState(() => _prefilled = false);
-    ref.invalidate(myBlocksProvider(widget.tripId));
+
+    if (ok) {
+      // The controller wrote straight to the server, so re-read rather than
+      // guess. Letting the prefill run again is the whole point.
+      setState(() => _prefilled = false);
+      ref.invalidate(myBlocksProvider(widget.tripId));
+      return;
+    }
+
+    final Object? error = ref.read(calendarSyncControllerProvider).error;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            errorText(error),
+          ),
+        ),
+      );
   }
 
   Future<void> _save() async {
@@ -109,11 +137,13 @@ class _ManualAvailabilityScreenState
     final Object? error = ref.read(manualAvailabilityControllerProvider).error;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: Text(
-          error is Failure ? error.userMessage : Failure.genericMessage,
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            errorText(error),
+          ),
         ),
-      ),);
+      );
   }
 
   @override
@@ -130,6 +160,23 @@ class _ManualAvailabilityScreenState
       _blocks = List<ManualBusyBlock>.of(saved.requireValue);
     }
 
+    // Somebody who has answered before lands straight in the editor: they
+    // came back to change something, not to be asked again.
+    final bool editing = _showEditor || _blocks.isNotEmpty;
+
+    // Ask who they are exactly once, before anything else on this screen.
+    // Identical on Android and on the web, because it is the same question
+    // and the answer is what the organiser reads on the Dates tab.
+    final AsyncValue<String?> name = ref.watch(myDisplayNameProvider);
+    final bool askName = !_named && needsName(name.valueOrNull);
+
+    if (name.hasValue && askName) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Vaše dostupnost')),
+        body: NameGate(onDone: () => setState(() => _named = true)),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Vaše dostupnost')),
       // Nested rather than combined: the grid must not accept a tap before
@@ -141,44 +188,61 @@ class _ManualAvailabilityScreenState
         data: (Trip t) => AsyncValueView<List<ManualBusyBlock>>(
           value: saved,
           onRetry: () => ref.invalidate(myBlocksProvider(widget.tripId)),
-          data: (List<ManualBusyBlock> _) => _Body(
-            trip: t,
-            blocks: _blocks,
-            enabled: !busy,
-            // The web has no calendar API at all, and most invitees arrive
-            // through the browser. Offering a button that cannot work is
-            // worse than not offering it: they tap it, nothing happens, and
-            // they conclude the app is broken rather than that this one path
-            // is unavailable.
-            canImport: ref.watch(calendarSourceProvider).isSupported,
-            onImport: () => _importCalendar(t),
-            onDayTap: (DateTime day) =>
-                t.isTimed ? _editDay(day, t) : _toggleWholeDay(day),
-          ),
+          data: (List<ManualBusyBlock> _) => editing
+              ? _Body(
+                  trip: t,
+                  blocks: _blocks,
+                  enabled: !busy,
+                  // The web has no calendar API at all. Offering a button
+                  // that cannot work is worse than not offering it: they tap
+                  // it, nothing happens, and they conclude the app is broken
+                  // rather than that this one path is unavailable.
+                  canImport: ref.watch(calendarSourceProvider).isSupported,
+                  onImport: () => _importCalendar(t),
+                  onDayTap: (DateTime day) =>
+                      t.isTimed ? _editDay(day, t) : _toggleWholeDay(day),
+                )
+              : AvailabilityChooser(
+                  trip: t,
+                  onManual: () => setState(() => _showEditor = true),
+                  onLink: () async {
+                    final bool ok =
+                        await promptForCalendarFeed(context, ref, t.id);
+                    // A link is saved and synced by the function itself, so
+                    // there is nothing left to confirm here either.
+                    if (ok && mounted) Navigator.of(context).pop(true);
+                  },
+                  onConnected: () => Navigator.of(context).pop(true),
+                ),
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(Sp.md, 0, Sp.md, Sp.md),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              _summary(_blocks),
-              style: context.texts.labelSmall
-                  ?.copyWith(color: context.colors.onSurfaceVariant),
+      // No save bar on the chooser: there is nothing on it to save, and a
+      // disabled button at the bottom of a two-button screen just reads as
+      // another thing to get past.
+      bottomNavigationBar: !editing
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(Sp.md, 0, Sp.md, Sp.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    _summary(_blocks),
+                    style: context.texts.labelSmall
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: Sp.xs),
+                  PtButton(
+                    // Saving nothing is a real answer, and the most useful
+                    // one: "I'm free the whole time". Never disabled.
+                    label: 'Uložit dostupnost',
+                    expand: true,
+                    isLoading: busy,
+                    onPressed: _save,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: Sp.xs),
-            PtButton(
-              // Saving nothing is a real answer, and the most useful one:
-              // "I'm free the whole time". So the button is never disabled.
-              label: 'Uložit dostupnost',
-              expand: true,
-              isLoading: busy,
-              onPressed: _save,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -238,7 +302,7 @@ class _Body extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(Sp.md),
       children: <Widget>[
-        if (canImport)
+        if (canImport) ...<Widget>[
           PtCard(
             child: Row(
               children: <Widget>[
@@ -268,20 +332,13 @@ class _Body extends StatelessWidget {
                 ),
               ],
             ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(Sp.sm),
-            decoration: BoxDecoration(
-              color: context.colors.surfaceContainerHighest,
-              borderRadius: Radii.inputAll,
-            ),
-            child: Text(
-              'V prohlížeči se kalendář načíst nedá — to umí jen aplikace '
-              'pro Android. Zadejte to prosím níž ručně, zabere to chvilku.',
-              style: context.texts.labelSmall,
-            ),
           ),
+          const SizedBox(height: Sp.sm),
+        ],
+        // No "sorry, not on the web" any more: the link works everywhere, so
+        // in the browser it simply becomes the first option instead of the
+        // second.
+        CalendarFeedCard(tripId: trip.id),
         const SizedBox(height: Sp.lg),
         Text(
           trip.isTimed
@@ -464,7 +521,8 @@ class _DayEditorSheetState extends State<_DayEditorSheet> {
         ..._blocks.where((ManualBusyBlock b) => !b.isAllDay),
         ManualBusyBlock(day: widget.day, from: f, to: t),
       ]..sort(
-          (ManualBusyBlock a, ManualBusyBlock b) => a.from!.compareTo(b.from!),);
+          (ManualBusyBlock a, ManualBusyBlock b) => a.from!.compareTo(b.from!),
+        );
     });
   }
 

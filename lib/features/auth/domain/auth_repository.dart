@@ -23,4 +23,18 @@ abstract interface class AuthRepository {
   Future<void> linkGoogle();
 
   Future<void> signOut();
+
+  /// The name the rest of the group sees.
+  ///
+  /// A guest arrives as "Cestovatel" — the fallback in handle_new_user, which
+  /// is the only thing the database can invent when there is no email and no
+  /// OAuth profile. Three people called Cestovatel on a Dates tab is not a
+  /// group decision, it is a puzzle.
+  Future<String?> myDisplayName();
+
+  Future<void> setDisplayName(String name);
 }
+
+/// The placeholder handle_new_user falls back to. Anyone still carrying it
+/// has never told us who they are, which is exactly when to ask.
+const String kAnonymousDisplayName = 'Cestovatel';
