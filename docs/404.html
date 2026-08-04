@@ -54,8 +54,16 @@
 // the key is public, RLS protects the tables, and preview_invite is granted to
 // the `anon` role precisely so a person who has never installed the app can
 // still see what they were invited to. That is the whole growth loop.
-const SUPABASE_URL = "https://dehgpsnemmemnxbhujai.supabase.co";
-const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGdwc25lbW1lbW54Ymh1amFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNTM1MTIsImV4cCI6MjEwMDgyOTUxMn0.F5UOhQvSZk8HtK-h5tyHgUaEVZHaT6-8h5LbRzHjv2k";
+// Substituted at deploy time by .github/workflows/pages.yml from the
+// repository secrets, which is where every other build already gets them.
+//
+// Left as placeholders on purpose. A project ref written into this file is the
+// one value in the whole repository that can be wrong without anything
+// complaining: switching to the production project would leave every invite
+// link quietly resolving against staging, and the page would look perfectly
+// healthy while doing it. A placeholder that reaches a browser is loud.
+const SUPABASE_URL = "__SUPABASE_URL__";
+const ANON_KEY = "__SUPABASE_ANON_KEY__";
 
 const m = location.pathname.match(/\/i\/([^/?#]+)/);
 const token = m ? decodeURIComponent(m[1]) : null;
@@ -77,7 +85,12 @@ function fail(msg) {
   $("note").textContent = "Nechte si od organizátora poslat nový odkaz.";
 }
 
-if (!token) {
+if (SUPABASE_URL.indexOf("__") === 0) {
+  // Served straight from the repository instead of through the Pages
+  // workflow. Better a visible dead end than a page that silently talks to
+  // the wrong project.
+  fail("Tahle stránka není nasazená. Otevři odkaz na planto.app.");
+} else if (!token) {
   fail("V adrese chybí kód pozvánky.");
 } else {
   // Deep link into the installed app. Android resolves this to the app if the

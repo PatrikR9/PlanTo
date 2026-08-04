@@ -82,9 +82,27 @@ jobs:
       # Flutter build. GitHub Pages serves it for any unknown path, which is
       # what makes /i/<token> resolve at all. Copied in, never the other way
       # round: copying all of docs/ would clobber Flutter's index.html.
+      #
+      # The backend it talks to is substituted here rather than written into
+      # the file, for the same reason the Flutter build takes it as a define:
+      # a hard-coded project ref survives the switch to production and nothing
+      # reports it. The grep is the guard — if somebody inlines the values
+      # again, this step fails instead of silently copying them.
       - name: Add the invite landing page
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          cp docs/404.html build/web/404.html
+          set -euo pipefail
+          for p in __SUPABASE_URL__ __SUPABASE_ANON_KEY__; do
+            grep -q "$p" docs/404.html || {
+              echo "::error::docs/404.html is missing the $p placeholder."
+              exit 1
+            }
+          done
+          sed -e "s|__SUPABASE_URL__|$SUPABASE_URL|g" \
+              -e "s|__SUPABASE_ANON_KEY__|$SUPABASE_ANON_KEY|g" \
+              docs/404.html > build/web/404.html
           touch build/web/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
