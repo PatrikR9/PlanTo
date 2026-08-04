@@ -15,6 +15,9 @@ Analyze_logs.txt
 # No trailing slash: this was created as a plain file, and `_deltest/` matches
 # only a directory, so the rule silently did nothing and the file got committed.
 _deltest
+# Output of the VERIFY.md pass. Inside the repo on purpose — that is what makes
+# it readable without anybody pasting 200 lines into a chat window.
+_logs/
 
 # Config & secrets — never commit
 env/*.json
