@@ -26,6 +26,25 @@ class _FakeAuth implements AuthRepository {
   Future<void> linkGoogle() => _run('link');
   @override
   Future<void> signOut() => _run('out');
+
+  /// Added when the name gate landed. Implementing the interface by hand
+  /// rather than mocking is what turned "the repository grew two methods"
+  /// into a compile error instead of a test that keeps passing while it
+  /// exercises an interface nobody has any more.
+  String? displayName;
+
+  @override
+  Future<String?> myDisplayName() async {
+    calls.add('myName');
+    if (throwThis != null) throw throwThis!;
+    return displayName;
+  }
+
+  @override
+  Future<void> setDisplayName(String name) async {
+    await _run('setName:$name');
+    displayName = name.trim();
+  }
 }
 
 void main() {

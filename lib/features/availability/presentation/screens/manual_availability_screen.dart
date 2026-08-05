@@ -210,7 +210,12 @@ class _ManualAvailabilityScreenState
                         await promptForCalendarFeed(context, ref, t.id);
                     // A link is saved and synced by the function itself, so
                     // there is nothing left to confirm here either.
-                    if (ok && mounted) Navigator.of(context).pop(true);
+                    //
+                    // context.mounted, not State.mounted: the context this
+                    // closure captured is the builder's, and the State can
+                    // outlive it. Checking the wrong one is how a pop lands
+                    // on whatever route happens to be there instead.
+                    if (ok && context.mounted) Navigator.of(context).pop(true);
                   },
                   onConnected: () => Navigator.of(context).pop(true),
                 ),

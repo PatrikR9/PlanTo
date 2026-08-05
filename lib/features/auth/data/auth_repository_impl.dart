@@ -132,8 +132,10 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> setDisplayName(String name) => guard(() async {
         final String? uid = _client.auth.currentUser?.id;
         if (uid == null) return;
-        await _client.from('profiles').update(
-            <String, dynamic>{'display_name': name.trim()}).eq('id', uid);
+        await _client
+            .from('profiles')
+            .update(<String, dynamic>{'display_name': name.trim()})
+            .eq('id', uid);
       });
 }
 

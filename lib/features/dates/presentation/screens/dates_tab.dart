@@ -221,6 +221,11 @@ class _CandidateList extends StatelessWidget {
             key: ValueKey<DateTime>(c.startsAt),
             candidate: c,
             timed: trip.isTimed,
+            // This is the entire surviving trace of the server's ranking.
+            // Without it the list is chronological and nothing anywhere says
+            // which candidate scored highest — the analyzer found this by
+            // noticing bestStart was computed and thrown away.
+            isBest: c.startsAt == bestStart,
             busy: busy,
             onVote: (DateVote? v) => onVote(c, v),
             onLock: trip.isOrganiser ? () => onLock(c) : null,
