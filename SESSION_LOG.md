@@ -323,7 +323,8 @@ belongs in a script, not in somebody's memory.
 | 4 | Repo secrets + Pages source | `SUPABASE_URL`, `SUPABASE_ANON_KEY`; Pages → Source → GitHub Actions |
 | 5 | `ICAL_SECRET` | `supabase secrets set ICAL_SECRET="…"` or the iCal path cannot encrypt |
 | 6 | ~~Hard-coded ref in `docs/404.html`~~ | **Closed 4 Aug.** Placeholders substituted by `pages.yml` from the same secrets the Flutter build uses; a `grep` guard fails the step if anybody inlines them again |
-| 7 | Open-Meteo variable names | Unverified from the assistant side; the function passes their `reason` through |
+| 7 | ~~Open-Meteo variable names~~ | **Closed 4 Aug.** Real forecasts render on the Dates tab — `64/100 · přeháňky · 37 °C · 23 % déšť`. The names are right |
+| 8 | Dates tab converts to **device** time, not trip time | `date_repository` calls `.toLocal()` on `starts_at`. Correct in Czechia on a Czech phone, wrong for anyone whose device zone differs from the trip's — and the project already ruled the other way for manual blocks. See §14d |
 
 Carried over from session 1 and unchanged: Brevo SMTP, `planto.app`, the Google
 OAuth client, and 12 Play testers for 14 continuous days.
@@ -389,6 +390,38 @@ still works.
 Also fixed here: the "page not deployed" message in `docs/404.html` pointed
 people at `planto.app`, a domain that has not been bought. An error message
 that sends somebody to a non-existent address is worse than no message.
+
+## 14d. What the first real run proved, and the one thing it exposed
+
+After `set_device_busy` landed, the whole chain ran against the live backend
+for the first time: sign in, create a trip, share availability, and a Dates tab
+with ranked candidates, live vote controls, a lock button, and **real weather**
+— `64/100 · přeháňky · 37 °C · 23 % déšť`. M5 and M6 are verified end to end.
+The Open-Meteo variable names, open since session 2 because nobody could check
+them from the writing side, are correct.
+
+The score ring reading 100 next to a weather line of 64 is not a bug: the ring
+shows availability, the composite score does the ranking, and keeping them
+apart is deliberate — a blended number would hide which half was which.
+
+One real finding, and it is latent rather than urgent. The emulator runs on
+UTC, so a trip window starting 5 August in Prague (`4 Aug 22:00Z`) rendered as
+**"Úterý 4. 8."** — a day before the trip can even begin. `date_repository`
+calls `.toLocal()`, which is right on a Czech phone in Czechia and wrong for
+everybody else: someone in Vienna sees one date, someone in London another, for
+the same trip. The project already rejected exactly this for manual blocks —
+"the RPC interprets each date and wall-clock time in the *trip's* timezone,
+which is the only correct reading and the only one a travelling user gets
+right" — and the Dates tab quietly does the opposite.
+
+Fixing it properly means `trip_candidates` returning wall-clock parts in the
+trip's zone the way `my_busy_blocks` already does, which is a DROP-and-recreate
+(trap 8) plus client changes. It is not blocking anything today and it is not
+a five-minute patch, so it is item 8 rather than a rushed commit.
+
+To make the emulator stop lying in the meantime:
+
+    adb shell setprop persist.sys.timezone Europe/Prague
 
 ## 15. Licence debts, restated
 
