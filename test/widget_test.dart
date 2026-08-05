@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:planto/app/app.dart';
@@ -13,10 +14,18 @@ void main() {
 
     expect(find.text('Výlety'), findsWidgets);
     expect(find.text('Zatím žádné výlety'), findsOneWidget);
+
+    // By key, not by sentence. This assertion used to name the exact wording,
+    // which then changed for a good reason — the old copy blamed a missing
+    // env/dev.json when the file was present and the --dart-define flag was
+    // not — and the test kept failing for the one thing it did not care
+    // about. What it cares about is that the stripe exists at all.
     expect(
-      find.text('Bez backendu — env/dev.json chybí'),
+      find.byKey(const Key('local-only-banner')),
       findsOneWidget,
       reason: 'the local-only banner must be impossible to miss',
     );
+    // And that it still names the condition rather than just being coloured.
+    expect(find.textContaining('Bez backendu'), findsOneWidget);
   });
 }

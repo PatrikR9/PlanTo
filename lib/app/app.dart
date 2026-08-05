@@ -71,6 +71,12 @@ class _LocalOnlyBanner extends StatelessWidget {
           Expanded(child: child),
           SafeArea(
             top: false,
+            // Keyed so a test can assert the stripe is there without pinning
+            // its wording. The sentence has already been rewritten once —
+            // it now also differs between debug and release — and a test that
+            // fails when the copy improves teaches people to edit the test
+            // instead of reading it.
+            key: const Key('local-only-banner'),
             child: ColoredBox(
               color: Theme.of(context).colorScheme.errorContainer,
               child: SizedBox(
