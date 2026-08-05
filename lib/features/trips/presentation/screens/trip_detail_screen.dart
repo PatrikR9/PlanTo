@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
+import '../../../costs/presentation/screens/costs_tab.dart';
 import '../../../dates/presentation/screens/dates_tab.dart';
 import '../../../invites/presentation/screens/share_invite_sheet.dart';
 import '../../../transport/presentation/screens/plan_tab.dart';
@@ -86,7 +87,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             _Overview(trip: t),
             DatesTab(trip: t),
             PlanTab(trip: t),
-            for (int i = 3; i < _tabs.length; i++)
+            CostsTab(trip: t),
+            // Sbalit (M8) a Chat (M10). Zbytek seznamu, ne pevná čísla —
+            // přidání záložky je pak jeden řádek nahoře a nic tady.
+            for (int i = 4; i < _tabs.length; i++)
               Center(child: Text('${_tabs[i].label} — brzy')),
           ],
         ),

@@ -423,6 +423,42 @@ To make the emulator stop lying in the meantime:
 
     adb shell setprop persist.sys.timezone Europe/Prague
 
+## 14e. M7 finished — the Costs tab
+
+The blank Costs tab was not a bug, it was `Center(Text('Náklady — brzy'))`: the
+transport migration calls itself "M7, first half" and the second half was never
+written. It is written now.
+
+`estimate_trip_cost()` returns a breakdown rather than a number, every line per
+person, every line a range. Transport comes from `transport_options()` — the
+cheapest option by midpoint, not the sum, because summing both modes charges
+for the journey twice and mixing the min of one with the max of the other
+produces a range that describes no actual trip. Food is a national daily
+average times the duration. The buffer is a percentage of the rest.
+
+Two decisions worth keeping:
+
+- **No destination, no rows at all** — not even food and buffer. Transport is
+  usually the largest item, so a total without it is not an incomplete
+  estimate, it is a different number that looks like one. Same silence as the
+  Plan tab, at the same moment.
+- **Accommodation returns a row with no numbers.** It is V1 scope, and on a
+  three-day trip it is the biggest line in the budget. Omitting it silently
+  would make the total a lie; a zero would claim the bed is free. `unknown` is
+  the only honest third state, and the total then reads "od 780 Kč" rather than
+  "≈ 780 Kč" — one word, and it is the whole difference between an estimate and
+  a floor.
+
+`budget_per_person` finally does something: the total says whether it fits, and
+says "horní odhad je nad rozpočtem" rather than "překročeno", because the top of
+a range is the pessimistic end and has not happened yet.
+
+`costs_test.sql` runs as `authenticated` — the lesson from `busy_intervals` is
+that a grant bug is invisible to any test running as `postgres`. It asserts that
+transport appears exactly once, that food scales with duration, that the
+multi-day trip admits the missing bed, that no range has min > max, and that a
+non-member sees nothing.
+
 ## 15. Licence debts, restated
 
 Three things in this session are free **only** while PlanTo takes no money:

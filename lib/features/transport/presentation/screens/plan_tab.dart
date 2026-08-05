@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
+import '../../../costs/data/cost_repository.dart';
 import '../../../trips/domain/trip.dart';
 import '../../../trips/presentation/controllers/trips_controller.dart';
 import '../../data/transport_repository.dart';
@@ -265,6 +266,9 @@ Future<void> pickDestination(
         );
     ref
       ..invalidate(transportOptionsProvider(tripId))
+      // The cost estimate is built on top of the transport one, so it is
+      // wrong by the same amount and in the same instant.
+      ..invalidate(costEstimateProvider(tripId))
       // The trip header shows the destination too, so it is stale the moment
       // this succeeds.
       ..invalidate(tripProvider(tripId))
