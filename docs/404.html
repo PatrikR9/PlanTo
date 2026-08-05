@@ -89,7 +89,7 @@ if (SUPABASE_URL.indexOf("__") === 0) {
   // Served straight from the repository instead of through the Pages
   // workflow. Better a visible dead end than a page that silently talks to
   // the wrong project.
-  fail("Tahle stránka není nasazená. Otevři odkaz na planto.app.");
+  fail("Tahle stránka není nasazená. Požádej organizátora o nový odkaz.");
 } else if (!token) {
   fail("V adrese chybí kód pozvánky.");
 } else {
