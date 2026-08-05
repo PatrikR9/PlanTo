@@ -355,6 +355,41 @@ Two things were wrong on the way in and are fixed:
 Both were caught by reading, not by running. Neither survives contact with a
 test suite, which is the argument for §17 rather than against it.
 
+## 14c. First run on a device, 4 August
+
+The app went onto an emulator and the calendar flow failed with
+`permission denied for table busy_intervals` — surfaced verbatim, in the UI, by
+the `errorText()` change from this session. Under the old code it would have
+read "Přihlaste se prosím znovu", which is advice that cannot work.
+
+It was not an RLS bug. `SELECT` on `busy_intervals` is revoked from every role
+on purpose (§rls), so the raw rows are unreachable and group availability is
+only ever exposed as counts through `group_free_days()`. What nobody noticed is
+that this makes the table unwritable from the client too: **Postgres requires
+`SELECT` on every column a `DELETE` reads in its `WHERE`**, and every upload
+begins by deleting the user's previous blocks. The privacy guarantee and the
+write path were in direct conflict, and the write path lost.
+
+The manual editor never hit this because it already went through
+`set_manual_busy()`. The device-calendar path was still on PostgREST — it was
+written first, before that rule existed, and nothing dragged it forward.
+
+Fixed by finishing the job: `set_device_busy()` and `clear_my_busy()`, both
+`security definer`, both membership-checked, both clipping to the trip window.
+`markShared()` is gone — the flag is now set in the same transaction as the
+rows, so it can no longer disagree with them and leave a group waiting on
+somebody who is already done.
+
+The interesting part is why the existing tests missed it. They run as
+`postgres`, whose privileges nobody checks, so a grant bug is invisible to all
+of them. `supabase/tests/busy_write_test.sql` switches to `authenticated` and
+asserts both halves at once: that the table cannot be read, and that the upload
+still works.
+
+Also fixed here: the "page not deployed" message in `docs/404.html` pointed
+people at `planto.app`, a domain that has not been bought. An error message
+that sends somebody to a non-existent address is worse than no message.
+
 ## 15. Licence debts, restated
 
 Three things in this session are free **only** while PlanTo takes no money:

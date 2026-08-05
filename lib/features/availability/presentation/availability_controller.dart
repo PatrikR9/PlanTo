@@ -50,10 +50,14 @@ class CalendarSyncController extends AsyncNotifier<void> {
         windowEnd: windowEnd,
       );
 
-      final AvailabilityRepository repo =
-          ref.read(availabilityRepositoryProvider);
-      await repo.uploadMine(tripId, prepared);
-      await repo.markShared(tripId);
+      // One call, not two. set_device_busy sets calendar_shared itself, in the
+      // same transaction as the rows — a separate markShared() could fail on
+      // its own and leave the group waiting on availability that was already
+      // uploaded.
+      await ref.read(availabilityRepositoryProvider).uploadMine(
+            tripId,
+            prepared,
+          );
 
       ref.invalidate(availabilityProvider(tripId));
       ref.invalidate(dateCandidatesProvider(tripId));

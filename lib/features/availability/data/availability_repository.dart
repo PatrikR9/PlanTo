@@ -37,7 +37,11 @@ abstract interface class AvailabilityRepository {
   /// a re-sync after the user deletes a meeting must remove it here too.
   Future<void> uploadMine(String tripId, List<BusyInterval> intervals);
   Future<List<DayAvailability>> forTrip(String tripId);
-  Future<void> markShared(String tripId);
+
+  /// Deletes them again, and un-marks the user as having shared. There is no
+  /// separate `markShared`: every write path sets the flag inside the same
+  /// transaction as the rows, because the two disagreeing is what makes a
+  /// group wait for somebody who is already done.
   Future<void> deleteMine(String tripId);
 
   /// Manual fallback: whole days or parts of days this user cannot make.
@@ -71,31 +75,36 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
 
   final SupabaseClient _client;
 
-  String get _uid => _client.auth.currentUser!.id;
-
+  /// Through an RPC, not PostgREST, because SELECT on `busy_intervals` is
+  /// revoked from every role — deliberately, so a future bug in a read policy
+  /// cannot leak somebody's schedule. That makes the table untouchable from
+  /// the client in *both* directions: Postgres wants SELECT on every column a
+  /// DELETE reads in its WHERE, so "replace my blocks" failed on 42501 before
+  /// it ever got to the insert.
+  ///
+  /// Replacing them server-side is also one transaction rather than two round
+  /// trips, and the window between them was one where a user could end up with
+  /// no availability at all.
+  ///
+  /// An empty list is still sent: "nothing in my calendar blocks this trip" is
+  /// an answer, and it is the one that marks you as having shared.
   @override
   Future<void> uploadMine(String tripId, List<BusyInterval> intervals) =>
       guard(() async {
-        await _client
-            .from('busy_intervals')
-            .delete()
-            .eq('trip_id', tripId)
-            .eq('user_id', _uid);
-
-        if (intervals.isEmpty) return;
-
-        await _client.from('busy_intervals').insert(<Map<String, dynamic>>[
-          for (final BusyInterval i in intervals)
-            <String, dynamic>{
-              'trip_id': tripId,
-              'user_id': _uid,
-              // Postgres range literal. '[)' matches the half-open convention
-              // used everywhere else in the schema.
-              'period': '[${i.start.toUtc().toIso8601String()},'
-                  '${i.end.toUtc().toIso8601String()})',
-              'is_all_day': i.isAllDay,
-            },
-        ]);
+        await _client.rpc<void>(
+          'set_device_busy',
+          params: <String, dynamic>{
+            'p_trip': tripId,
+            'p_blocks': <Map<String, dynamic>>[
+              for (final BusyInterval i in intervals)
+                <String, dynamic>{
+                  'start': i.start.toUtc().toIso8601String(),
+                  'end': i.end.toUtc().toIso8601String(),
+                  'all_day': i.isAllDay,
+                },
+            ],
+          },
+        );
       });
 
   @override
@@ -125,27 +134,15 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
           );
       });
 
-  @override
-  Future<void> markShared(String tripId) => guard(
-        () => _client
-            .from('trip_participants')
-            .update(<String, dynamic>{'calendar_shared': true})
-            .eq('trip_id', tripId)
-            .eq('user_id', _uid),
-      );
-
+  /// Same reason as [uploadMine], plus one of its own: clearing the rows and
+  /// clearing the flag have to happen together, or the group sits waiting on
+  /// availability that no longer exists.
   @override
   Future<void> deleteMine(String tripId) => guard(() async {
-        await _client
-            .from('busy_intervals')
-            .delete()
-            .eq('trip_id', tripId)
-            .eq('user_id', _uid);
-        await _client
-            .from('trip_participants')
-            .update(<String, dynamic>{'calendar_shared': false})
-            .eq('trip_id', tripId)
-            .eq('user_id', _uid);
+        await _client.rpc<void>(
+          'clear_my_busy',
+          params: <String, dynamic>{'p_trip': tripId},
+        );
       });
 
   @override
@@ -218,8 +215,6 @@ class UnconfiguredAvailabilityRepository implements AvailabilityRepository {
   Future<void> uploadMine(String t, List<BusyInterval> i) async => _fail();
   @override
   Future<List<DayAvailability>> forTrip(String t) async => <DayAvailability>[];
-  @override
-  Future<void> markShared(String t) async => _fail();
   @override
   Future<void> deleteMine(String t) async {}
   @override
