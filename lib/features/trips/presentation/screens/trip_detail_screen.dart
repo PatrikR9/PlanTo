@@ -8,6 +8,7 @@ import '../../../../core/design_system/components/components.dart';
 import '../../../costs/presentation/screens/costs_tab.dart';
 import '../../../dates/presentation/screens/dates_tab.dart';
 import '../../../invites/presentation/screens/share_invite_sheet.dart';
+import '../../../packing/presentation/screens/packing_tab.dart';
 import '../../../transport/presentation/screens/plan_tab.dart';
 import '../../domain/trip.dart';
 import '../controllers/trips_controller.dart';
@@ -88,9 +89,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             DatesTab(trip: t),
             PlanTab(trip: t),
             CostsTab(trip: t),
-            // Sbalit (M8) a Chat (M10). Zbytek seznamu, ne pevná čísla —
-            // přidání záložky je pak jeden řádek nahoře a nic tady.
-            for (int i = 4; i < _tabs.length; i++)
+            PackingTab(trip: t),
+            // Chat je M10. Zbytek seznamu, ne pevná čísla — přidání záložky
+            // je pak jeden řádek nahoře a nic tady.
+            for (int i = 5; i < _tabs.length; i++)
               Center(child: Text('${_tabs[i].label} — brzy')),
           ],
         ),

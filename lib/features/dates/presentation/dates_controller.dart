@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../packing/presentation/packing_controller.dart';
 import '../../trips/presentation/controllers/trips_controller.dart';
 import '../data/date_repository.dart';
 import '../domain/date_candidate.dart';
@@ -55,6 +56,11 @@ class DatesController extends AsyncNotifier<void> {
       if (alsoRefreshTrip) {
         ref.invalidate(tripProvider(tripId));
         ref.invalidate(myTripsProvider);
+        // Locking a date fixes which day the forecast is for, and roughly a
+        // third of the packing rules are predicates on that forecast. Leaving
+        // it stale would show a raincoat for a day the group is no longer
+        // going on.
+        ref.invalidate(packingControllerProvider(tripId));
       }
     });
     return !state.hasError;

@@ -453,6 +453,43 @@ Two decisions worth keeping:
 says "horní odhad je nad rozpočtem" rather than "překročeno", because the top of
 a range is the pessimistic end and has not happened yet.
 
+## 14f. M8 — the Packing tab
+
+Rules, not a model. "Prší v sobotu odpoledne, vezmi pláštěnku" has to come out
+the same every time, be testable and cost nothing, which is the definition of a
+rule rather than a prompt. AI adds what the rules do not know, and that is the
+paid layer — nothing a free user can reach touches an LLM.
+
+`packing_rules` holds 45 seeded rules whose predicates are all nullable, and
+null means "don't care". A rule fires when **all** its filled predicates match:
+a conjunction, not a score. A score would mean a marginal rule appears some
+days and not others, and an unpredictable packing list stops being checked at
+all.
+
+The decision that matters is the same one `_weather_score` already made:
+**missing forecast must never read as good weather.** With no cached forecast,
+every weather predicate is NULL and therefore false, so those rules simply do
+not fire. Had the absent row been read as "0 mm, 0 gusts, 0 snow", the list
+would confidently tell a group planning six weeks out that they need nothing
+extra — the one piece of advice this screen must never give by accident.
+
+Every row carries its cause, phrased as a cause and not an instruction. "Prší
+odpoledne" is something you can weigh; "vezmi si pláštěnku" just repeats the
+item above it. A list with no reasons cannot be argued with, so people either
+carry everything forever or stop reading it.
+
+Ticking is optimistic and per user. Optimistic because the list is used
+standing in a hallway with one hand full — a round trip per checkbox is
+unusable — and per user because "who is carrying the first aid kit" is group
+task-splitting, which is V2. Half-sharing it would mean one person ticking an
+item hides it from everybody else.
+
+`packing_test.sql` asserts the no-forecast case first, then that hiking rules
+do not reach a lake trip, that a car trip gets no ticket-app rule, and that
+Anna ticking the water does not tick it for Bohuš.
+
+## 14g. Notes on the two test files
+
 `costs_test.sql` runs as `authenticated` — the lesson from `busy_intervals` is
 that a grant bug is invisible to any test running as `postgres`. It asserts that
 transport appears exactly once, that food scales with duration, that the
