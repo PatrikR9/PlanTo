@@ -322,20 +322,42 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
             ),
             const SizedBox(height: Sp.lg),
             const _Label('Co chcete dělat'),
-            Wrap(
-              spacing: Sp.xs,
-              runSpacing: Sp.xs,
-              children: <Widget>[
-                for (final ActivityTag t in ActivityTag.values)
-                  FilterChip(
-                    label: Text(_tagLabel(t)),
-                    selected: _tags.contains(t),
-                    onSelected: (bool on) => setState(
-                      () => on ? _tags.add(t) : _tags.remove(t),
-                    ),
-                  ),
-              ],
+            Text(
+              'Podle toho se skládá seznam na sbalení a vybírá se profil '
+              'počasí. U moře je dobrý den něco jiného než na hřebeni.',
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.colors.onSurfaceVariant),
             ),
+            const SizedBox(height: Sp.xs),
+            // Grouped, not one grid. The list went from eight tags to
+            // twenty-seven, and a Wrap of twenty-seven chips is not a longer
+            // version of a Wrap of eight — it is a wall with nowhere for the
+            // eye to stop. With a heading per group you skip "Zima" in July
+            // in one glance.
+            for (final ActivitySection s in ActivitySection.values) ...<Widget>[
+              Padding(
+                padding: const EdgeInsets.only(top: Sp.sm, bottom: Sp.xxs),
+                child: Text(
+                  s.label,
+                  style: context.texts.labelMedium
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                ),
+              ),
+              Wrap(
+                spacing: Sp.xs,
+                runSpacing: Sp.xs,
+                children: <Widget>[
+                  for (final ActivityTag t in ActivityTag.inSection(s))
+                    FilterChip(
+                      label: Text(t.label),
+                      selected: _tags.contains(t),
+                      onSelected: (bool on) => setState(
+                        () => on ? _tags.add(t) : _tags.remove(t),
+                      ),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: Sp.lg),
             const _Label('Rozpočet na osobu (volitelné)'),
             TextField(
@@ -422,13 +444,3 @@ class _TimeField extends StatelessWidget {
   }
 }
 
-String _tagLabel(ActivityTag t) => switch (t) {
-      ActivityTag.hiking => 'Turistika',
-      ActivityTag.city => 'Město',
-      ActivityTag.lake => 'Voda',
-      ActivityTag.castle => 'Hrady',
-      ActivityTag.museum => 'Muzea',
-      ActivityTag.cafe => 'Kavárny',
-      ActivityTag.festival => 'Festivaly',
-      ActivityTag.viewpoint => 'Vyhlídky',
-    };

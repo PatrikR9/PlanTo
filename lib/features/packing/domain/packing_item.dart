@@ -140,6 +140,56 @@ const Map<String, String> _labels = <String, String>{
   'pack.deodorant': 'Deodorant',
   'pack.medication': 'Léky, které bereš',
   'pack.laundry_bag': 'Sáček na špinavé prádlo',
+
+  // --- moře ---
+  'pack.passport': 'Pas nebo občanka na cesty',
+  'pack.ehic': 'Evropský průkaz pojištěnce',
+  'pack.beach_towel': 'Osuška na pláž',
+  'pack.water_shoes': 'Boty do vody',
+  'pack.after_sun': 'Krém po opalování',
+  'pack.sunscreen_high': 'Opalovací krém s vysokým faktorem',
+  'pack.snorkel': 'Šnorchl a brýle',
+
+  // --- vodáctví a aquapark ---
+  'pack.quick_dry': 'Rychleschnoucí oblečení',
+  'pack.swim_cap': 'Koupací čepice',
+
+  // --- zima ---
+  'pack.ski_pass': 'Skipas nebo rezervace',
+  'pack.goggles': 'Lyžařské brýle',
+  'pack.helmet': 'Helma',
+  'pack.thermal_layer': 'Termoprádlo',
+  'pack.ski_gloves': 'Lyžařské rukavice',
+
+  // --- kolo ---
+  'pack.bike_helmet': 'Helma na kolo',
+  'pack.repair_kit': 'Lepení a pumpička',
+  'pack.bike_lights': 'Světla na kolo',
+  'pack.bike_lock': 'Zámek na kolo',
+
+  // --- lezení ---
+  'pack.climb_harness': 'Sedák a jistítko',
+  'pack.climb_shoes': 'Lezečky',
+  'pack.chalk': 'Magnézium',
+
+  // --- kemp ---
+  'pack.sleeping_bag': 'Spacák',
+  'pack.sleeping_pad': 'Karimatka',
+  'pack.mosquito': 'Repelent na komáry',
+
+  // --- kultura ---
+  'pack.tickets': 'Vstupenky',
+  'pack.smart_clothes': 'Něco společenského na sebe',
+
+  // --- gastro ---
+  'pack.designated_driver': 'Domluvit, kdo řídí',
+  'pack.cooler_bag': 'Chladicí taška',
+
+  // --- wellness ---
+  'pack.bathrobe': 'Župan',
+
+  // --- ostatní ---
+  'pack.tote_bag': 'Látková taška',
 };
 
 /// Why each item is on the list. Phrased as a cause, never as an instruction —
@@ -171,4 +221,30 @@ const Map<String, String> _reasons = <String, String>{
   'reason.overnight': 'jedete přes noc',
   'reason.overnight_hiking': 'turistika přes noc',
   'reason.longer_trip': 'delší výlet',
+
+  'reason.going_abroad': 'jedete přes hranice',
+  'reason.activity_sea': 'jedete k moři',
+  'reason.rocky_beaches': 'oblázkové pláže a ježovky',
+  'reason.sea_sun_is_stronger': 'u moře slunce pálí víc',
+  'reason.activity_paddling': 'jedete na vodu',
+  'reason.activity_aquapark': 'jdete do aquaparku',
+  'reason.activity_ski': 'jedete lyžovat',
+  'reason.activity_winter': 'zimní sporty',
+  'reason.snow_reflects_uv': 'sníh odráží UV víc než písek',
+  'reason.activity_cycling': 'jedete na kole',
+  'reason.activity_climbing': 'jdete lézt',
+  'reason.activity_camping': 'spíte v kempu',
+  'reason.camping_summer': 'letní večery u vody',
+  'reason.caves_are_cold': 'v jeskyni je osm stupňů celý rok',
+  'reason.caves_are_wet': 'v jeskyni je mokro a kluzko',
+  'reason.booked_seat': 'máte rezervované místo',
+  'reason.activity_concert': 'jdete na koncert',
+  'reason.activity_theatre': 'jdete do divadla',
+  'reason.markets_want_cash': 'na trzích se platí hotově',
+  'reason.tasting_and_driving': 'degustace a řízení nejde dohromady',
+  'reason.activity_wine': 'vezete si něco domů',
+  'reason.activity_wellness': 'jdete do wellness',
+  'reason.long_day_on_feet': 'celý den na nohou',
+  'reason.overpriced_inside': 'uvnitř je jídlo dvakrát dražší',
+  'reason.activity_shopping': 'jdete nakupovat',
 };

@@ -1,5 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import 'activity_tag.dart';
+
+// Re-exported: ActivityTag moved into its own file when it grew from eight
+// values to twenty-seven, but it is part of the trip's vocabulary and every
+// caller holding a Trip wants it. Splitting the file should not mean editing
+// five import lists.
+export 'activity_tag.dart';
+
 enum TripStatus { draft, planning, dateLocked, confirmed, completed, cancelled }
 
 enum TransportPref { public, car, either }
@@ -31,20 +39,6 @@ const List<int> kSlotSteps = <int>[15, 30, 45, 60];
 /// Offered activity lengths, in minutes. Anything longer is a day trip and
 /// should be planned as one.
 const List<int> kSlotLengths = <int>[30, 45, 60, 90, 120, 180, 240, 360];
-
-/// Activity tags. Kept as an enum rather than free strings so the planner and
-/// the packing rules engine agree on a vocabulary — the rules in
-/// `packing_rules.predicate` match on exactly these values.
-enum ActivityTag {
-  hiking,
-  city,
-  lake,
-  castle,
-  museum,
-  cafe,
-  festival,
-  viewpoint
-}
 
 @immutable
 class Trip {

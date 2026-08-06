@@ -488,6 +488,38 @@ item hides it from everybody else.
 do not reach a lake trip, that a car trip gets no ticket-app rule, and that
 Anna ticking the water does not tick it for Bohuš.
 
+## 14f-bis. Twenty-seven activities
+
+Eight tags could not tell a pond from the Adriatic — both were "Voda" — so the
+packing list had nothing to say about a passport, an EHIC card or the fact that
+sun over water burns faster. The vocabulary is now 27 tags in six sections.
+
+Nothing was renamed. The original eight keep their exact stored strings, so no
+existing trip changes meaning. `ActivityTag` also gained an explicit `wire`
+field instead of serialising `.name`: the Dart constant is now free to be
+camelCase (`crossCountry`) or to be renamed, without that being able to alter
+what a row in `trips.activity_tags` means. `.name` as a wire format is a rename
+away from silent data corruption.
+
+Sections rather than one grid, because a `Wrap` of 27 chips is not a longer
+version of a `Wrap` of 8 — it is a wall with nowhere for the eye to stop. With
+a heading per group you skip "Zima" in July in one glance.
+
+Two server-side consequences:
+
+- **A `ski` weather profile.** Under the old profiles a ski trip would have been
+  scored as hiking, which rewards a warm dry day — precisely backwards. `ski`
+  inverts the two terms that are penalties everywhere else: cold is fine, and
+  snowfall becomes a bonus rather than a 20-point deduction.
+- **Overlapping rules now deduplicate.** Swimwear is wanted by sea, aquapark
+  and wellness; a spa hotel by the sea is an ordinary trip and would have been
+  handed swimwear three times. Since `packing_checked` is keyed on `item_key`,
+  duplicate rows mean ticking one strikes through all of them. `DISTINCT ON`
+  keeps the most essential rule, and on a tie the most *specific* one — "prší v
+  sobotu odpoledne" beats "jedete k vodě", because it says something the person
+  does not already know. Overlaps are correct and should not have to be policed
+  by hand in the seed data.
+
 ## 14g. Built-in Kotlin
 
 `flutter run` now warns that `planto_calendar` applies the Kotlin Gradle Plugin

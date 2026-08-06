@@ -57,8 +57,11 @@ class SupabaseTripRepository implements TripRepository {
             'p_duration_days': draft.durationDays,
             'p_transport': draft.transport.name,
             'p_budget_per_person': draft.budgetPerPerson,
+            // .wire, never .name. The Dart constant may be renamed or written
+            // in camelCase; the string in the database is a contract shared
+            // with the packing rules.
             'p_activity_tags':
-                draft.activityTags.map((ActivityTag t) => t.name).toList(),
+                draft.activityTags.map((ActivityTag t) => t.wire).toList(),
             'p_description': draft.description,
             'p_earliest_wake': _timeOfDay(draft.earliestWake),
             'p_currency': draft.currency,
@@ -139,8 +142,7 @@ TransportPref _transport(String? v) => switch (v) {
       _ => TransportPref.either,
     };
 
-ActivityTag? _tag(String v) =>
-    ActivityTag.values.where((ActivityTag t) => t.name == v).firstOrNull;
+ActivityTag? _tag(String v) => ActivityTag.fromWire(v);
 
 Duration? _parseTime(String? v) {
   if (v == null) return null;

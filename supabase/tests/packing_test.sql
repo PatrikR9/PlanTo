@@ -183,4 +183,96 @@ begin
   end if;
 end $$;
 
+-- 6. Překryv pravidel dá položku jednou ---------------------------------------
+-- Plavky chce moře, aquapark i wellness. Výlet označený všemi třemi je zcela
+-- běžný (lázně u moře s bazénem) a musí dostat plavky jednou — packing_checked
+-- je klíčované item_key, takže dva řádky se stejným klíčem znamenají seznam,
+-- kde odškrtnutí jednoho přeškrtne oba.
+set local role postgres;
+
+insert into trips (id, created_by, title, origin_label, origin_point,
+                   destination_free, destination_point,
+                   date_window, duration_days, transport, activity_tags,
+                   timezone)
+values (
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  '11111111-1111-1111-1111-111111111111',
+  'More', 'Praha', st_point(14.42, 50.08)::geography,
+  'Jadran', st_point(14.4400, 44.8700)::geography,
+  tstzrange('2026-07-11 00:00+02', '2026-07-25 00:00+02'), 7, 'car',
+  '{sea,aquapark,wellness}', 'Europe/Prague'
+);
+insert into trip_participants (trip_id, user_id, role) values
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+   '11111111-1111-1111-1111-111111111111', 'organiser');
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111"}';
+
+do $$
+declare
+  v_dupes text[];
+  v_keys  text[];
+begin
+  select array_agg(item_key) into v_dupes
+  from (
+    select item_key from build_packing_list(
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
+    group by item_key having count(*) > 1
+  ) d;
+  if v_dupes is not null then
+    raise exception 'polozky dvakrat: %', v_dupes;
+  end if;
+
+  select array_agg(item_key) into v_keys
+  from build_packing_list('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+
+  -- To, kvůli čemu se celý slovník rozšiřoval.
+  if not (v_keys @> array['pack.swimwear','pack.passport','pack.ehic',
+                          'pack.beach_towel']) then
+    raise exception 'more nedostalo sve polozky: %', v_keys;
+  end if;
+  -- Sedmidenní výlet = nocleh a převlečení.
+  if not (v_keys @> array['pack.toothbrush','pack.laundry_bag']) then
+    raise exception 'tydenni vylet nedostal pravidla na noclehy';
+  end if;
+  -- A pořád žádná turistika ani lyže.
+  if v_keys && array['pack.hiking_boots','pack.ski_pass'] then
+    raise exception 'proslo pravidlo z jine aktivity: %', v_keys;
+  end if;
+end $$;
+
+-- 7. Profil počasí: zima obrací mráz i sníh -----------------------------------
+-- Jako postgres: EXECUTE na _weather_score i _activity_profile je odebraný
+-- public (M6), protože je nikdo zvenčí volat nemá — jsou to vnitřnosti
+-- skórování, ne API. Volat je jako `authenticated` by tady netestovalo
+-- skórování, jen ten revoke.
+set local role postgres;
+
+do $$
+declare
+  v_ski  int;
+  v_hike int;
+begin
+  if _activity_profile('{ski}') <> 'ski' then
+    raise exception 'lyze nedostaly svuj profil';
+  end if;
+  if _activity_profile('{sea}') <> 'lake' then
+    raise exception 'more ma jit na vodni profil';
+  end if;
+
+  -- Mrazivý den se sněhem: pro lyže dobrý, pro turistiku ne.
+  v_ski  := _weather_score('ski',    -3, -5, 0, 10, 15, 12, 71, 14000, 30000);
+  v_hike := _weather_score('hiking', -3, -5, 0, 10, 15, 12, 71, 14000, 30000);
+  if v_ski <= v_hike then
+    raise exception 'zimni den: lyze % nejsou nad turistikou %', v_ski, v_hike;
+  end if;
+
+  -- A chybějící předpověď je pořád null, i pro nový profil.
+  if _weather_score('ski', null, null, null, null, null, null, null,
+                    null, null) is not null then
+    raise exception 'bez predpovedi vratil profil ski cislo';
+  end if;
+end $$;
+
 rollback;
