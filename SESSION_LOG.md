@@ -488,7 +488,25 @@ item hides it from everybody else.
 do not reach a lake trip, that a car trip gets no ticket-app rule, and that
 Anna ticking the water does not tick it for Bohuš.
 
-## 14g. Notes on the two test files
+## 14g. Built-in Kotlin
+
+`flutter run` now warns that `planto_calendar` applies the Kotlin Gradle Plugin
+and that a future Flutter will refuse to build because of it. From AGP 9 the
+Android plugin supplies Kotlin itself, so a Flutter plugin applying KGP on top
+is one Kotlin too many.
+
+The plugin no longer applies it — but conditionally, on `agpMajor < 9`, rather
+than by deleting the line. The clean migration means raising the plugin's
+minimum to Flutter 3.44, which raises the app's with it, and this one file has
+already broken the build twice over version pinning (AGP 8.1.0 against the
+app's 9.0.1, then the Kotlin pair). A form that is correct on both sides of the
+AGP 9 line cannot be the cause of a third.
+
+The `kotlin { compilerOptions { jvmTarget = … } }` block stays either way: with
+built-in Kotlin the extension comes from AGP instead of KGP, and the JVM target
+still has to be said out loud.
+
+## 14h. Notes on the two test files
 
 `costs_test.sql` runs as `authenticated` — the lesson from `busy_intervals` is
 that a grant bug is invisible to any test running as `postgres`. It asserts that
