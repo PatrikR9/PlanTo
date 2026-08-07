@@ -10,20 +10,28 @@ plugins {
     id "com.android.library"
 }
 
-// Built-in Kotlin (Flutter 3.44+).
+// Built-in Kotlin, gated on the flag that actually decides it.
 //
-// A plugin must no longer apply the Kotlin Gradle Plugin itself — from AGP 9
-// the Android plugin brings Kotlin with it, and applying KGP on top produces
-// the "your app uses plugins that apply KGP" warning today and a hard build
-// failure in a later Flutter.
+// `flutter run` warns that this plugin applies the Kotlin Gradle Plugin and
+// that a future Flutter will refuse to build because of it. The fix is real
+// but it is NOT unlocked by AGP 9 — the first attempt here keyed off the AGP
+// major version and broke the build in two seconds, because AGP 9 does not
+// supply Kotlin unless built-in Kotlin is switched on. Without KGP and without
+// that switch there is no `kotlin {}` extension at all, and the block below
+// fails with "Could not find method kotlin()".
 //
-// Conditional rather than simply deleted, and deliberately so. The clean
-// migration would mean raising this plugin's minimum to Flutter 3.44, which
-// raises the app's too. This file has already broken the build twice over
-// version pinning; a form that is correct on both sides of the AGP 9 line
-// cannot be the cause of a third time.
-def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
-if (agpMajor < 9) {
+// What decides it is `android.builtInKotlin` in the app's gradle.properties,
+// which requires Flutter 3.47 or later. So: read that flag, and apply KGP
+// whenever it is off. Absent property means false means today's behaviour,
+// unchanged. When the app is on 3.47 and sets the flag, this file needs no
+// edit — it stops applying KGP on its own and the warning goes away.
+//
+// The `kotlin {}` block stays either way: with built-in Kotlin the extension
+// comes from AGP instead of from KGP, and the JVM target still has to be said
+// out loud.
+def builtInKotlin = Boolean.parseBoolean(
+    (project.findProperty('android.builtInKotlin') ?: 'false').toString())
+if (!builtInKotlin) {
     apply plugin: 'kotlin-android'
 }
 

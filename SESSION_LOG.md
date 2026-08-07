@@ -527,12 +527,23 @@ and that a future Flutter will refuse to build because of it. From AGP 9 the
 Android plugin supplies Kotlin itself, so a Flutter plugin applying KGP on top
 is one Kotlin too many.
 
-The plugin no longer applies it — but conditionally, on `agpMajor < 9`, rather
-than by deleting the line. The clean migration means raising the plugin's
-minimum to Flutter 3.44, which raises the app's with it, and this one file has
-already broken the build twice over version pinning (AGP 8.1.0 against the
-app's 9.0.1, then the Kotlin pair). A form that is correct on both sides of the
-AGP 9 line cannot be the cause of a third.
+The first attempt gated it on `agpMajor < 9` and broke the build in two
+seconds — the third time this one file has done that. The reasoning was wrong
+in a specific way worth writing down: **AGP 9 does not supply Kotlin by
+itself.** Built-in Kotlin is opt-in through `android.builtInKotlin` in the
+app's `gradle.properties`, and that requires Flutter 3.47 or later. With KGP
+removed and the flag never set, there is no `kotlin {}` extension at all, and
+the `compilerOptions` block below fails with "Could not find method kotlin()".
+
+The condition is now the flag itself. An absent property reads as false, which
+is exactly today's behaviour, so nothing changes until the app is on 3.47 and
+sets it — at which point this file needs no edit. It stops applying KGP on its
+own and the warning goes away.
+
+The lesson generalises past Gradle: the warning named the destination, not the
+precondition. Reading "AGP 9 brings Kotlin" out of a page that also said "set
+`android.builtInKotlin=true`, requires Flutter 3.47" was a guess dressed as a
+migration.
 
 The `kotlin { compilerOptions { jvmTarget = … } }` block stays either way: with
 built-in Kotlin the extension comes from AGP instead of KGP, and the JVM target
