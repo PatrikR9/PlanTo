@@ -11,6 +11,7 @@ import '../../domain/czech_cities.dart';
 import '../../domain/trip.dart';
 import '../../domain/trip_repository.dart';
 import '../controllers/trips_controller.dart';
+import '../widgets/activity_picker.dart';
 
 /// One scrolling form, not the three-step wizard in architecture section 4.
 ///
@@ -321,43 +322,26 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
                   setState(() => _transport = s.first),
             ),
             const SizedBox(height: Sp.lg),
-            const _Label('Co chcete dělat'),
+            const _Label('Co chcete dělat (volitelné)'),
             Text(
-              'Podle toho se skládá seznam na sbalení a vybírá se profil '
-              'počasí. U moře je dobrý den něco jiného než na hřebeni.',
+              'Podle toho se skládá seznam na sbalení a hodnotí se počasí.',
               style: context.texts.labelSmall
                   ?.copyWith(color: context.colors.onSurfaceVariant),
             ),
             const SizedBox(height: Sp.xs),
-            // Grouped, not one grid. The list went from eight tags to
-            // twenty-seven, and a Wrap of twenty-seven chips is not a longer
-            // version of a Wrap of eight — it is a wall with nowhere for the
-            // eye to stop. With a heading per group you skip "Zima" in July
-            // in one glance.
-            for (final ActivitySection s in ActivitySection.values) ...<Widget>[
-              Padding(
-                padding: const EdgeInsets.only(top: Sp.sm, bottom: Sp.xxs),
-                child: Text(
-                  s.label,
-                  style: context.texts.labelMedium
-                      ?.copyWith(color: context.colors.onSurfaceVariant),
-                ),
-              ),
-              Wrap(
-                spacing: Sp.xs,
-                runSpacing: Sp.xs,
-                children: <Widget>[
-                  for (final ActivityTag t in ActivityTag.inSection(s))
-                    FilterChip(
-                      label: Text(t.label),
-                      selected: _tags.contains(t),
-                      onSelected: (bool on) => setState(
-                        () => on ? _tags.add(t) : _tags.remove(t),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+            // One line when nothing is picked, which is most of the time.
+            // Rendering all six sections inline was honest and unusable: it
+            // pushed the budget field and the create button below the fold on
+            // the one screen whose whole promise is "a trip in under sixty
+            // seconds".
+            ActivityField(
+              selected: _tags,
+              onChanged: (Set<ActivityTag> s) => setState(() {
+                _tags
+                  ..clear()
+                  ..addAll(s);
+              }),
+            ),
             const SizedBox(height: Sp.lg),
             const _Label('Rozpočet na osobu (volitelné)'),
             TextField(

@@ -1,5 +1,5 @@
 -- ============================================================================
--- Rozšíření slovníku aktivit z 8 na 27.
+-- Rozšíření slovníku aktivit z 8 na 29.
 --
 -- Nic se nepřejmenovává. Osm původních hodnot ('hiking', 'city', 'lake',
 -- 'castle', 'museum', 'cafe', 'festival', 'viewpoint') zůstává beze změny,
@@ -147,7 +147,7 @@ comment on function _weather_score is
 -- ---------------------------------------------------------------------------
 -- 3. Jedna položka jednou, i když ji chce víc pravidel
 -- ---------------------------------------------------------------------------
--- Se sedmadvaceti aktivitami se překryvy staly normálem: plavky chce moře,
+-- S devětadvaceti aktivitami se překryvy staly normálem: plavky chce moře,
 -- aquapark i wellness, čelovku tma i kemp, opalovací krém UV i sníh. Výlet
 -- označený dvěma z nich by je dostal dvakrát — a protože packing_checked je
 -- klíčované item_key, odškrtnutí jedné by přeškrtlo obě a seznam by se choval

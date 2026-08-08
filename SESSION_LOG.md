@@ -492,7 +492,7 @@ Anna ticking the water does not tick it for Bohuš.
 
 Eight tags could not tell a pond from the Adriatic — both were "Voda" — so the
 packing list had nothing to say about a passport, an EHIC card or the fact that
-sun over water burns faster. The vocabulary is now 27 tags in six sections.
+sun over water burns faster. The vocabulary is now 29 tags in six sections.
 
 Nothing was renamed. The original eight keep their exact stored strings, so no
 existing trip changes meaning. `ActivityTag` also gained an explicit `wire`

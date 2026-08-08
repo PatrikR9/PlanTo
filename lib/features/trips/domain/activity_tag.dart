@@ -3,7 +3,7 @@ import 'package:collection/collection.dart';
 /// The groups the chips are drawn in.
 ///
 /// Sections rather than one flat grid, because the list went from eight tags
-/// to twenty-seven. A `Wrap` of twenty-seven chips is not a longer version of
+/// to twenty-nine. A `Wrap` of twenty-nine chips is not a longer version of
 /// a `Wrap` of eight — it is a wall, and the eye has nowhere to stop. With a
 /// heading above each group you skip "Zima" in July in one glance.
 enum ActivitySection {

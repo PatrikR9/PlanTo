@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'activity_tag.dart';
 
 // Re-exported: ActivityTag moved into its own file when it grew from eight
-// values to twenty-seven, but it is part of the trip's vocabulary and every
+// values to twenty-nine, but it is part of the trip's vocabulary and every
 // caller holding a Trip wants it. Splitting the file should not mean editing
 // five import lists.
 export 'activity_tag.dart';
