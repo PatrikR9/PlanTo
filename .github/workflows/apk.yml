@@ -24,6 +24,13 @@ on:
         type: choice
         options: [dev, prod]
         default: dev
+      email_otp_code:
+        description: >-
+          Kód místo odkazu. Zapnout AŽ po nastavení custom SMTP a přepsání
+          šablony na {{ .Token }} — jinak přijde e-mail s odkazem a aplikace
+          bude čekat na šestimístný kód, který v něm není.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -83,7 +90,7 @@ jobs:
             --dart-define=SUPABASE_URL="$URL" \
             --dart-define=SUPABASE_ANON_KEY="$KEY" \
             --dart-define=GOOGLE_SIGN_IN=false \
-            --dart-define=EMAIL_OTP_CODE=false \
+            --dart-define=EMAIL_OTP_CODE=${{ inputs.email_otp_code }} \
             --dart-define=INVITE_BASE="https://$OWNER.github.io/$REPO/i"
 
       # Má to APK vůbec přístup k síti?
