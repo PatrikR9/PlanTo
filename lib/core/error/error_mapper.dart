@@ -58,9 +58,34 @@ String _functionMessage(Object? details) {
 }
 
 /// Runs [body], mapping anything it throws into a [Failure].
-Future<T> guard<T>(Future<T> Function() body) async {
+/// Po dvaceti vteřinách to vzdá.
+///
+/// Bez limitu čeká klient tak dlouho, jak se serveru zlíbí — a to není
+/// teoretická obava. Když GoTrue nedokáže odeslat e-mail, protože SMTP
+/// nastavení nesedí, blokuje na vlastním timeoutu a aplikace se do té doby
+/// jen točí: žádná chyba, žádný výsledek, žádná cesta ven než zabít appku.
+///
+/// Dvacet vteřin je vybraných tak, aby se vešel pomalý mobilní internet a
+/// zároveň nikdo nezíral na spinner dýl, než mu dojde trpělivost. Cíl není
+/// uhodnout správnou dobu, ale zajistit, že KAŽDÉ volání jednou skončí.
+///
+/// TimeoutException si mapError už přebírá na NetworkFailure, takže obrazovky
+/// se nemění — dostanou chybu, kterou umí zobrazit.
+const Duration kRequestTimeout = Duration(seconds: 20);
+
+/// Pro operace, které dlouho trvat smějí.
+///
+/// Zatím jedna: synchronizace iCal odkazů stahuje cizí kalendáře přes Edge
+/// Function a u několika feedů se do dvaceti vteřin nevejde. Je to výjimka,
+/// kterou musí volající vyslovit nahlas — výchozí hodnota zůstává přísná.
+const Duration kSlowRequestTimeout = Duration(seconds: 60);
+
+Future<T> guard<T>(
+  Future<T> Function() body, {
+  Duration timeout = kRequestTimeout,
+}) async {
   try {
-    return await body();
+    return await body().timeout(timeout);
   } catch (error, stackTrace) {
     throw mapError(error, stackTrace);
   }
