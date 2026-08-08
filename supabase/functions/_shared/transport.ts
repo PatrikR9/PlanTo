@@ -1,0 +1,548 @@
+// Interní model dopravy + všechno, co se dá spočítat bez sítě.
+//
+// Nic tady nevolá poskytovatele. Je to schválně: ranking, tarifní odhad i
+// klíč do cache jsou čisté funkce, takže se dají otestovat bez MOTISu, bez
+// databáze a bez internetu — a jsou to zároveň jediná tři místa, kde se dá
+// udělat chyba, kterou uživatel uvidí jako špatné číslo.
+//
+// Flutter ani M8 nesmí vidět odpověď MOTISu. Tenhle soubor je hranice: co
+// projde skrz, je PlanTo model, a výměna poskytovatele je pak práce na
+// jedno odpoledne místo refaktoringu.
+
+export type TransportMode =
+  | "walk"
+  | "train"
+  | "metro"
+  | "tram"
+  | "trolleybus"
+  | "bus"
+  | "ferry"
+  | "funicular"
+  | "cablecar"
+  | "car"
+  | "other";
+
+export type Confidence = "high" | "medium" | "rough";
+
+export interface Place {
+  id: string | null;
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+export interface TransportLeg {
+  mode: TransportMode;
+  operatorName: string | null;
+  lineName: string | null;
+  headsign: string | null;
+  fromName: string;
+  toName: string;
+  fromStopId: string | null;
+  toStopId: string | null;
+  departure: string; // ISO 8601 s offsetem
+  arrival: string;
+  durationMinutes: number;
+  distanceMeters: number | null;
+  platform: string | null;
+  tripId: string | null;
+  routeId: string | null;
+  intermediateStops: number | null;
+}
+
+export interface FareEstimate {
+  min: number;
+  max: number;
+  currency: string;
+  confidence: Confidence;
+  /** Vždycky true. Přesnou cenu z veřejné dopravy v ČR zadarmo nevydává
+   *  nikdo, takže pole není otázka — je to připomínka pro UI. */
+  isEstimate: true;
+  /** Co do odhadu vstoupilo. Bez toho se nedá zjistit, proč vyšlo 340 Kč. */
+  basis: string[];
+}
+
+export interface Ranking {
+  score: number;
+  reasonCodes: string[];
+}
+
+export interface TransportOption {
+  id: string;
+  mode: TransportMode;
+  departure: string;
+  arrival: string;
+  durationMinutes: number;
+  transfers: number;
+  walkMinutes: number;
+  legs: TransportLeg[];
+  fare: FareEstimate | null;
+  co2Kg: number | null;
+  deepLink: string | null;
+  ranking: Ranking;
+}
+
+export interface FareRule {
+  mode: string | null;
+  rule_type: "per_km" | "flat" | "zone";
+  min_price: number;
+  max_price: number;
+  currency: string;
+  floor_price: number | null;
+  cap_price: number | null;
+  confidence: Confidence;
+  priority: number;
+}
+
+// ---------------------------------------------------------------------------
+// Klíč do cache
+// ---------------------------------------------------------------------------
+
+/** Všechno, co mění výsledek, a nic navíc.
+ *
+ *  Okno se zaokrouhluje na patnáct minut dolů. Bez zaokrouhlení má každá
+ *  sekunda vlastní klíč a cache nikdy netrefí; se zaokrouhlením na hodinu by
+ *  odpověď mohla minout spoj, na který se někdo ptal. Patnáct minut je pod
+ *  intervalem, ve kterém se jízdní řády opakují.
+ */
+export function cacheKey(input: {
+  provider: string;
+  originId: string | null;
+  originLat: number;
+  originLon: number;
+  destId: string | null;
+  destLat: number;
+  destLon: number;
+  windowStart: string;
+  arriveBy: boolean;
+  modes: TransportMode[];
+}): string {
+  const t = Math.floor(Date.parse(input.windowStart) / (15 * 60_000));
+  const pt = (id: string | null, lat: number, lon: number) =>
+    id ?? `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  return [
+    "v1",
+    input.provider,
+    pt(input.originId, input.originLat, input.originLon),
+    pt(input.destId, input.destLat, input.destLon),
+    t,
+    input.arriveBy ? "arr" : "dep",
+    [...input.modes].sort().join("+"),
+  ].join("|");
+}
+
+// ---------------------------------------------------------------------------
+// Normalizace MOTISu
+// ---------------------------------------------------------------------------
+
+const MOTIS_MODES: Record<string, TransportMode> = {
+  WALK: "walk",
+  RAIL: "train",
+  HIGHSPEED_RAIL: "train",
+  LONG_DISTANCE: "train",
+  NIGHT_RAIL: "train",
+  REGIONAL_RAIL: "train",
+  REGIONAL_FAST_RAIL: "train",
+  METRO: "metro",
+  SUBWAY: "metro",
+  TRAM: "tram",
+  TROLLEYBUS: "trolleybus",
+  BUS: "bus",
+  COACH: "bus",
+  FERRY: "ferry",
+  FUNICULAR: "funicular",
+  AERIAL_LIFT: "cablecar",
+  CAR: "car",
+};
+
+function motisMode(raw: unknown): TransportMode {
+  const key = String(raw ?? "").toUpperCase();
+  return MOTIS_MODES[key] ?? "other";
+}
+
+/** Odpověď MOTISu na PlanTo model.
+ *
+ *  Defenzivní schválně. Píše se to proti API, které nemáme jak vyzkoušet
+ *  dřív, než poběží vlastní instance, takže chybějící pole je prázdná
+ *  hodnota a ne výjimka — jedna přejmenovaná vlastnost nesmí shodit celou
+ *  obrazovku.
+ */
+export function normaliseMotis(json: unknown): TransportOption[] {
+  const root = json as Record<string, unknown>;
+  const raw = Array.isArray(root?.itineraries) ? root.itineraries : [];
+  const out: TransportOption[] = [];
+
+  for (const itAny of raw) {
+    const it = itAny as Record<string, unknown>;
+    const rawLegs = Array.isArray(it.legs) ? it.legs : [];
+    const legs: TransportLeg[] = [];
+
+    for (const lAny of rawLegs) {
+      const l = lAny as Record<string, unknown>;
+      const from = (l.from ?? {}) as Record<string, unknown>;
+      const to = (l.to ?? {}) as Record<string, unknown>;
+      const dep = String(l.startTime ?? l.departure ?? "");
+      const arr = String(l.endTime ?? l.arrival ?? "");
+      if (!dep || !arr) continue;
+      legs.push({
+        mode: motisMode(l.mode),
+        operatorName: str(l.agencyName ?? l.operator),
+        lineName: str(l.routeShortName ?? l.route ?? l.line),
+        headsign: str(l.headsign ?? l.tripHeadsign),
+        fromName: String(from.name ?? ""),
+        toName: String(to.name ?? ""),
+        fromStopId: str(from.stopId ?? from.id),
+        toStopId: str(to.stopId ?? to.id),
+        departure: dep,
+        arrival: arr,
+        durationMinutes: minutesBetween(dep, arr),
+        distanceMeters: num(l.distance),
+        platform: str(from.track ?? from.platformCode),
+        tripId: str(l.tripId),
+        routeId: str(l.routeId),
+        intermediateStops: Array.isArray(l.intermediateStops)
+          ? l.intermediateStops.length
+          : null,
+      });
+    }
+
+    if (legs.length === 0) continue;
+
+    const departure = legs[0].departure;
+    const arrival = legs[legs.length - 1].arrival;
+    const transit = legs.filter((l) => l.mode !== "walk");
+
+    out.push({
+      // Deterministické ID. Náhodné by znamenalo, že se karta po refreshi
+      // považuje za jinou a seznam pod prstem přeskočí.
+      id: `${departure}|${arrival}|${transit.map((l) => l.lineName ?? l.mode).join(">")}`,
+      mode: transit[0]?.mode ?? "walk",
+      departure,
+      arrival,
+      durationMinutes: minutesBetween(departure, arrival),
+      // Přestup je mezera mezi dvěma jízdami, ne počet legů: pěší úsek na
+      // začátku a na konci není přestup a počítat ho by nafouklo každé
+      // spojení o dva.
+      transfers: Math.max(0, transit.length - 1),
+      walkMinutes: legs
+        .filter((l) => l.mode === "walk")
+        .reduce((a, l) => a + l.durationMinutes, 0),
+      legs,
+      fare: null,
+      co2Kg: null,
+      deepLink: null,
+      ranking: { score: 0, reasonCodes: [] },
+    });
+  }
+  return out;
+}
+
+function str(v: unknown): string | null {
+  const s = v == null ? "" : String(v).trim();
+  return s === "" ? null : s;
+}
+
+function num(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function minutesBetween(a: string, b: string): number {
+  const ms = Date.parse(b) - Date.parse(a);
+  return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 60_000)) : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Tarifní odhad
+// ---------------------------------------------------------------------------
+
+/** Cena spojení jako rozpětí.
+ *
+ *  Sčítá se po legách, protože jinou možnost nemáme: integrované tarify
+ *  (jedna jízdenka na celou cestu v rámci IDS) by vyšly levněji a náš součet
+ *  je proto spíš horní odhad. To je lepší směr chyby než opačný — člověk,
+ *  který si vezme víc peněz, se nezasekne na nádraží.
+ *
+ *  Nejnižší confidence z použitých pravidel vyhrává. Odhad není přesnější
+ *  než jeho nejslabší část a tvářit se jinak by bylo to, čemu se celý projekt
+ *  vyhýbá.
+ */
+export function estimateFare(
+  legs: TransportLeg[],
+  rules: FareRule[],
+  currency = "CZK",
+): FareEstimate | null {
+  const transit = legs.filter((l) => l.mode !== "walk" && l.mode !== "car");
+  if (transit.length === 0) return null;
+
+  let min = 0;
+  let max = 0;
+  let confidence: Confidence = "high";
+  const basis: string[] = [];
+
+  for (const leg of transit) {
+    const rule = pickRule(rules, leg.mode);
+    if (!rule) {
+      confidence = "rough";
+      basis.push(`${leg.mode}: bez pravidla`);
+      continue;
+    }
+    let lo: number;
+    let hi: number;
+    if (rule.rule_type === "per_km") {
+      // Když vzdálenost neznáme, odhadneme ji z času. Je to hrubé a snižuje
+      // to confidence — ale vynechat leg úplně by z ceny udělalo jiné číslo,
+      // které jako odhad jenom vypadá.
+      const km = leg.distanceMeters != null
+        ? leg.distanceMeters / 1000
+        : (leg.durationMinutes / 60) * speedKmh(leg.mode);
+      if (leg.distanceMeters == null) confidence = weakest(confidence, "rough");
+      lo = km * rule.min_price;
+      hi = km * rule.max_price;
+      if (rule.floor_price != null) {
+        lo = Math.max(lo, rule.floor_price);
+        hi = Math.max(hi, rule.floor_price);
+      }
+      if (rule.cap_price != null) {
+        lo = Math.min(lo, rule.cap_price);
+        hi = Math.min(hi, rule.cap_price);
+      }
+    } else {
+      lo = rule.min_price;
+      hi = rule.max_price;
+    }
+    min += lo;
+    max += hi;
+    confidence = weakest(confidence, rule.confidence);
+    basis.push(`${leg.mode}: ${Math.round(lo)}–${Math.round(hi)} ${currency}`);
+  }
+
+  if (max <= 0) return null;
+
+  return {
+    // Na desetikoruny. Cena zaokrouhlená na koruny by tvrdila přesnost,
+    // kterou model nemá.
+    min: Math.floor(min / 10) * 10,
+    max: Math.ceil(max / 10) * 10,
+    currency,
+    confidence,
+    isEstimate: true,
+    basis,
+  };
+}
+
+function pickRule(rules: FareRule[], mode: TransportMode): FareRule | null {
+  const exact = rules
+    .filter((r) => r.mode === mode)
+    .sort((a, b) => b.priority - a.priority);
+  if (exact.length > 0) return exact[0];
+  const fallback = rules
+    .filter((r) => r.mode == null)
+    .sort((a, b) => b.priority - a.priority);
+  return fallback[0] ?? null;
+}
+
+function speedKmh(mode: TransportMode): number {
+  switch (mode) {
+    case "train":
+      return 70;
+    case "bus":
+      return 45;
+    case "metro":
+      return 33;
+    case "tram":
+    case "trolleybus":
+      return 18;
+    default:
+      return 40;
+  }
+}
+
+const ORDER: Confidence[] = ["high", "medium", "rough"];
+function weakest(a: Confidence, b: Confidence): Confidence {
+  return ORDER.indexOf(a) >= ORDER.indexOf(b) ? a : b;
+}
+
+// ---------------------------------------------------------------------------
+// CO₂
+// ---------------------------------------------------------------------------
+
+// g/os-km, řádové hodnoty pro ČR. Jde o pořadí variant, ne o audit.
+const CO2_G_PER_KM: Record<string, number> = {
+  train: 25,
+  metro: 20,
+  tram: 20,
+  trolleybus: 25,
+  bus: 65,
+  ferry: 120,
+  car: 160,
+  walk: 0,
+  funicular: 20,
+  cablecar: 20,
+  other: 60,
+};
+
+export function estimateCo2(legs: TransportLeg[]): number | null {
+  let g = 0;
+  let known = false;
+  for (const l of legs) {
+    const km = l.distanceMeters != null
+      ? l.distanceMeters / 1000
+      : (l.durationMinutes / 60) * speedKmh(l.mode);
+    if (l.distanceMeters != null) known = true;
+    g += km * (CO2_G_PER_KM[l.mode] ?? 60);
+  }
+  // Bez jediné známé vzdálenosti je to číslo odvozené z odhadu odhadu.
+  // Radši nic než to.
+  return known ? Math.round((g / 1000) * 10) / 10 : null;
+}
+
+// ---------------------------------------------------------------------------
+// Ranking
+// ---------------------------------------------------------------------------
+
+export interface RankedResult {
+  options: TransportOption[];
+  best: string | null;
+  cheapest: string | null;
+  fastest: string | null;
+  fewestTransfers: string | null;
+}
+
+/** Deterministické pořadí variant.
+ *
+ *  Žádná AI. Skóre je vážený součet normalizovaných veličin, takže se dá
+ *  otestovat, vysvětlit a zopakovat — a hlavně vrátí stejné pořadí na stejná
+ *  data, což je jediný způsob, jak se dá „Doporučeno" brát vážně.
+ *
+ *  Normalizuje se proti nejlepší variantě v dávce, ne proti absolutním
+ *  hodnotám: dvouhodinová cesta je krátká v mezikrajském srovnání a dlouhá
+ *  v rámci města, a pevná stupnice by jednu z těch situací hodnotila špatně.
+ */
+export function rank(
+  options: TransportOption[],
+  opts: { groupSize?: number } = {},
+): RankedResult {
+  if (options.length === 0) {
+    return { options, best: null, cheapest: null, fastest: null, fewestTransfers: null };
+  }
+
+  const price = (o: TransportOption) =>
+    o.fare == null ? Number.POSITIVE_INFINITY : (o.fare.min + o.fare.max) / 2;
+
+  const minDur = Math.min(...options.map((o) => o.durationMinutes));
+  const finite = options.map(price).filter((p) => Number.isFinite(p));
+  const minPrice = finite.length ? Math.min(...finite) : 0;
+  const maxPrice = finite.length ? Math.max(...finite) : 0;
+  const maxDur = Math.max(...options.map((o) => o.durationMinutes));
+
+  for (const o of options) {
+    const durScore = maxDur === minDur
+      ? 1
+      : 1 - (o.durationMinutes - minDur) / (maxDur - minDur);
+    const p = price(o);
+    const priceScore = !Number.isFinite(p) || maxPrice === minPrice
+      ? 1
+      : 1 - (p - minPrice) / (maxPrice - minPrice);
+    const transferScore = 1 / (1 + o.transfers);
+    // Chůze se počítá zvlášť od času. Dvacet minut v tramvaji a dvacet
+    // minut pěšky s batohem nejsou totéž a skupina to cítí jinak.
+    const walkScore = Math.max(0, 1 - o.walkMinutes / 40);
+
+    // Ve větší skupině roste váha ceny: pět jízdenek je pětkrát ta částka,
+    // zatímco čas každý stráví jednou.
+    const group = Math.min(Math.max(opts.groupSize ?? 1, 1), 10);
+    const wPrice = 0.20 + Math.min(0.15, (group - 1) * 0.03);
+    const wDur = 0.45 - Math.min(0.10, (group - 1) * 0.02);
+
+    o.ranking = {
+      score: round2(
+        wDur * durScore +
+          wPrice * priceScore +
+          0.20 * transferScore +
+          0.15 * walkScore,
+      ),
+      reasonCodes: reasons(o, { minDur, minPrice, price: p }),
+    };
+  }
+
+  // Řazení podle skóre, při shodě podle odjezdu a pak podle ID. Bez druhého
+  // a třetího kritéria může sort vrátit dvě různá pořadí pro stejná data.
+  const sorted = [...options].sort(
+    (a, b) =>
+      b.ranking.score - a.ranking.score ||
+      Date.parse(a.departure) - Date.parse(b.departure) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+
+  const pickBy = (
+    cmp: (a: TransportOption, b: TransportOption) => number,
+  ): string | null => {
+    const arr = [...sorted].sort(
+      (a, b) => cmp(a, b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    );
+    return arr[0]?.id ?? null;
+  };
+
+  return {
+    options: sorted,
+    best: sorted[0]?.id ?? null,
+    fastest: pickBy((a, b) => a.durationMinutes - b.durationMinutes),
+    fewestTransfers: pickBy(
+      (a, b) => a.transfers - b.transfers || a.durationMinutes - b.durationMinutes,
+    ),
+    cheapest: finite.length === 0 ? null : pickBy((a, b) => price(a) - price(b)),
+  };
+}
+
+function reasons(
+  o: TransportOption,
+  ctx: { minDur: number; minPrice: number; price: number },
+): string[] {
+  const out: string[] = [];
+  if (o.durationMinutes === ctx.minDur) out.push("FASTEST");
+  if (Number.isFinite(ctx.price) && ctx.price === ctx.minPrice) {
+    out.push("CHEAPEST");
+  }
+  if (o.transfers === 0) out.push("DIRECT");
+  else if (o.transfers === 1) out.push("LOW_TRANSFERS");
+  if (o.walkMinutes <= 10) out.push("LITTLE_WALKING");
+  if (o.walkMinutes > 30) out.push("LOTS_OF_WALKING");
+  if (o.durationMinutes > ctx.minDur * 1.5) out.push("SLOW");
+  return out;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// ---------------------------------------------------------------------------
+// Odkazy ven
+// ---------------------------------------------------------------------------
+
+/** Odkaz do IDOS.
+ *
+ *  Jediný odkaz, který tu je, a schválně. RegioJet ani ČD nemají veřejně
+ *  zdokumentovaný stabilní formát pro předvyplněné vyhledání, a odkaz, který
+ *  se rozbije při první změně jejich webu, je horší než žádný — člověk na něj
+ *  klikne ve chvíli, kdy potřebuje jízdenku.
+ */
+export function idosLink(from: string, to: string, when?: string): string {
+  const u = new URL("https://idos.cz/vlakyautobusymhdvse/spojeni/");
+  u.searchParams.set("f", from);
+  u.searchParams.set("t", to);
+  if (when) {
+    const d = new Date(when);
+    if (!Number.isNaN(d.getTime())) {
+      u.searchParams.set(
+        "date",
+        `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`,
+      );
+      u.searchParams.set(
+        "time",
+        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      );
+    }
+  }
+  return u.toString();
+}

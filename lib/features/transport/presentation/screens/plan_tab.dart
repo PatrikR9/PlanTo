@@ -9,8 +9,9 @@ import '../../../costs/data/cost_repository.dart';
 import '../../../trips/domain/trip.dart';
 import '../../../trips/presentation/controllers/trips_controller.dart';
 import '../../data/transport_repository.dart';
-import '../../domain/destinations.dart';
+import '../../domain/transit_stop.dart';
 import '../../domain/transport_option.dart';
+import '../widgets/stop_picker_sheet.dart';
 
 /// The Plan tab: how the group gets there, and what it costs.
 ///
@@ -105,7 +106,7 @@ class _DestinationCard extends ConsumerWidget {
             PtButton(
               label: 'Změnit',
               variant: PtButtonVariant.text,
-              onPressed: () => pickDestination(context, ref, trip.id),
+              onPressed: () => pickDestination(context, ref, trip.id, near: _originOf(trip)),
             ),
         ],
       ),
@@ -232,7 +233,7 @@ class _NoDestination extends ConsumerWidget {
           icon: Icons.place_outlined,
           actionLabel: trip.isOrganiser ? 'Vybrat cíl' : null,
           onAction: trip.isOrganiser
-              ? () => pickDestination(context, ref, trip.id)
+              ? () => pickDestination(context, ref, trip.id, near: _originOf(trip))
               : null,
         ),
       ],
@@ -240,29 +241,30 @@ class _NoDestination extends ConsumerWidget {
   }
 }
 
-/// Pick a destination, then recompute.
+/// Vybere cíl a přepočítá, co na něm visí.
 ///
-/// A list rather than a search box because there is no geocoder: Nominatim's
-/// usage policy forbids exactly this kind of interactive lookup, and MOTIS
-/// brings its own the day it is self-hosted.
+/// Od M7 to je skutečná zastávka, ne položka z ručně psaného seznamu:
+/// uživatel si vybere „Špindlerův Mlýn, Hromovka" a ne jenom „Špindlerův
+/// Mlýn". Uloží se ID zastávky, ne řetězec — teprve z něj se dá zeptat na
+/// spojení.
 Future<void> pickDestination(
   BuildContext context,
   WidgetRef ref,
-  String tripId,
-) async {
-  final TripDestination? picked = await showModalBottomSheet<TripDestination>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => const _DestinationSheet(),
+  String tripId, {
+  ({double lat, double lon})? near,
+}) async {
+  final TransitStop? picked = await pickTransitStop(
+    context,
+    title: 'Kam pojedete?',
+    hint: 'Špindlerův Mlýn',
+    near: near,
   );
   if (picked == null || !context.mounted) return;
 
   try {
-    await ref.read(transportRepositoryProvider).setDestination(
+    await ref.read(transportRepositoryProvider).setDestinationStop(
           tripId,
-          label: picked.name,
-          lat: picked.lat,
-          lon: picked.lon,
+          picked.id,
         );
     ref
       ..invalidate(transportOptionsProvider(tripId))
@@ -281,61 +283,10 @@ Future<void> pickDestination(
   }
 }
 
-class _DestinationSheet extends StatefulWidget {
-  const _DestinationSheet();
-
-  @override
-  State<_DestinationSheet> createState() => _DestinationSheetState();
-}
-
-class _DestinationSheetState extends State<_DestinationSheet> {
-  String _query = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final List<TripDestination> matches = kDestinations
-        .where(
-          (TripDestination d) =>
-              _query.isEmpty ||
-              d.name.toLowerCase().contains(_query.toLowerCase()) ||
-              d.region.toLowerCase().contains(_query.toLowerCase()),
-        )
-        .toList();
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: Sp.xl,
-        right: Sp.xl,
-        top: Sp.md,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + Sp.md,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text('Kam pojedete?', style: context.texts.titleLarge),
-          const SizedBox(height: Sp.sm),
-          TextField(
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Hledat'),
-            onChanged: (String v) => setState(() => _query = v),
-          ),
-          const SizedBox(height: Sp.sm),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 360),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: matches.length,
-              itemBuilder: (BuildContext context, int i) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(matches[i].name),
-                subtitle: Text(matches[i].region),
-                onTap: () => Navigator.of(context).pop(matches[i]),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+/// Výchozí bod výletu jako kotva pro řazení zastávek.
+///
+/// Není to poloha uživatele — tu aplikace nemá a kvůli řazení si o ni říkat
+/// nebude. Je to lepší přiblížení, než žádné: kdo jede z Ostravy, hledá
+/// obvykle něco, kam se z Ostravy dá dojet.
+({double lat, double lon}) _originOf(Trip trip) =>
+    (lat: trip.originLat, lon: trip.originLon);

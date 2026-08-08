@@ -131,3 +131,98 @@ screenshotů toho, co se rozbilo.
 Co se **neověří** ničím z tohohle: jestli jsou názvy proměnných z Open-Meteo
 správně (§14 položka 7). Pozná se to až tím, že skóre počasí vyjde `null` na
 dnech, které jsou v předpovědi.
+
+---
+
+# M7 — zastávky a spojení (session 4)
+
+Pořadí je tady důležitější než jinde: dokud neproběhne import, hledání
+zastávek legitimně nic nevrací a **nejde založit výlet** (výchozí bod je od
+téhle session povinná zastávka). Aplikace to sama pozná a napíše „databáze
+zastávek zatím není naimportovaná" místo „nic jsme nenašli" — ale spustit
+import je stejně první věc.
+
+## M7.1 Migrace
+
+```powershell
+supabase db push 2>&1 | Tee-Object _logs/m7_1_push.txt
+```
+
+Přibývají dvě: `20260808090000_transit_stops.sql` a
+`20260808100000_transport_search.sql`.
+
+Když to spadne, nejpravděpodobnější příčiny v tomhle pořadí:
+
+- `create_trip` se dropuje a vytváří znovu kvůli novému parametru. Když
+  hlásí nejednoznačnost, drop signatury nesedí na to, co je v databázi —
+  vypiš `\df create_trip` a porovnej.
+- `st_clusterdbscan` chybí ve staré PostGIS. Vyžaduje 2.3+; Supabase má 3.x,
+  takže by to nemělo nastat.
+- `trips_list` se dropuje a vytváří znovu (přibývají dva sloupce uprostřed).
+
+## M7.2 Import zastávek
+
+Potřebuje service_role connection string, ne anon klíč. Vezmi ho ze
+Supabase → Settings → Database → Connection string → URI.
+
+```powershell
+pip install "psycopg[binary]"
+python tool/transit_import/import_stops.py --db "<DB_URL>" 2>&1 | Tee-Object _logs/m7_2_import.txt
+```
+
+Stáhne se kolem 300 MB a poběží to jednotky minut. Očekávaný výsledek jsou
+desítky tisíc zastávek a nižší desítky tisíc míst — když vyjde řádově míň,
+něco se zaparsovalo špatně a **nepokračuj**, protože další běh by rozdíl
+označil jako zrušené zastávky.
+
+Opakované spuštění je bezpečné: import je idempotentní a nemaže, označuje.
+Pro rychlé opakování bez stahování `--skip-download`.
+
+## M7.3 SQL testy
+
+```powershell
+psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/transit_stops_test.sql 2>&1 | Tee-Object _logs/m7_3_sql.txt
+```
+
+Běží jako `authenticated`, takže chyba v grantech se projeví. Celé to je
+v transakci s `rollback` na konci — testovací data v databázi nezůstávají.
+
+## M7.4 Edge Functions
+
+```powershell
+deno check supabase/functions/**/*.ts        2>&1 | Tee-Object _logs/m7_4_check.txt
+deno test supabase/functions/_shared/        2>&1 | Tee-Object _logs/m7_4_test.txt
+supabase functions deploy transport-search   2>&1 | Tee-Object _logs/m7_4_deploy.txt
+```
+
+Testy pokrývají ranking, tarifní odhad, klíč do cache a normalizaci odpovědi
+MOTISu — tedy všechno kromě samotného HTTP.
+
+## M7.5 Flutter
+
+```powershell
+flutter analyze --fatal-infos 2>&1 | Tee-Object _logs/m7_5_analyze.txt
+flutter test                  2>&1 | Tee-Object _logs/m7_5_test.txt
+flutter run --dart-define-from-file=env/dev.json 2>&1 | Tee-Object _logs/m7_5_run.txt
+```
+
+Na zařízení, v tomhle pořadí:
+
+1. Nový výlet → **Odkud jedete** → napsat `praha hl`. Musí přijít
+   `Praha hl.n.` jako první, do půl sekundy.
+2. Napsat `cerny most` bez diakritiky. Musí najít Černý Most.
+3. Napsat `praha` a nechat být. Nesmí se nic vybrat samo.
+4. Napsat `zlicin`, `adrspach`, `pisek` — malé obce musí být dohledatelné
+   stejně jako krajská města.
+5. Založit výlet a otevřít **Plán** → Změnit cíl. Stejný picker, a výsledky
+   blíž k výchozí zastávce mají být výš.
+6. Zkontrolovat, že Plán a Náklady pořád ukazují čísla — pod nimi je zatím
+   pořád geometrický odhad a M7 ho nesmí rozbít.
+
+## Co se tímhle neověří
+
+`transport-search` s poskytovatelem `motis`. Ten adaptér je psaný proti
+dokumentaci MOTIS v2 a nemá se zatím proti čemu spustit — dokud je
+`app_config.transport_provider` = `estimate`, funkce vrací geometrický odhad
+a MOTIS kód se nezavolá. Pozná se to až prvním během proti vlastní instanci;
+normalizace je proto defenzivní a výpadek degraduje na odhad, ne na chybu.

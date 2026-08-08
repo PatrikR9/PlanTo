@@ -47,6 +47,8 @@ class Trip {
     required this.title,
     required this.status,
     required this.originLabel,
+    required this.originLat,
+    required this.originLon,
     required this.windowStart,
     required this.windowEnd,
     required this.durationDays,
@@ -65,10 +67,12 @@ class Trip {
     this.description,
     this.budgetPerPerson,
     this.earliestWake,
+    this.originPlaceId,
     this.destinationId,
     this.destinationFree,
     this.destinationLat,
     this.destinationLon,
+    this.destinationPlaceId,
     this.lockedStart,
     this.lockedEnd,
   });
@@ -78,6 +82,17 @@ class Trip {
   final String? description;
   final TripStatus status;
   final String originLabel;
+
+  /// Kde se opravdu nastupuje. Od M7 to je konkrétní zastávka, ne střed
+  /// města — a je to zároveň kotva pro řazení při výběru cíle.
+  final double originLat;
+  final double originLon;
+
+  /// ID zastávky v `transit_places`. Null u výletů založených před M7 a u
+  /// těch, kde místo mezitím z databáze zmizelo; [originLat]/[originLon]
+  /// zůstávají platné vždycky, proto se geometrie čte z nich.
+  final String? originPlaceId;
+
   final DateTime windowStart;
   final DateTime windowEnd;
   final int durationDays;
@@ -93,6 +108,11 @@ class Trip {
   /// place but nothing can be measured to it yet — a name is not a place.
   final double? destinationLat;
   final double? destinationLon;
+
+  /// ID cílové zastávky. To, co se posílá vyhledávači spojení — jméno je pro
+  /// člověka, ID pro MOTIS.
+  final String? destinationPlaceId;
+
   final int participantCount;
 
   final TripGranularity granularity;

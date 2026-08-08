@@ -17,6 +17,14 @@ abstract interface class TransportRepository {
     double? lat,
     double? lon,
   });
+
+  /// Cíl jako konkrétní zastávka.
+  ///
+  /// Vedle [setDestination], ne místo ní: volný název pořád potřebuje
+  /// kurátorovaná destinace z tabulky `destinations`, která zastávku nemá.
+  /// Server si z ID vytáhne jméno i souřadnice sám — posílat je zvlášť by
+  /// znamenalo dvě verze pravdy o jednom místě.
+  Future<void> setDestinationStop(String tripId, String stopId);
 }
 
 class SupabaseTransportRepository implements TransportRepository {
@@ -54,6 +62,15 @@ class SupabaseTransportRepository implements TransportRepository {
           },
         );
       });
+
+  @override
+  Future<void> setDestinationStop(String tripId, String stopId) =>
+      guard(() async {
+        await _client.rpc<void>(
+          'set_trip_destination_stop',
+          params: <String, dynamic>{'p_trip': tripId, 'p_place': stopId},
+        );
+      });
 }
 
 class UnconfiguredTransportRepository implements TransportRepository {
@@ -68,6 +85,9 @@ class UnconfiguredTransportRepository implements TransportRepository {
     double? lat,
     double? lon,
   }) async =>
+      throw const ServerFailure(code: 'NO_BACKEND');
+  @override
+  Future<void> setDestinationStop(String t, String s) async =>
       throw const ServerFailure(code: 'NO_BACKEND');
 }
 

@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "Zdroje zastávek. Musí odpovídat tabulce feed_licences v migraci",
+    "20260808090000_transit_stops.sql — import feed bez řádku v té tabulce",
+    "odmítne. Licence viz TRANSIT_DATA.md; nic tady neměň bez toho, že",
+    "ověříš podmínky u zdroje a přepíšeš checked_at na obou místech.",
+    "",
+    "Pořadí je významné: feed uvedený dřív se importuje dřív, ale o tom,",
+    "která varianta názvu vyhraje, rozhoduje počet odjezdů, ne pořadí."
+  ],
+  "feeds": [
+    {
+      "id": "pid",
+      "format": "gtfs",
+      "url": "https://data.pid.cz/PID_GTFS.zip",
+      "country": "CZ",
+      "enrich_pid_stops": "https://data.pid.cz/stops/json/stops.json",
+      "note": "Praha + Střední Čechy. Jediný feed s obcí a okresem."
+    },
+    {
+      "id": "czptt",
+      "format": "gtfs",
+      "url": "https://data.jr.ggu.cz/results/latest/CZPTT_GTFS.zip",
+      "country": "CZ",
+      "note": "Vlaky v celé ČR."
+    },
+    {
+      "id": "cisjr_jdf",
+      "format": "gtfs",
+      "url": "https://github.com/0xaa55h/gtfs-processor/raw/refs/heads/gtfs/files/latest.zip",
+      "country": "CZ",
+      "note": [
+        "Autobusy z CIS JŘ převedené do GTFS. Primární data (JDF) jsou",
+        "volné dílo, ale JDF nenese souřadnice — proto se bere konverze,",
+        "která je doplňuje. Kdyby konverze zmizela, fallback je vlastní",
+        "JDF parser nad portal.cisjr.cz/pub/JDF/JDF.zip; souřadnice by pak",
+        "musely přijít z CZPTT a PID a zbytek zastávek by chyběl."
+      ]
+    }
+  ]
+}

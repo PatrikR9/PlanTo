@@ -11,10 +11,11 @@ import '../domain/trip_repository.dart';
 /// Columns read from the `trips_list` view. Listed explicitly rather than `*`
 /// so adding a column server-side cannot silently change payload size.
 const String _tripColumns = '''
-id, title, description, status, origin_label, window_start, window_end,
+id, title, description, status, origin_label, origin_lat, origin_lon,
+origin_place_id, window_start, window_end,
 duration_days, transport, budget_per_person, currency, activity_tags,
 earliest_wake, destination_id, destination_free,
-destination_lat, destination_lon, created_by,
+destination_lat, destination_lon, destination_place_id, created_by,
 participant_count, calendar_shared_count, locked_start, locked_end, my_role,
 granularity, slot_minutes, slot_step_minutes, day_start, day_end
 ''';
@@ -70,6 +71,7 @@ class SupabaseTripRepository implements TripRepository {
             'p_slot_step_minutes': draft.slotStepMinutes,
             'p_day_start': _timeOfDay(draft.dayStart),
             'p_day_end': _timeOfDay(draft.dayEnd),
+            'p_origin_place': draft.originPlaceId,
           },
         );
         return id as String;
@@ -90,6 +92,9 @@ Trip _toTrip(Map<String, dynamic> row) {
     description: row['description'] as String?,
     status: _status(row['status'] as String),
     originLabel: row['origin_label'] as String,
+    originLat: ((row['origin_lat'] as num?) ?? 0).toDouble(),
+    originLon: ((row['origin_lon'] as num?) ?? 0).toDouble(),
+    originPlaceId: row['origin_place_id'] as String?,
     windowStart: DateTime.parse(row['window_start'] as String).toLocal(),
     windowEnd: DateTime.parse(row['window_end'] as String).toLocal(),
     durationDays: (row['duration_days'] as int?) ?? 1,
@@ -106,6 +111,7 @@ Trip _toTrip(Map<String, dynamic> row) {
     destinationFree: row['destination_free'] as String?,
     destinationLat: (row['destination_lat'] as num?)?.toDouble(),
     destinationLon: (row['destination_lon'] as num?)?.toDouble(),
+    destinationPlaceId: row['destination_place_id'] as String?,
     participantCount: (row['participant_count'] as int?) ?? 0,
     calendarSharedCount: (row['calendar_shared_count'] as int?) ?? 0,
     createdBy: row['created_by'] as String,

@@ -7,7 +7,8 @@ import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
 import '../../../../core/format/cs_format.dart';
-import '../../domain/czech_cities.dart';
+import '../../../transport/domain/transit_stop.dart';
+import '../../../transport/presentation/widgets/stop_picker_sheet.dart';
 import '../../domain/trip.dart';
 import '../../domain/trip_repository.dart';
 import '../controllers/trips_controller.dart';
@@ -30,7 +31,10 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
   final TextEditingController _title = TextEditingController();
   final TextEditingController _budget = TextEditingController();
 
-  OriginCity _origin = kOriginCities.first;
+  /// Odkud se opravdu vyráží. Nepředvyplňuje se: dřív tu bylo dvacet měst
+  /// s Prahou nahoře a předvybraná Praha znamená, že každý, kdo ji přehlédne,
+  /// založí výlet z místa, kde není. Prázdné pole se přehlédnout nedá.
+  TransitStop? _origin;
   DateTimeRange? _range;
   int _duration = 1;
   TransportPref _transport = TransportPref.either;
@@ -62,8 +66,19 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
 
   bool get _valid =>
       _title.text.trim().isNotEmpty &&
+      _origin != null &&
       _range != null &&
       !_windowTooLongForSlots;
+
+  Future<void> _pickOrigin() async {
+    final TransitStop? picked = await pickTransitStop(
+      context,
+      title: 'Odkud jedete?',
+      // Bez kotvy: při zakládání výletu aplikace neví, kde uživatel je, a
+      // ptát se kvůli řazení o oprávnění k poloze je nepoměr.
+    );
+    if (picked != null) setState(() => _origin = picked);
+  }
 
   Future<void> _pickRange() async {
     final DateTime now = DateTime.now();
@@ -85,9 +100,10 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
         await ref.read(createTripControllerProvider.notifier).submit(
               NewTrip(
                 title: _title.text.trim(),
-                originLabel: _origin.name,
-                originLat: _origin.lat,
-                originLon: _origin.lon,
+                originLabel: _origin!.name,
+                originLat: _origin!.lat,
+                originLon: _origin!.lon,
+                originPlaceId: _origin!.id,
                 windowStart: range.start,
                 // The picker returns midnight of the last day; a trip on the
                 // final day of the window would otherwise be excluded.
@@ -145,18 +161,48 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
                 labelText: 'Název',
                 hintText: 'Víkend na horách',
               ),
-              onChanged: (_) => setState(() {}),
+              // Žádné setState na každý znak.
+              //
+              // Bylo tu `onChanged: (_) => setState(() {})`, aby se rozsvítilo
+              // tlačítko Vytvořit, jakmile má výlet název. Přestavovalo to ale
+              // celý formulář — padesát widgetů, dvě segmentované řady a pole
+              // aktivit — a to při každém stisknutém písmenu, zatímco běží
+              // animace klávesnice a Flutter má na frame 16 ms. To je ten
+              // "Skipped frames" u show(ime()) v logu.
+              //
+              // Jediné, co na názvu závisí, je jeden boolean pod jedním
+              // tlačítkem. Ten se odebírá přímo z controlleru níž.
             ),
             const SizedBox(height: Sp.lg),
             const _Label('Odkud jedete'),
-            DropdownButtonFormField<OriginCity>(
-              initialValue: _origin,
-              items: <DropdownMenuItem<OriginCity>>[
-                for (final OriginCity c in kOriginCities)
-                  DropdownMenuItem<OriginCity>(value: c, child: Text(c.name)),
-              ],
-              onChanged: (OriginCity? c) =>
-                  setState(() => _origin = c ?? _origin),
+            PtCard(
+              onTap: _pickOrigin,
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.departure_board_outlined),
+                  const SizedBox(width: Sp.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          _origin?.name ?? 'Vyberte zastávku nebo nádraží',
+                          style: context.texts.bodyLarge,
+                        ),
+                        if (_origin != null && _origin!.subtitle.isNotEmpty)
+                          Text(
+                            _origin!.subtitle,
+                            style: context.texts.labelSmall?.copyWith(
+                              color: context.colors.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
             ),
             const SizedBox(height: Sp.lg),
             const _Label('Kdy by se to hodilo'),
@@ -351,11 +397,19 @@ class _CreateTripScreenState extends ConsumerState<CreateTripScreen> {
               decoration: const InputDecoration(suffixText: 'Kč'),
             ),
             const SizedBox(height: Sp.xxl),
-            PtButton(
-              label: 'Vytvořit a pozvat',
-              expand: true,
-              isLoading: state.isLoading,
-              onPressed: _valid ? _submit : null,
+            // Jediné místo, které se musí přestavět, když se mění název.
+            // ValueListenableBuilder poslouchá controller přímo, takže
+            // rebuild končí uvnitř tohohle tlačítka.
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _title,
+              builder: (BuildContext context, TextEditingValue _, Widget? __) {
+                return PtButton(
+                  label: 'Vytvořit a pozvat',
+                  expand: true,
+                  isLoading: state.isLoading,
+                  onPressed: _valid ? _submit : null,
+                );
+              },
             ),
             const SizedBox(height: Sp.xl),
           ],

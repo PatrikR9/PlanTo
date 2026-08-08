@@ -1,0 +1,92 @@
+name: Build APK
+
+# Proč se APK staví tady a ne na vývojářském stroji.
+#
+# Smart App Control na Windows blokuje gen_snapshot.exe — AOT kompilátor z
+# Flutter cache, který nemá žádný digitální podpis. Debug buildy ho nepotřebují,
+# takže se to projeví až u prvního `flutter build apk --release`:
+#
+#   Code Integrity determined that a process (dartvm.exe) attempted to load
+#   gen_snapshot.exe that did not meet the Enterprise signing level requirements
+#
+# Smart App Control záměrně nemá výjimky a vypnout se dá jen jednou — zpátky
+# zapnout nejde bez resetu Windows. Linuxový runner tenhle problém nemá vůbec,
+# a APK z něj je navíc reprodukovatelné, což se hodí ve chvíli, kdy ho dostane
+# dvanáct testerů a jeden z nich nahlásí něco, co nikdo jiný nevidí.
+#
+# Spuštění: Actions → Build APK → Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      flavour:
+        description: 'dev nechá chybové hlášky poskytovatele viditelné, prod je schová'
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: APK (${{ inputs.flavour }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter gen-l10n
+
+      # Stejná pojistka jako v tool/build_apk.ps1: prázdná hodnota selže
+      # úplně stejně jako chybějící, jen o deset minut později a v aplikaci
+      # místo tady.
+      - name: Check secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] \
+             || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "::error::Set SUPABASE_URL and SUPABASE_ANON_KEY in"\
+                 "Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      # Jednotlivé --dart-define, ne --dart-define-from-file: env/*.json je
+      # gitignorovaný (a má být), takže by se ten soubor musel v CI vyrobit ze
+      # secrets — a tím by se klíč na chvíli objevil na disku runneru.
+      - name: Build
+        run: |
+          REPO="${GITHUB_REPOSITORY#*/}"
+          OWNER="$(echo "${GITHUB_REPOSITORY%%/*}" | tr '[:upper:]' '[:lower:]')"
+
+          flutter build apk --release \
+            --dart-define=FLAVOUR=${{ inputs.flavour }} \
+            --dart-define=SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
+            --dart-define=SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}" \
+            --dart-define=GOOGLE_SIGN_IN=false \
+            --dart-define=EMAIL_OTP_CODE=false \
+            --dart-define=INVITE_BASE="https://$OWNER.github.io/$REPO/i"
+
+      # Podepsané debug klíčem — android/app/build.gradle.kts to má pořád jako
+      # TODO ze šablony. Na instalaci přes USB to stačí; na Play ne, a aplikaci
+      # podepsanou debug klíčem nepůjde později přepsat tou z Play.
+      - name: Warn about signing
+        run: |
+          echo "::warning::APK je podepsané debug klicem. Pro Play je potreba"\
+               "vlastni keystore v android/app/build.gradle.kts."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: planto-${{ inputs.flavour }}-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+          if-no-files-found: error

@@ -17,6 +17,7 @@ class NewTrip {
     required this.originLabel,
     required this.originLat,
     required this.originLon,
+    this.originPlaceId,
     required this.windowStart,
     required this.windowEnd,
     required this.durationDays,
@@ -38,6 +39,11 @@ class NewTrip {
   final String originLabel;
   final double originLat;
   final double originLon;
+
+  /// Vybraná zastávka. Souřadnice se posílají i tak: server z nich založí
+  /// výlet ve chvíli, kdy je databáze zastávek ještě prázdná, a bez toho by
+  /// mezi migrací a prvním importem nešlo založit nic.
+  final String? originPlaceId;
   final DateTime windowStart;
   final DateTime windowEnd;
   final int durationDays;
