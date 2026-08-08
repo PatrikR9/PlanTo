@@ -324,6 +324,7 @@ belongs in a script, not in somebody's memory.
 | 5 | `ICAL_SECRET` | `supabase secrets set ICAL_SECRET="…"` or the iCal path cannot encrypt |
 | 6 | ~~Hard-coded ref in `docs/404.html`~~ | **Closed 4 Aug.** Placeholders substituted by `pages.yml` from the same secrets the Flutter build uses; a `grep` guard fails the step if anybody inlines them again |
 | 7 | ~~Open-Meteo variable names~~ | **Closed 4 Aug.** Real forecasts render on the Dates tab — `64/100 · přeháňky · 37 °C · 23 % déšť`. The names are right |
+| 9 | ~~Release APK had no network~~ | **Closed 8 Aug.** `android.permission.INTERNET` was only in `src/debug` and `src/profile`. See §14i |
 | 8 | Dates tab converts to **device** time, not trip time | `date_repository` calls `.toLocal()` on `starts_at`. Correct in Czechia on a Czech phone, wrong for anyone whose device zone differs from the trip's — and the project already ruled the other way for manual blocks. See §14d |
 
 Carried over from session 1 and unchanged: Brevo SMTP, `planto.app`, the Google
@@ -519,6 +520,36 @@ Two server-side consequences:
   sobotu odpoledne" beats "jedete k vodě", because it says something the person
   does not already know. Overlaps are correct and should not have to be policed
   by hand in the seed data.
+
+## 14i. The release APK had no internet
+
+The first APK on a real phone could not sign in — not by email, not as a guest.
+The message was:
+
+    Failed host lookup: 'dehgpsnemmemnxbhujai.supabase.co'
+    OS Error: No address associated with hostname, errno = 7
+
+Which reads as broken DNS or a wrong address, and was neither. The same URL
+opened fine in the phone's browser, and the same code worked on the emulator.
+
+`android.permission.INTERNET` was declared only in `src/debug` and
+`src/profile`. That is the Flutter template's default — those two exist so hot
+reload can reach the machine, and the template does not assume the app itself
+talks to a network. So the permission is present in every build you develop
+with and absent from the only build you ship.
+
+Worth noting why the calendar still worked in that same APK: `READ_CALENDAR`
+comes from `packages/planto_calendar`'s own manifest, and the merger folds a
+library manifest into all build types. One permission arrived through the
+plugin, the other was expected from the app, and only one of them was there.
+
+Two defences went in alongside, because the first hypothesis was wrong in an
+instructive way. The address on screen looked correct, so the suspicion was an
+invisible trailing newline in the GitHub secret — a real failure mode for this
+exact symptom, and the reason `Env.supabaseUrl` now trims and the workflow
+strips whitespace before the define. That was not the bug this time, but a
+value that looks right and resolves to nothing is worth being unable to
+produce twice.
 
 ## 14g. Built-in Kotlin
 

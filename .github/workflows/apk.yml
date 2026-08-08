@@ -64,17 +64,53 @@ jobs:
       # gitignorovaný (a má být), takže by se ten soubor musel v CI vyrobit ze
       # secrets — a tím by se klíč na chvíli objevil na disku runneru.
       - name: Build
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           REPO="${GITHUB_REPOSITORY#*/}"
           OWNER="$(echo "${GITHUB_REPOSITORY%%/*}" | tr '[:upper:]' '[:lower:]')"
 
+          # Bez bílých znaků. Do secretu se při vložení snadno dostane konec
+          # řádku a v poli ho není vidět — a `https://ref.supabase.co\n` je
+          # doména, která neexistuje. Aplikace pak hlásí "Failed host lookup"
+          # na adresu, která na obrazovce vypadá naprosto správně.
+          URL="$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')"
+          KEY="$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d '[:space:]')"
+
           flutter build apk --release \
             --dart-define=FLAVOUR=${{ inputs.flavour }} \
-            --dart-define=SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
-            --dart-define=SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}" \
+            --dart-define=SUPABASE_URL="$URL" \
+            --dart-define=SUPABASE_ANON_KEY="$KEY" \
             --dart-define=GOOGLE_SIGN_IN=false \
             --dart-define=EMAIL_OTP_CODE=false \
             --dart-define=INVITE_BASE="https://$OWNER.github.io/$REPO/i"
+
+      # Má to APK vůbec přístup k síti?
+      #
+      # Flutter šablona dává INTERNET jen do src/debug a src/profile, takže
+      # release build ho může tiše postrádat — a projeví se to až na telefonu,
+      # jako "Failed host lookup" na adresu, která je úplně správně. Stálo to
+      # jeden večer a dvě špatné hypotézy.
+      #
+      # Kontroluje se sloučený manifest z hotového APK, ne zdroják: zajímá nás,
+      # co se opravdu sestavilo, ne co je v repozitáři.
+      - name: Verify merged manifest
+        run: |
+          python3 - <<'PY'
+          import sys, zipfile
+          apk = 'build/app/outputs/flutter-apk/app-release.apk'
+          xml = zipfile.ZipFile(apk).read('AndroidManifest.xml')
+          # Řetězce v binárním AXML jsou UTF-16LE.
+          text = xml.decode('utf-16-le', 'ignore')
+          required = ['android.permission.INTERNET']
+          missing = [p for p in required if p not in text]
+          if missing:
+              print('::error::APK neobsahuje ' + ', '.join(missing) +
+                    ' — bez toho aplikace nikam nedosahne.')
+              sys.exit(1)
+          print('manifest ok:', ', '.join(required))
+          PY
 
       # Podepsané debug klíčem — android/app/build.gradle.kts to má pořád jako
       # TODO ze šablony. Na instalaci přes USB to stačí; na Play ne, a aplikaci

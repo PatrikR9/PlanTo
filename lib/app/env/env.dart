@@ -17,9 +17,28 @@ abstract final class Env {
         _ => Flavour.dev,
       };
 
-  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-  static const String supabaseAnonKey =
+  static const String _rawSupabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const String _rawSupabaseAnonKey =
       String.fromEnvironment('SUPABASE_ANON_KEY');
+
+  /// Oříznuté, a je to tu kvůli jednomu konkrétnímu večeru.
+  ///
+  /// APK sestavené v CI hlásilo na telefonu:
+  ///
+  ///     Failed host lookup: 'dehgpsnemmemnxbhujai.supabase.co'
+  ///     OS Error: No address associated with hostname
+  ///
+  /// Ten hostname je správně. Jenže hodnota přišla z GitHub secretu, do
+  /// kterého se při vložení dostal konec řádku — a mezera nebo `\n` na konci
+  /// URL je v poli neviditelná, v chybové hlášce neviditelná taky, a přesto
+  /// z ní udělá doménu, která neexistuje. Jediné, co je vidět, je že adresa
+  /// vypadá naprosto v pořádku a stejně se nepřeloží.
+  ///
+  /// `env/*.json` tímhle trpět nemůže, protože v JSONu se konec řádku uvnitř
+  /// řetězce napsat nedá. Postihuje to jen cestu přes secrets, tedy přesně tu,
+  /// kterou se staví buildy pro testery.
+  static String get supabaseUrl => _rawSupabaseUrl.trim();
+  static String get supabaseAnonKey => _rawSupabaseAnonKey.trim();
 
   /// Whether a backend is wired up.
   ///

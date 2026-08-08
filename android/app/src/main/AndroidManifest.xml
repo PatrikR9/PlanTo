@@ -1,4 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        Bez tohohle řádku nemá release build přístup k síti.
+
+        Flutter šablona přidává INTERNET jen do src/debug a src/profile, kde ho
+        potřebuje hot reload. Do src/main ho nedává, protože nepředpokládá, že
+        aplikace na síť chodí — a tak na to přijdeš až u prvního APK v ruce.
+        Debug na emulátoru jede, prohlížeč na tom samém telefonu tu adresu
+        otevře, a aplikace tvrdí:
+
+            Failed host lookup: 'dehgpsnemmemnxbhujai.supabase.co'
+            OS Error: No address associated with hostname, errno = 7
+
+        Což zní jako rozbité DNS nebo špatná adresa a je to ani jedno: Android
+        bez tohohle oprávnění překlad jména prostě neprovede.
+
+        READ_CALENDAR tady chybět nemusí — přichází z manifestu balíčku
+        planto_calendar a merger ho doplní do všech build typů. Proto kalendář
+        v release APK fungoval a síť ne.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="PlanTo"
         android:name="${applicationName}"
