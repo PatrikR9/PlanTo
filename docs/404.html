@@ -36,7 +36,7 @@
   <p class="kicker" id="kicker">PlanTo</p>
   <h1 id="title"><span class="skel" style="display:block;height:28px"></span></h1>
   <div class="card" id="card">
-    <div class="row"><span>Odjezd z</span><span id="origin">…</span></div>
+    <div class="row"><span id="first-label">Odjezd z</span><span id="origin">…</span></div>
     <div class="row"><span>Kdy</span><span id="when">…</span></div>
     <div class="row"><span>Kdo</span><span id="who">…</span></div>
   </div>
@@ -71,6 +71,25 @@ const token = m ? decodeURIComponent(m[1]) : null;
 const $ = (id) => document.getElementById(id);
 const fmt = (iso) => new Date(iso).toLocaleDateString("cs-CZ",
   { day: "numeric", month: "numeric" });
+
+// Setkání nemá odkud vyjet, takže na prvním řádku je délka místo místa.
+// Řádek "Odjezd z —" nenese žádnou informaci kromě té, že něco chybí, a je to
+// první věc, kterou pozvaný uvidí.
+//
+// Duplikuje formatDuration() z cs_format.dart schválně: tahle stránka je
+// jediný soubor v repozitáři, který se nesmí spoléhat na nic z Flutteru —
+// běží dřív, než kdokoli aplikaci nainstaluje.
+function duration(minutes) {
+  if (minutes < 60) return minutes + " min";
+  if (minutes < 1440) {
+    const h = minutes / 60;
+    return (h % 1 === 0 ? h : h.toFixed(1).replace(".", ",")) + " h";
+  }
+  const days = Math.floor(minutes / 1440);
+  const rest = minutes % 1440;
+  const word = days === 1 ? "den" : days <= 4 ? "dny" : "dní";
+  return days + " " + word + (rest ? " " + duration(rest) : "");
+}
 
 // Where the web build lives. This page is served at <base>/i/<token>, so the
 // app is one level up. Derived rather than hard-coded so it keeps working on
@@ -121,9 +140,14 @@ if (SUPABASE_URL.indexOf("__") === 0) {
         return fail("Odkaz vypršel nebo byl zrušen.");
       }
       const t = rows[0];
+      const meeting = t.kind === "meeting";
+      if (meeting) document.title = "Pozvánka na setkání — PlanTo";
       $("kicker").textContent = t.organiser_name + " vás zve";
       $("title").textContent = t.title;
-      $("origin").textContent = t.origin_label;
+      $("first-label").textContent = meeting ? "Jak dlouho" : "Odjezd z";
+      $("origin").textContent = meeting
+        ? duration(t.duration_minutes)
+        : t.origin_label;
       $("when").textContent = fmt(t.window_start) + " – " + fmt(t.window_end);
       $("who").textContent = t.participant_count +
         (t.participant_count === 1 ? " člověk" : " lidí");

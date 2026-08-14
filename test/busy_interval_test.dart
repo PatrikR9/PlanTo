@@ -16,6 +16,38 @@ void main() {
         windowEnd: windowEnd,
       );
 
+  group('BusyIntervals.allDayToLocalMidnight', () {
+    // Android ukládá celodenní událost jako UTC půlnoc — je to datum, ne
+    // okamžik. Čtené jako obyčejný timestamp se v Praze v létě posune na 02:00
+    // a „celý den 12. září" se uloží jako 12. 9. 02:00 – 13. 9. 02:00. Ta dvě
+    // hodiny jsou u třídenního výletu neviditelné a u dvouhodinové schůzky
+    // rozhodují.
+    test('z UTC půlnoci udělá místní půlnoc téhož dne', () {
+      final DateTime fromDevice = DateTime.fromMillisecondsSinceEpoch(
+        DateTime.utc(2026, 9, 12).millisecondsSinceEpoch,
+      );
+
+      final DateTime out = BusyIntervals.allDayToLocalMidnight(fromDevice);
+
+      expect(out, DateTime(2026, 9, 12));
+      expect(out.hour, 0, reason: 'nesmí zůstat posunuté o offset zóny');
+      expect(out.isUtc, isFalse,
+          reason: 'zbytek řetězce počítá v místním čase');
+    });
+
+    test('nezávisí na zóně, ve které test běží', () {
+      // Datum se čte z UTC složek, takže výsledek je stejný v Praze i v Denveru.
+      // Kdyby se četlo z místních, půlnoc UTC by v západní polokouli spadla na
+      // předchozí den a celodenní blok by zabral špatné datum.
+      final DateTime out = BusyIntervals.allDayToLocalMidnight(
+        DateTime.utc(2026, 1, 1),
+      );
+      expect(out.year, 2026);
+      expect(out.month, 1);
+      expect(out.day, 1);
+    });
+  });
+
   group('BusyIntervals.prepare', () {
     test('rounds outward to 15 minutes', () {
       // 14:03–14:52 must become 14:00–15:00. Rounding inward would report the

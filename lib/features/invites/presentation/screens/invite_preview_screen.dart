@@ -7,6 +7,7 @@ import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/format/cs_format.dart';
 import '../../../../core/network/supabase_providers.dart';
 import '../../../auth/data/auth_repository_impl.dart';
 import '../../data/invite_repository_impl.dart';
@@ -108,10 +109,17 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
                   PtCard(
                     child: Column(
                       children: <Widget>[
+                        // U setkání se místo odjezdu ukáže délka. Řádek
+                        // „Odjezd z —" by nesl jen tolik informace, že něco
+                        // chybí.
                         _Row(
-                          icon: Icons.place_outlined,
-                          label: 'Odjezd z',
-                          value: p.originLabel,
+                          icon: p.isMeeting
+                              ? Icons.hourglass_bottom_outlined
+                              : Icons.place_outlined,
+                          label: p.isMeeting ? 'Jak dlouho' : 'Odjezd z',
+                          value: p.isMeeting
+                              ? formatDuration(p.durationMinutes)
+                              : p.originLabel,
                         ),
                         const SizedBox(height: Sp.sm),
                         _Row(

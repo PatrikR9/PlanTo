@@ -73,7 +73,8 @@ class PackingItem {
       );
 
   static PackingItem? fromRow(Map<String, dynamic> r) {
-    final PackingCategory? c = PackingCategory.fromWire(r['category'] as String?);
+    final PackingCategory? c =
+        PackingCategory.fromWire(r['category'] as String?);
     final String? key = r['item_key'] as String?;
     // A rule this build has never heard of is dropped rather than shown as a
     // raw key. Seeding a new rule then stays a server-only change.
@@ -198,7 +199,8 @@ const Map<String, String> _labels = <String, String>{
 const Map<String, String> _reasons = <String, String>{
   'reason.always': 'ať jedete kamkoli',
   'reason.cash_outside_city': 'mimo město kartou nezaplatíte všude',
-  'reason.navigation_drains_battery': 'navigace sežere baterku rychleji, než čekáš',
+  'reason.navigation_drains_battery':
+      'navigace sežere baterku rychleji, než čekáš',
   'reason.rain_expected': 'na termín je hlášený déšť',
   'reason.heavy_rain': 'hlášený je vydatný déšť, ne přeháňka',
   'reason.cold_day': 'bude chladno',
@@ -221,7 +223,6 @@ const Map<String, String> _reasons = <String, String>{
   'reason.overnight': 'jedete přes noc',
   'reason.overnight_hiking': 'turistika přes noc',
   'reason.longer_trip': 'delší výlet',
-
   'reason.going_abroad': 'jedete přes hranice',
   'reason.activity_sea': 'jedete k moři',
   'reason.rocky_beaches': 'oblázkové pláže a ježovky',

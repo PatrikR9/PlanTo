@@ -88,6 +88,86 @@ class SupabaseAuthRepository implements AuthRepository {
       );
 
   @override
+  Future<bool> signUpWithPassword({
+    required String email,
+    required String password,
+  }) =>
+      guard(() async {
+        // Host se povyšuje, ne nahrazuje. Přihlásit ho normálně by vyrobilo
+        // NOVÉ user id a tiše osiřelo každý výlet, do kterého se zatím
+        // připojil — stejný důvod jako u e-mailu a Googlu.
+        if (_isGuest) {
+          await _client.auth.updateUser(
+            UserAttributes(email: email.trim(), password: password),
+            emailRedirectTo: authRedirect,
+          );
+          // updateUser session nemění, takže je z čeho pokračovat hned.
+          return true;
+        }
+
+        // Bez emailRedirectTo, a je to tu schválně.
+        //
+        // U hesla nemá potvrzovací odkaz co vracet do aplikace — jeho jediná
+        // práce je označit schránku za ověřenou. Dovnitř se člověk dostane
+        // heslem, které už má. Kdyby odkaz mířil na app.planto://, kliknutí
+        // na počítači by neudělalo nic, protože to schéma zná jen telefon.
+        //
+        // Bez parametru použije Supabase Site URL, což je obyčejná webová
+        // adresa a otevře se odkudkoli. Tím z přihlášení mizí celá závislost
+        // na App Links, assetlinks.json a Redirect URLs — a to je většina
+        // toho, s čím jsme se prali.
+        final AuthResponse res = await _client.auth.signUp(
+          email: email.trim(),
+          password: password,
+        );
+
+        // Registrace na adresu, která už účet má, NEVRÁTÍ chybu.
+        //
+        // Supabase záměrně předstírá úspěch — vrátí vymyšleného uživatele s
+        // prázdným `identities`, nepošle žádný e-mail a heslo neuloží. Je to
+        // obrana proti zjišťování, kdo je v systému registrovaný, a je to
+        // správné rozhodnutí. Jenže z pohledu klienta to vypadá identicky
+        // jako "účet vznikl, potvrď schránku", a uživatel pak marně zkouší
+        // heslo, které nikdy nikam nedorazilo.
+        //
+        // Prázdné `identities` je jediný signál, kterým se ty dva stavy dají
+        // odlišit.
+        final List<UserIdentity> identities = res.user?.identities ?? const [];
+        if (res.session == null && identities.isEmpty) {
+          throw const AuthApiException(
+            'Na tento e-mail už účet existuje.',
+            code: 'email_exists',
+          );
+        }
+
+        // Se zapnutým *Confirm email* vrátí Supabase uživatele bez session:
+        // účet existuje, ale nesmí dovnitř, dokud schránku nepotvrdí. S
+        // vypnutým potvrzením přijde session rovnou. Rozhodnutí je v
+        // dashboardu; tady se jen čte, co dorazilo.
+        return res.session != null;
+      });
+
+  @override
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  }) =>
+      guard(
+        () => _client.auth.signInWithPassword(
+          email: email.trim(),
+          password: password,
+        ),
+      );
+
+  @override
+  Future<void> sendPasswordReset(String email) => guard(
+        () => _client.auth.resetPasswordForEmail(
+          email.trim(),
+          redirectTo: authRedirect,
+        ),
+      );
+
+  @override
   Future<void> signInWithGoogle() => guard(
         () => _isGuest
             // Same reasoning as email: link, do not replace.
@@ -132,10 +212,9 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<void> setDisplayName(String name) => guard(() async {
         final String? uid = _client.auth.currentUser?.id;
         if (uid == null) return;
-        await _client
-            .from('profiles')
-            .update(<String, dynamic>{'display_name': name.trim()})
-            .eq('id', uid);
+        await _client.from('profiles').update(
+          <String, dynamic>{'display_name': name.trim()},
+        ).eq('id', uid);
       });
 }
 
@@ -156,6 +235,20 @@ class UnconfiguredAuthRepository implements AuthRepository {
     required String token,
   }) async =>
       _fail();
+  @override
+  Future<bool> signUpWithPassword({
+    required String email,
+    required String password,
+  }) async =>
+      _fail();
+  @override
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  }) async =>
+      _fail();
+  @override
+  Future<void> sendPasswordReset(String email) async => _fail();
   @override
   Future<void> signInWithGoogle() async => _fail();
   @override

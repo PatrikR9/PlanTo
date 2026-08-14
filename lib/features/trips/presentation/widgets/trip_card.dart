@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/design_system/components/components.dart';
+import '../../../../core/format/cs_format.dart';
 import '../../domain/trip.dart';
 
 class TripCard extends StatelessWidget {
@@ -21,6 +22,16 @@ class TripCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
+              // Ikona, ne vlastní oddíl v seznamu. Dva seznamy znamenají dvě
+              // prázdné obrazovky u někoho, kdo zatím používá jen jedno.
+              if (trip.isMeeting) ...<Widget>[
+                Icon(
+                  Icons.groups_outlined,
+                  size: 18,
+                  color: context.colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: Sp.xxs),
+              ],
               Expanded(
                 child: Text(
                   trip.title,
@@ -34,8 +45,12 @@ class TripCard extends StatelessWidget {
           ),
           const SizedBox(height: Sp.xxs),
           Text(
-            '${trip.originLabel} · '
-            '${fmt.format(trip.windowStart)} – ${fmt.format(trip.windowEnd)}',
+            <String>[
+              if (!trip.isMeeting && trip.originLabel.isNotEmpty)
+                trip.originLabel,
+              formatDuration(trip.durationMinutes),
+              '${fmt.format(trip.windowStart)} – ${fmt.format(trip.windowEnd)}',
+            ].join(' · '),
             style: context.texts.bodyMedium
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),

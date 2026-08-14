@@ -6,6 +6,10 @@ abstract interface class TripRepository {
   Future<List<Trip>> myTrips();
   Future<Trip> byId(String id);
   Future<String> create(NewTrip draft);
+
+  /// Patch, ne replace: mapa nese jen změněná pole. Klíč s null maže.
+  /// Prázdná mapa se nikam neposílá — viz [TripDraft.patchFrom].
+  Future<void> update(String id, Map<String, Object?> patch);
 }
 
 /// The creation payload, separate from [Trip] because a trip that does not
@@ -14,16 +18,15 @@ abstract interface class TripRepository {
 class NewTrip {
   const NewTrip({
     required this.title,
-    required this.originLabel,
-    required this.originLat,
-    required this.originLon,
-    this.originPlaceId,
     required this.windowStart,
     required this.windowEnd,
-    required this.durationDays,
+    required this.durationMinutes,
     required this.transport,
-    this.granularity = TripGranularity.day,
-    this.slotMinutes,
+    this.kind = TripKind.trip,
+    this.originLabel,
+    this.originLat,
+    this.originLon,
+    this.originPlaceId,
     this.slotStepMinutes = 30,
     this.dayStart = const Duration(hours: 7),
     this.dayEnd = const Duration(hours: 21),
@@ -34,11 +37,15 @@ class NewTrip {
     this.currency = 'CZK',
   });
 
+  final TripKind kind;
   final String title;
   final String? description;
-  final String originLabel;
-  final double originLat;
-  final double originLon;
+
+  /// Nullable od M13: setkání nemá odkud vyjet. U výletu je server odmítne
+  /// založit bez původu, takže tahle volnost nesahá na výlety.
+  final String? originLabel;
+  final double? originLat;
+  final double? originLon;
 
   /// Vybraná zastávka. Souřadnice se posílají i tak: server z nich založí
   /// výlet ve chvíli, kdy je databáze zastávek ještě prázdná, a bez toho by
@@ -46,12 +53,10 @@ class NewTrip {
   final String? originPlaceId;
   final DateTime windowStart;
   final DateTime windowEnd;
-  final int durationDays;
-  final TransportPref transport;
-  final TripGranularity granularity;
 
-  /// Required in [TripGranularity.time]; the server rejects a null.
-  final int? slotMinutes;
+  /// Jediné pole o délce. Granularitu i počet dní si server odvodí sám.
+  final int durationMinutes;
+  final TransportPref transport;
   final int slotStepMinutes;
   final Duration dayStart;
   final Duration dayEnd;

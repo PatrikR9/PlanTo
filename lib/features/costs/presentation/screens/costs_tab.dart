@@ -89,9 +89,7 @@ class _TotalCard extends StatelessWidget {
             Row(
               children: <Widget>[
                 Icon(
-                  overBudget
-                      ? Icons.error_outline
-                      : Icons.check_circle_outline,
+                  overBudget ? Icons.error_outline : Icons.check_circle_outline,
                   size: 18,
                   color: overBudget
                       ? context.colors.error
@@ -189,8 +187,7 @@ class _LineCard extends StatelessWidget {
     return switch (line.kind) {
       CostKind.transport => 'tam a zpět, odhad ze vzdálenosti',
       CostKind.entry => 'podle údaje u cíle',
-      CostKind.food =>
-        days > 1 ? 'průměr na den × $days dny' : 'průměr na den',
+      CostKind.food => days > 1 ? 'průměr na den × $days dny' : 'průměr na den',
       CostKind.accommodation => 'zatím to neumíme spočítat',
       CostKind.buffer => 'na to, co model nezná',
     };

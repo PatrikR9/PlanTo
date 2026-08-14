@@ -27,11 +27,14 @@ class SupabaseInviteRepository implements InviteRepository {
         final Map<String, dynamic> r = rows.first as Map<String, dynamic>;
         return InvitePreview(
           tripId: r['trip_id'] as String,
+          isMeeting: r['kind'] == 'meeting',
           title: r['title'] as String,
-          originLabel: r['origin_label'] as String,
+          // Null u setkání. Přetypování na String tu dřív spadlo dřív, než se
+          // stačila vykreslit jediná obrazovka, kterou vidí nepřihlášený.
+          originLabel: (r['origin_label'] as String?) ?? '',
           windowStart: DateTime.parse(r['window_start'] as String).toLocal(),
           windowEnd: DateTime.parse(r['window_end'] as String).toLocal(),
-          durationDays: (r['duration_days'] as int?) ?? 1,
+          durationMinutes: (r['duration_minutes'] as int?) ?? 1440,
           participantCount: (r['participant_count'] as int?) ?? 0,
           organiserName: (r['organiser_name'] as String?) ?? 'Organizátor',
           alreadyMember: (r['already_member'] as bool?) ?? false,

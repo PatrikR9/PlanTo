@@ -32,6 +32,7 @@ import io
 import json
 import os
 import sys
+import time
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -172,17 +173,46 @@ class FeedResult:
 # ---------------------------------------------------------------------------
 
 
-def download(url: str, dest: Path, skip: bool) -> Path:
+def download(url: str, dest: Path, skip: bool, attempts: int = 3) -> Path:
+    """Stáhne soubor a při přerušeném spojení to zkusí znovu.
+
+    `RemoteDisconnected: Remote end closed connection without response` je u
+    velkých souborů přes CDN běžné a většinou přechodné — server spojení
+    zahodí bez odpovědi, další pokus o pár vteřin později projde. Padat na
+    první pokus u čtyřicetimegabajtového zipu znamená, že se import nedotáhne
+    kvůli něčemu, co samo přejde.
+    """
     if skip and dest.exists() and dest.stat().st_size > 0:
         print(f"  cache  {dest.name} ({dest.stat().st_size / 1e6:.1f} MB)")
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"  stahuji {url}")
-    req = Request(url, headers={"User-Agent": "PlanTo transit import"})
+    # Prohlížečová hlavička: GitHub a některé CDN zahazují spojení od klientů,
+    # které nepoznají, a to bez jakékoli odpovědi — takže se to neprojeví jako
+    # 403, ale právě jako RemoteDisconnected.
+    req = Request(url, headers={
+        "User-Agent": (
+            "Mozilla/5.0 (compatible; PlanTo transit import; "
+            "+https://github.com/PatrikR9/PlanTo)"
+        ),
+        "Accept": "*/*",
+    })
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with urlopen(req, timeout=300) as resp, tmp.open("wb") as out:
-        while chunk := resp.read(1 << 20):
-            out.write(chunk)
+
+    for attempt in range(1, attempts + 1):
+        try:
+            with urlopen(req, timeout=300) as resp, tmp.open("wb") as out:
+                while chunk := resp.read(1 << 20):
+                    out.write(chunk)
+            break
+        except Exception as exc:  # noqa: BLE001 — na síti selže cokoli
+            tmp.unlink(missing_ok=True)
+            if attempt == attempts:
+                raise
+            wait = 2 ** attempt
+            print(f"  pokus {attempt}/{attempts} selhal ({exc}) — "
+                  f"zkouším za {wait} s")
+            time.sleep(wait)
     # Přejmenování až na konci: přerušené stahování nesmí příště projít jako
     # platná cache. Půlka zipu se pozná až při parsování a vypadá to jako
     # rozbitý feed na straně dopravce.
@@ -600,20 +630,54 @@ def main() -> int:
             raise SystemExit(
                 "psycopg není nainstalované:  pip install 'psycopg[binary]'"
             )
+
+        # Nezapomenutý zástupný text pozná psycopg taky, ale řekne to jako
+        # 'missing "=" after "<URI" in connection info string', což je
+        # pravdivé a k ničemu. Tady je vidět, co se stalo.
+        if not args.db.startswith(("postgres://", "postgresql://")):
+            raise SystemExit(
+                "--db nevypadá jako connection string:\n"
+                f"  {args.db!r}\n\n"
+                "Čeká se URI ve tvaru "
+                "postgresql://postgres.<ref>:<heslo>@<host>:5432/postgres\n"
+                "Najdeš ho v Supabase → Connect → Connection string → URI.\n"
+                "Pozor: obsahuje [YOUR-PASSWORD], které se musí nahradit "
+                "skutečným heslem k databázi."
+            )
+        if "[YOUR-PASSWORD]" in args.db or "<" in args.db:
+            raise SystemExit(
+                "V connection stringu zůstal zástupný text — nahraď ho "
+                "heslem k databázi (Supabase → Settings → Database)."
+            )
+
         conn = psycopg.connect(args.db)
 
+    # Jeden nedostupný feed nesmí shodit ostatní.
+    #
+    # Zdroje jsou tři cizí servery a jeden z nich je navíc mirror v cizím
+    # GitHub repozitáři. Že bude občas nedostupný, není výjimečný stav, ale
+    # normální provoz. Předchozí verze na tom padala tracebackem — a to i ve
+    # chvíli, kdy už měla PID i vlaky úspěšně zpracované, tedy dost dat na to,
+    # aby vyhledávání fungovalo. Částečný import je použitelný; žádný není.
     results: list[FeedResult] = []
+    failed: list[tuple[str, str]] = []
     for f in feeds:
         print(f"\n== {f['id']} ==")
-        archive = download(f["url"], args.cache / f"{f['id']}.zip",
-                           args.skip_download)
-        res = parse_gtfs(archive, f["id"], f.get("country", "CZ"))
-        if f.get("enrich_pid_stops"):
-            enrich_from_pid(res, f["enrich_pid_stops"],
-                            args.cache / f"{f['id']}_stops.json",
-                            args.skip_download)
-        dedupe(res)
-        validate(res)
+        try:
+            archive = download(f["url"], args.cache / f"{f['id']}.zip",
+                               args.skip_download)
+            res = parse_gtfs(archive, f["id"], f.get("country", "CZ"))
+            if f.get("enrich_pid_stops"):
+                enrich_from_pid(res, f["enrich_pid_stops"],
+                                args.cache / f"{f['id']}_stops.json",
+                                args.skip_download)
+            dedupe(res)
+            validate(res)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  PŘESKOČENO — {type(exc).__name__}: {exc}")
+            failed.append((f["id"], f"{type(exc).__name__}: {exc}"))
+            continue
+
         for reason, n in sorted(res.dropped.items()):
             if n:
                 print(f"  zahozeno {n}× — {reason}")
@@ -623,6 +687,12 @@ def main() -> int:
         else:
             load_into_db(conn, res)
         results.append(res)
+
+    if not results:
+        print("\nNepodařilo se zpracovat ani jeden feed.")
+        for fid, why in failed:
+            print(f"  {fid}: {why}")
+        return 1
 
     if conn is not None and not args.no_rebuild:
         print("\n== přepočet míst ==")
@@ -634,6 +704,17 @@ def main() -> int:
 
     total = sum(len(r.stops) for r in results)
     print(f"\nhotovo: {total} zastávek z {len(results)} feedů")
+
+    # Nenulový návratový kód i při částečném úspěchu: databáze je použitelná,
+    # ale neúplná, a to se v CI ani v terminálu nesmí ztratit mezi řádky.
+    if failed:
+        print("\nNedokončené feedy:")
+        for fid, why in failed:
+            print(f"  {fid}: {why}")
+        print("Data z nich chybí. Spusť import znovu, až budou dostupné —"
+              " je idempotentní.")
+        return 2
+
     return 0
 
 

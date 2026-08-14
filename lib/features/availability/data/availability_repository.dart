@@ -182,22 +182,21 @@ class SupabaseAvailabilityRepository implements AvailabilityRepository {
       });
 
   @override
-  Future<void> syncFeeds(String tripId, {String? url, String? label}) =>
-      guard(
+  Future<void> syncFeeds(String tripId, {String? url, String? label}) => guard(
         timeout: kSlowRequestTimeout,
         () async {
-        // invoke() throws FunctionException on a 4xx; error_mapper pulls the
-        // function's own sentence out of it. "Kalendář odpověděl 404" and
-        // "this feed was revoked" call for different reactions, so neither
-        // gets flattened into "something went wrong".
-        await _client.functions.invoke(
-          'ical-sync',
-          body: <String, dynamic>{
-            'trip_id': tripId,
-            if (url != null) 'url': url,
-            if (label != null) 'label': label,
-          },
-        );
+          // invoke() throws FunctionException on a 4xx; error_mapper pulls the
+          // function's own sentence out of it. "Kalendář odpověděl 404" and
+          // "this feed was revoked" call for different reactions, so neither
+          // gets flattened into "something went wrong".
+          await _client.functions.invoke(
+            'ical-sync',
+            body: <String, dynamic>{
+              'trip_id': tripId,
+              if (url != null) 'url': url,
+              if (label != null) 'label': label,
+            },
+          );
         },
       );
 

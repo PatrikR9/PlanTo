@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,44 @@ import '../../../../core/entitlement/capabilities.dart';
 import '../../domain/trip.dart';
 import '../controllers/trips_controller.dart';
 import '../widgets/trip_card.dart';
+
+/// Výlet, nebo setkání.
+///
+/// Sheet, ne dvě tlačítka: rozdíl mezi nimi se dá vysvětlit jednou větou a
+/// druhý FAB by ji neunesl. Kdo si vybere setkání, přeskočí tím pět polí.
+Future<void> _pickWhatToPlan(BuildContext context) async {
+  final String? route = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (BuildContext context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          ListTile(
+            leading: const Icon(Icons.hiking_outlined),
+            title: const Text('Výlet'),
+            subtitle: const Text('Termín, doprava, cena a co si sbalit'),
+            onTap: () => Navigator.of(context).pop(Routes.newTripName),
+          ),
+          ListTile(
+            leading: const Icon(Icons.groups_outlined),
+            title: const Text('Setkání'),
+            subtitle: const Text('Jen společný čas — nic víc se neřeší'),
+            onTap: () => Navigator.of(context).pop(Routes.newMeetingName),
+          ),
+          const SizedBox(height: Sp.sm),
+        ],
+      ),
+    ),
+  );
+
+  // pushNamed vrací future, která doběhne až tím, že se založená obrazovka
+  // zavře. Čekat na ni znamená držet tuhle funkci naživu po celou dobu
+  // zakládání výletu a k ničemu to není — sheet svou práci odvedl výběrem.
+  // Explicitní unawaited, ne zahozená hodnota: takhle je vidět, že to je
+  // rozhodnutí, a ne opomenutí.
+  if (route != null && context.mounted) unawaited(context.pushNamed(route));
+}
 
 class TripsListScreen extends ConsumerWidget {
   const TripsListScreen({super.key});
@@ -23,9 +63,9 @@ class TripsListScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Výlety')),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
-              onPressed: () => context.pushNamed(Routes.newTripName),
+              onPressed: () => _pickWhatToPlan(context),
               icon: const Icon(Icons.add),
-              label: const Text('Nový výlet'),
+              label: const Text('Naplánovat'),
             )
           : null,
       body: RefreshIndicator(
@@ -57,9 +97,7 @@ class TripsListScreen extends ConsumerWidget {
                     : (canCreate ? 'Naplánovat něco' : null),
                 onAction: isGuest
                     ? () => context.push(Routes.signIn)
-                    : (canCreate
-                        ? () => context.pushNamed(Routes.newTripName)
-                        : null),
+                    : (canCreate ? () => _pickWhatToPlan(context) : null),
               ),
             ],
           ),

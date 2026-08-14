@@ -15,6 +15,31 @@ abstract interface class AuthRepository {
   /// Exchanges the code for a session.
   Future<void> verifyEmailOtp({required String email, required String token});
 
+  /// Zakládá účet heslem.
+  ///
+  /// Vrací `true`, když je hotovo a člověk je přihlášený, a `false`, když
+  /// Supabase čeká na potvrzení e-mailu. O tom rozhoduje přepínač *Confirm
+  /// email* v dashboardu, ne tenhle kód — proto je to návratová hodnota a ne
+  /// konstanta. Dokud SMTP nefunguje, běží to s potvrzením vypnutým a projde
+  /// první větev; až bude fungovat, druhá. Aplikace se nemění.
+  Future<bool> signUpWithPassword({
+    required String email,
+    required String password,
+  });
+
+  /// Přihlašuje heslem. Pro člověka, který už účet má, je to jediný krok
+  /// a nepotřebuje k němu doručený e-mail.
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  });
+
+  /// Pošle odkaz na změnu zapomenutého hesla.
+  ///
+  /// Tohle e-mail potřebuje vždycky a nejde to obejít — bez doručení není jak
+  /// ověřit, že schránka patří tomu, kdo o reset žádá.
+  Future<void> sendPasswordReset(String email);
+
   /// Browser-based Google OAuth.
   Future<void> signInWithGoogle();
 

@@ -20,6 +20,10 @@ Failure mapError(Object error, [StackTrace? stackTrace]) {
     AuthApiException(code: 'over_email_send_rate_limit') ||
     AuthApiException(code: 'over_request_rate_limit') =>
       EmailRateLimitFailure(cause: error),
+    // 400 invalid_credentials. Zaslouží si vlastní větu: "přihlaste se znovu"
+    // je u špatného hesla rada, kterou nejde splnit.
+    AuthApiException(code: 'invalid_credentials') =>
+      InvalidCredentialsFailure(cause: error, stackTrace: stackTrace),
     AuthApiException(code: 'email_exists') =>
       EmailAlreadyRegisteredFailure(email: '', cause: error),
     AuthException() => AuthFailure(cause: error, stackTrace: stackTrace),

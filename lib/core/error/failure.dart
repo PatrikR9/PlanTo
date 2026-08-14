@@ -28,6 +28,9 @@ sealed class Failure implements Exception {
   String get userMessage => switch (this) {
         NetworkFailure() => 'Nejste připojeni k internetu.',
         AuthFailure() => 'Přihlaste se prosím znovu.',
+        InvalidCredentialsFailure() => 'E-mail nebo heslo nesedí. Pokud jste '
+            'se dřív přihlašovali odkazem z e-mailu, heslo zatím nemáte — '
+            'založte si účet.',
         EmailAlreadyRegisteredFailure() => 'Na tento e-mail už účet existuje.',
         EmailRateLimitFailure() => 'Odesílání e-mailů je dočasně vyčerpané. '
             'Zkuste to za hodinu, nebo pokračujte jako host.',
@@ -51,6 +54,21 @@ final class NetworkFailure extends Failure {
 
 final class AuthFailure extends Failure {
   const AuthFailure({super.cause, super.stackTrace});
+}
+
+/// E-mail nebo heslo nesedí.
+///
+/// Vlastní typ, protože „Přihlaste se prosím znovu" je tady rada, kterou nejde
+/// splnit: přihlásit se je právě to, o co se ten člověk pokouší. Věta musí
+/// pojmenovat, co je špatně, jinak uživatel opakuje totéž.
+///
+/// Má to i druhou, méně zřejmou příčinu, kterou si sami vyrábíme: účet
+/// založený přes magic link nebo jednorázový kód **žádné heslo nemá**, takže
+/// první pokus o přihlášení heslem selže úplně stejně jako překlep. Proto ta
+/// zmínka o založení účtu — pro půlku lidí, kteří tohle uvidí, je to ta
+/// správná cesta dál.
+final class InvalidCredentialsFailure extends Failure {
+  const InvalidCredentialsFailure({super.cause, super.stackTrace});
 }
 
 /// The mail provider refused to send — almost always the rate limit.

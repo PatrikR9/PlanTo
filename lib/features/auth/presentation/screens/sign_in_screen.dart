@@ -25,16 +25,36 @@ class SignInScreen extends ConsumerStatefulWidget {
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
   final TextEditingController _email = TextEditingController();
+  final TextEditingController _password = TextEditingController();
   bool _emailValid = false;
+
+  /// Zakládá se účet, nebo se přihlašuje?
+  ///
+  /// Výchozí je přihlášení, protože k němu dojde mnohonásobně častěji —
+  /// účet si člověk založí jednou a přihlašuje se pak pořád.
+  bool _signUp = false;
+  bool _obscure = true;
 
   /// Set once the mail is away. Drives the confirmation panel below, which
   /// replaces the form rather than pushing a route — the user has nothing to
   /// do here but read one sentence and go to their inbox.
   String? _sentTo;
 
+  /// Účet je založený, ale čeká na potvrzení schránky. Jiný stav než [_sentTo]
+  /// a musí to říct jinak: heslo si člověk právě zvolil a příště už ho použije.
+  bool _awaitingConfirmation = false;
+
+  /// Supabase vyžaduje šest znaků. Kontroluje se tady, aby se za chybu
+  /// nemuselo chodit na server a zpátky.
+  static const int _minPasswordLength = 6;
+
+  bool get _canSubmitPassword =>
+      _emailValid && _password.text.length >= _minPasswordLength;
+
   @override
   void dispose() {
     _email.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -98,6 +118,37 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
   }
 
+  Future<void> _submitPassword() async {
+    final SignInController c = ref.read(signInControllerProvider.notifier);
+    final String address = _email.text.trim();
+    setState(() {
+      _error = null;
+      _emailTaken = false;
+      _awaitingConfirmation = false;
+    });
+
+    if (_signUp) {
+      final bool? signedIn = await c.signUp(
+        email: address,
+        password: _password.text,
+      );
+      if (!mounted || signedIn == null) return;
+      if (signedIn) {
+        context.go(widget.from ?? Routes.trips);
+      } else {
+        // Potvrzování je zapnuté. Účet existuje a heslo platí, jen se čeká na
+        // schránku — a to je něco jiného než chyba, takže to nesmí skončit
+        // v červeném pruhu.
+        setState(() => _awaitingConfirmation = true);
+      }
+      return;
+    }
+
+    final bool ok = await c.signIn(email: address, password: _password.text);
+    if (!mounted || !ok) return;
+    context.go(widget.from ?? Routes.trips);
+  }
+
   /// Guests are signed in, so the router's "signed in → leave /auth" rule
   /// deliberately skips them (they must be able to reach this screen to
   /// upgrade). That means nothing moves them off it either, so the successful
@@ -123,6 +174,58 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         setState(() => _error = null);
       }
     });
+
+    // Účet je hotový, čeká se jen na potvrzení schránky. Vlastní panel, ne
+    // chybová hláška: nic se nepokazilo a člověk už si heslo zvolil, takže
+    // příště se přihlásí rovnou a tenhle krok se nikdy neopakuje.
+    if (_awaitingConfirmation) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () => setState(() => _awaitingConfirmation = false),
+          ),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(Sp.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(
+                  Icons.mark_email_read_outlined,
+                  size: 48,
+                  color: context.colors.primary,
+                ),
+                const SizedBox(height: Sp.md),
+                Text(
+                  'Účet je založený',
+                  style: context.texts.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: Sp.xs),
+                Text(
+                  'Poslali jsme potvrzovací e-mail na ${_email.text.trim()}. '
+                  'Po potvrzení se přihlásíte heslem, které jste si právě '
+                  'zvolili.',
+                  textAlign: TextAlign.center,
+                  style: context.texts.bodyMedium
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                ),
+                const SizedBox(height: Sp.lg),
+                PtButton(
+                  label: 'Přihlásit se',
+                  expand: true,
+                  onPressed: () => setState(() {
+                    _awaitingConfirmation = false;
+                    _signUp = false;
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     if (_sentTo != null) {
       return Scaffold(
@@ -250,11 +353,28 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                                 ),
                               ),
                               const SizedBox(height: Sp.xs),
+                              // Heslem, ne odkazem. Odkaz i jednorázový kód
+                              // potřebují doručený e-mail; heslo ne, a člověk
+                              // ho tu má rovnou pod rukou.
                               PtButton(
-                                label: 'Přihlásit se do existujícího účtu',
+                                label: 'Přihlásit se heslem',
                                 variant: PtButtonVariant.tonal,
-                                onPressed: busy ? null : _switchAccount,
+                                onPressed: busy
+                                    ? null
+                                    : () => setState(() {
+                                          _signUp = false;
+                                          _emailTaken = false;
+                                          _error = null;
+                                        }),
                               ),
+                              if (Env.emailUsesOtpCode) ...<Widget>[
+                                const SizedBox(height: Sp.xxs),
+                                PtButton(
+                                  label: 'Poslat kód na e-mail',
+                                  variant: PtButtonVariant.text,
+                                  onPressed: busy ? null : _switchAccount,
+                                ),
+                              ],
                             ],
                           ],
                         ),
@@ -322,16 +442,82 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
                 onChanged: (String v) =>
                     setState(() => _emailValid = isPlausibleEmail(v)),
-                onSubmitted: (_) => _emailValid ? _sendCode() : null,
+                onSubmitted: (_) =>
+                    _canSubmitPassword ? _submitPassword() : null,
+              ),
+              const SizedBox(height: Sp.sm),
+
+              TextField(
+                controller: _password,
+                obscureText: _obscure,
+                enabled: !busy,
+                textInputAction: TextInputAction.done,
+                // Registrace nabídne uložení nového hesla, přihlášení nabídne
+                // to uložené. Jeden špatný hint znamená, že správce hesel
+                // mlčí právě tam, kde má pomoct.
+                autofillHints: <String>[
+                  _signUp ? AutofillHints.newPassword : AutofillHints.password,
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Heslo',
+                  helperText: _signUp ? 'Aspoň 6 znaků' : null,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    tooltip: _obscure ? 'Zobrazit heslo' : 'Skrýt heslo',
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) =>
+                    _canSubmitPassword ? _submitPassword() : null,
               ),
               const SizedBox(height: Sp.sm),
               PtButton(
-                label: Env.emailUsesOtpCode ? 'Poslat kód' : 'Poslat odkaz',
-                variant: PtButtonVariant.tonal,
+                label: _signUp ? 'Založit účet' : 'Přihlásit se',
                 expand: true,
                 isLoading: busy,
-                onPressed: _emailValid ? _sendCode : null,
+                onPressed: _canSubmitPassword ? _submitPassword : null,
               ),
+              const SizedBox(height: Sp.xxs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  PtButton(
+                    label: _signUp ? 'Už mám účet' : 'Založit účet',
+                    variant: PtButtonVariant.text,
+                    onPressed:
+                        busy ? null : () => setState(() => _signUp = !_signUp),
+                  ),
+                  // "Zapomenuté heslo" tu zatím není schválně.
+                  //
+                  // resetPasswordForEmail() se odeslat dá, ale obrazovka pro
+                  // zadání nového hesla neexistuje — v routeru není recovery
+                  // cesta. Odkaz by člověka dovedl na stránku, kde si heslo
+                  // nastavit nemůže, a to je horší než tlačítko, které tam
+                  // není: slíbí cestu ven a nechá ho v pasti.
+                  //
+                  // Než vznikne, řeší se reset v dashboardu. Uživatelů je
+                  // zatím jednotky, tak ať to hlavně nelže.
+                ],
+              ),
+
+              // Jednorázový kód zůstává jako druhá cesta, ne jako hlavní.
+              // Přihlášení heslem nepotřebuje doručený e-mail, takže funguje
+              // i ve chvíli, kdy je odesílání rozbité — a přesně tahle chvíle
+              // byla důvod, proč vzniklo.
+              if (Env.emailUsesOtpCode) ...<Widget>[
+                const SizedBox(height: Sp.xs),
+                PtButton(
+                  label: 'Poslat mi radši kód',
+                  variant: PtButtonVariant.text,
+                  expand: true,
+                  onPressed: busy || !_emailValid ? null : _sendCode,
+                ),
+              ],
 
               const SizedBox(height: Sp.lg),
               if (!isGuest)

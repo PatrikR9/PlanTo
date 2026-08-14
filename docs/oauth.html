@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Připojuji kalendář — PlanTo</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { color-scheme: dark; --bg:#0B0D10; --fg:#E7E9EA; --muted:#9BA3AA;
+          --brand:#2DD4BF; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center;
+         background:var(--bg); color:var(--fg); padding:24px; text-align:center;
+         font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .spin { width:28px; height:28px; margin:0 auto 16px; border-radius:50%;
+          border:3px solid #FFFFFF29; border-top-color:var(--brand);
+          animation:spin .9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  a { color:var(--brand); }
+  .muted { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div>
+  <div class="spin" id="spin"></div>
+  <p id="msg">Vracíme vás zpátky…</p>
+  <p class="muted" id="hint"></p>
+</div>
+
+<script>
+// Návratová adresa pro Google OAuth.
+//
+// Proč jedna statická stránka místo dvou nativních přesměrování: Google
+// nepovoluje vlastní schéma (app.planto://) u klienta typu „Web application",
+// a ten typ potřebujeme, protože jen on má client_secret — bez kterého by
+// výměna kódu musela proběhnout v klientovi. Jeden klient, jedna povolená
+// redirect URI, a rozcestník je tahle stránka.
+//
+// Kód se tu NEVYMĚŇUJE. Putuje dál do aplikace a odtud do Edge Function
+// google-calendar, kde je client_secret. Sem se nikdy nedostane.
+
+const params = new URLSearchParams(location.search);
+const code = params.get("code");
+const rawState = params.get("state") || "";
+const error = params.get("error");
+
+const $ = (id) => document.getElementById(id);
+
+function stop(msg, hint) {
+  $("spin").style.display = "none";
+  $("msg").textContent = msg;
+  $("hint").textContent = hint || "";
+}
+
+// state nese platformu a výlet, aby se stránka měla podle čeho rozhodnout.
+// Base64url, protože se to veze v URL.
+function readState(s) {
+  try {
+    const json = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+const state = readState(rawState);
+
+// Kde leží webová aplikace. Odvozené, ne natvrdo, aby to přežilo přechod na
+// vlastní doménu bez editace tohohle souboru.
+const APP_BASE = location.pathname.replace(/oauth\.html$/, "");
+
+if (error) {
+  // Uživatel klepl na „Zrušit". Není to chyba, je to odpověď.
+  stop(
+    error === "access_denied"
+      ? "Připojení jste zrušili."
+      : "Google připojení odmítl.",
+    "Můžete okno zavřít a zkusit to znovu, nebo dostupnost zadat ručně."
+  );
+} else if (!code || !state) {
+  stop("Chybí návratový kód.", "Zkuste připojení spustit znovu z aplikace.");
+} else {
+  const target = state.p === "app"
+    // Android: chytí to intent filter na app.planto. Když aplikace mezitím
+    // zmizela, nestane se nic a zůstane vidět odkaz níž.
+    ? "app.planto://calendar-callback?code=" + encodeURIComponent(code) +
+      "&trip=" + encodeURIComponent(state.t || "")
+    // Web: zpátky do Flutteru přes hash routu.
+    : APP_BASE + "#/calendar-callback?code=" + encodeURIComponent(code) +
+      "&trip=" + encodeURIComponent(state.t || "");
+
+  location.replace(target);
+
+  // Když se přesměrování nechytí — typicky když aplikace není nainstalovaná —
+  // ať tu nezůstane věčně točící kolečko bez cesty ven.
+  setTimeout(function () {
+    $("spin").style.display = "none";
+    $("msg").innerHTML =
+      '<a href="' + target.replace(/"/g, "&quot;") + '">Pokračovat do PlanTo</a>';
+    $("hint").textContent = "Pokud se nic nestalo, klepněte na odkaz.";
+  }, 2500);
+}
+</script>
+</body>
+</html>

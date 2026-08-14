@@ -28,6 +28,38 @@ class SignInController extends AsyncNotifier<void> {
     return !state.hasError;
   }
 
+  /// Vrací `true` = hotovo a přihlášeno, `false` = čeká se na potvrzení
+  /// e-mailu. Null znamená, že to spadlo — chybu si obrazovka přečte ze
+  /// `state`, stejně jako u všeho ostatního.
+  Future<bool?> signUp({
+    required String email,
+    required String password,
+  }) async {
+    state = const AsyncLoading<void>();
+    bool? signedIn;
+    state = await AsyncValue.guard(() async {
+      signedIn = await _repo.signUpWithPassword(
+        email: email,
+        password: password,
+      );
+    });
+    return state.hasError ? null : signedIn;
+  }
+
+  Future<bool> signIn({required String email, required String password}) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard(
+      () => _repo.signInWithPassword(email: email, password: password),
+    );
+    return !state.hasError;
+  }
+
+  Future<bool> resetPassword(String email) async {
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard(() => _repo.sendPasswordReset(email));
+    return !state.hasError;
+  }
+
   Future<bool> google() async {
     state = const AsyncLoading<void>();
     state = await AsyncValue.guard(_repo.signInWithGoogle);

@@ -73,6 +73,36 @@ abstract final class Env {
   /// than shown and broken — a dead button costs more trust than a missing one.
   static const bool googleEnabled = bool.fromEnvironment('GOOGLE_SIGN_IN');
 
+  /// OAuth client for reading calendar availability from Google.
+  ///
+  /// Public by design — it travels in the authorisation URL, which is why it
+  /// can live in the app at all. The matching secret exists only as an Edge
+  /// Function secret; the client never sees it and never exchanges the code
+  /// itself.
+  ///
+  /// Same rule as [googleEnabled]: an empty value hides the button. The one
+  /// thing worse than a missing way to connect a calendar is one that opens
+  /// a Google error page.
+  static const String googleCalendarClientId =
+      String.fromEnvironment('GOOGLE_CALENDAR_CLIENT_ID');
+
+  static bool get googleCalendarEnabled =>
+      googleCalendarClientId.trim().isNotEmpty;
+
+  /// Where Google sends the browser back. A static page next to the invite
+  /// landing page, not a route in the app: Google rejects custom schemes for
+  /// a Web-application client, and that client type is the only one with a
+  /// secret. The page forwards the code onwards — see docs/oauth.html.
+  ///
+  /// Derived from [inviteBase] so the two can never drift apart: both live on
+  /// the same host, and moving to planto.app changes one define, not two.
+  static String get oauthRedirectUri {
+    final String base = inviteBase.endsWith('/i')
+        ? inviteBase.substring(0, inviteBase.length - 2)
+        : '$inviteBase/';
+    return '${base}oauth.html';
+  }
+
   /// Supabase free-tier projects on the built-in mailer cannot edit their auth
   /// templates (since 3 June 2026), so the email contains a magic LINK, not a
   /// 6-digit code. Flip this to true via --dart-define once custom SMTP is

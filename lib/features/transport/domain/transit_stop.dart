@@ -112,8 +112,7 @@ class TransitStop {
       );
 
   @override
-  bool operator ==(Object other) =>
-      other is TransitStop && other.id == id;
+  bool operator ==(Object other) => other is TransitStop && other.id == id;
 
   @override
   int get hashCode => id.hashCode;

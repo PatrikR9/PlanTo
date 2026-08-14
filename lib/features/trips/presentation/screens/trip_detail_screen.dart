@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
+import '../../../../core/format/cs_format.dart';
 import '../../../costs/presentation/screens/costs_tab.dart';
 import '../../../dates/presentation/screens/dates_tab.dart';
 import '../../../invites/presentation/screens/share_invite_sheet.dart';
@@ -31,7 +32,7 @@ class TripDetailScreen extends ConsumerStatefulWidget {
 
 class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     with SingleTickerProviderStateMixin {
-  static const List<({String key, String label})> _tabs =
+  static const List<({String key, String label})> _tripTabs =
       <({String key, String label})>[
     (key: 'overview', label: 'Přehled'),
     (key: 'dates', label: 'Termíny'),
@@ -41,58 +42,95 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     (key: 'chat', label: 'Chat'),
   ];
 
-  late final TabController _controller = TabController(
-    length: _tabs.length,
-    vsync: this,
-    initialIndex: _tabs
-        .indexWhere((({String key, String label}) t) => t.key == widget.tab)
-        .clamp(0, _tabs.length - 1),
-  );
+  /// Setkání nemá kam jet, takže Plán, Náklady ani Sbalit nemají co ukázat.
+  /// Prázdné záložky jsou horší než žádné: vypadají jako rozbitá aplikace.
+  static const List<({String key, String label})> _meetingTabs =
+      <({String key, String label})>[
+    (key: 'overview', label: 'Přehled'),
+    (key: 'dates', label: 'Termíny'),
+    (key: 'chat', label: 'Chat'),
+  ];
+
+  /// Počet záložek musí být znám dřív, než dorazí výlet, protože
+  /// [TabController] se nedá založit podruhé. Meeting se pozná z cesty, kterou
+  /// se sem přišlo, ne z dat — dokud se načítají, ukáže se plný pruh.
+  TabController? _controller;
+  List<({String key, String label})> _tabs = _tripTabs;
+
+  void _ensureController(Trip trip) {
+    final List<({String key, String label})> wanted =
+        trip.isMeeting ? _meetingTabs : _tripTabs;
+    if (_controller != null && wanted.length == _tabs.length) return;
+
+    _controller?.dispose();
+    _tabs = wanted;
+    _controller = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: _tabs
+          .indexWhere((({String key, String label}) t) => t.key == widget.tab)
+          .clamp(0, _tabs.length - 1),
+    );
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final AsyncValue<Trip> trip = ref.watch(tripProvider(widget.tripId));
+    final Trip? t = trip.valueOrNull;
+    if (t != null) _ensureController(t);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(trip.valueOrNull?.title ?? 'Výlet'),
+        title: Text(t?.title ?? 'Výlet'),
         actions: <Widget>[
+          // Editace jen organizátorovi. Server ji stejně odmítne, ale tlačítko,
+          // které vždycky spadne na 42501, je horší než žádné.
+          if (t?.isOrganiser ?? false)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Upravit',
+              onPressed: () => context.push(Routes.editTrip(widget.tripId)),
+            ),
           IconButton(
             icon: const Icon(Icons.person_add_alt),
             tooltip: 'Pozvat',
             onPressed: () => ShareInviteSheet.show(context, widget.tripId),
           ),
         ],
-        bottom: TabBar(
-          controller: _controller,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: <Widget>[
-            for (final ({String key, String label}) t in _tabs)
-              Tab(text: t.label),
-          ],
-        ),
+        bottom: _controller == null
+            ? null
+            : TabBar(
+                controller: _controller,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: <Widget>[
+                  for (final ({String key, String label}) tab in _tabs)
+                    Tab(text: tab.label),
+                ],
+              ),
       ),
       body: AsyncValueView<Trip>(
         value: trip,
         onRetry: () => ref.invalidate(tripProvider(widget.tripId)),
-        data: (Trip t) => TabBarView(
+        data: (Trip trip) => TabBarView(
           controller: _controller,
           children: <Widget>[
-            _Overview(trip: t),
-            DatesTab(trip: t),
-            PlanTab(trip: t),
-            CostsTab(trip: t),
-            PackingTab(trip: t),
+            _Overview(trip: trip),
+            DatesTab(trip: trip),
+            if (!trip.isMeeting) ...<Widget>[
+              PlanTab(trip: trip),
+              CostsTab(trip: trip),
+              PackingTab(trip: trip),
+            ],
             // Chat je M10. Zbytek seznamu, ne pevná čísla — přidání záložky
             // je pak jeden řádek nahoře a nic tady.
-            for (int i = 5; i < _tabs.length; i++)
+            for (int i = trip.isMeeting ? 2 : 5; i < _tabs.length; i++)
               Center(child: Text('${_tabs[i].label} — brzy')),
           ],
         ),
@@ -125,8 +163,13 @@ class _Overview extends ConsumerWidget {
                 style: context.texts.bodyLarge,
               ),
               const SizedBox(height: Sp.sm),
+              // Délka byla dřív jen v zakládacím formuláři, kam se člověk už
+              // nedostal. Přitom je to údaj, podle kterého se hledají termíny.
               Text(
-                'Odjezd z ${trip.originLabel}',
+                trip.isMeeting
+                    ? 'Potrvá ${formatDuration(trip.durationMinutes)}'
+                    : 'Na ${formatDuration(trip.durationMinutes)} '
+                        '· odjezd z ${trip.originLabel}',
                 style: context.texts.bodyMedium,
               ),
             ],

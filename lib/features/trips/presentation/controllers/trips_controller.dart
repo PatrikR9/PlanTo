@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/trip_repository_impl.dart';
 import '../../domain/trip.dart';
 import '../../domain/trip_repository.dart';
+import 'trip_invalidation.dart';
 
 final FutureProvider<List<Trip>> myTripsProvider =
     FutureProvider<List<Trip>>((Ref ref) {
@@ -39,3 +40,31 @@ class CreateTripController extends AsyncNotifier<void> {
 final AsyncNotifierProvider<CreateTripController, void>
     createTripControllerProvider =
     AsyncNotifierProvider<CreateTripController, void>(CreateTripController.new);
+
+/// Owns editing.
+///
+/// Zneplatňuje víc providerů než by se zdálo nutné, a je to schválně: plán,
+/// náklady i balení jsou čtecí funkce nad výletem, takže po změně délky nebo
+/// aktivit jsou všechny tři zastaralé najednou. Nechat je viset by ukázalo
+/// pláštěnku na den, na který se už nejede.
+class UpdateTripController extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  Future<bool> submit(String tripId, Map<String, Object?> patch) async {
+    if (patch.isEmpty) return true;
+
+    state = const AsyncLoading<void>();
+    state = await AsyncValue.guard(() async {
+      await ref.read(tripRepositoryProvider).update(tripId, patch);
+      invalidateTripDerived(ref, tripId);
+    });
+    return !state.hasError;
+  }
+}
+
+final AsyncNotifierProvider<UpdateTripController, void>
+    updateTripControllerProvider =
+    AsyncNotifierProvider<UpdateTripController, void>(
+  UpdateTripController.new,
+);

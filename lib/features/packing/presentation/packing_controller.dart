@@ -47,8 +47,10 @@ class PackingController extends FamilyAsyncNotifier<List<PackingItem>, String> {
 }
 
 final AsyncNotifierProviderFamily<PackingController, List<PackingItem>, String>
-    packingControllerProvider = AsyncNotifierProvider.family<PackingController,
-        List<PackingItem>, String>(PackingController.new);
+    packingControllerProvider =
+    AsyncNotifierProvider.family<PackingController, List<PackingItem>, String>(
+  PackingController.new,
+);
 
 /// Last write failure, consumed and cleared by the screen.
 final StateProvider<Object?> packingErrorProvider =

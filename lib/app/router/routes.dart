@@ -12,6 +12,19 @@ abstract final class Routes {
   static const String newTrip = '/trips/new';
   static const String newTripName = 'newTrip';
 
+  /// Setkání vzniká stejnou obrazovkou, jen s jiným druhem. Vlastní cesta,
+  /// ne query param: je to jiná věc, kterou uživatel zakládá, a odkaz na ni
+  /// má jít poslat.
+  static const String newMeeting = '/trips/new-meeting';
+  static const String newMeetingName = 'newMeeting';
+
+  static const String editTripName = 'editTrip';
+
+  /// Návrat z obrazovky souhlasu Googlu. Mimo shell a mimo výlet: na webu je
+  /// to nová instance aplikace, která o rozdělané akci ví jen z URL.
+  static const String calendarCallback = '/calendar-callback';
+  static const String calendarCallbackName = 'calendarCallback';
+
   static const String discover = '/discover';
   static const String discoverName = 'discover';
 
@@ -31,4 +44,6 @@ abstract final class Routes {
       '$trips/$tripId?tab=$tab';
 
   static String availability(String tripId) => '$trips/$tripId/availability';
+
+  static String editTrip(String tripId) => '$trips/$tripId/edit';
 }

@@ -12,23 +12,34 @@ enum TripStatus { draft, planning, dateLocked, confirmed, completed, cancelled }
 
 enum TransportPref { public, car, either }
 
+/// Co se vlastně plánuje.
+///
+/// Setkání je výlet, kterému chybí místo: stejné pozvánky, stejné sdílení
+/// kalendáře, stejný solver i hlasování, ale bez cíle, dopravy, počasí,
+/// nákladů a balení. Vlastní tabulka by tohle všechno zduplikovala.
+enum TripKind {
+  trip('trip'),
+  meeting('meeting');
+
+  const TripKind(this.wire);
+
+  final String wire;
+
+  static TripKind fromWire(String? v) =>
+      v == 'meeting' ? TripKind.meeting : TripKind.trip;
+}
+
 /// How the trip is planned.
 ///
 /// The day solver answers "which date suits everyone", which is right for a
 /// weekend away and wrong for "kino ve čtvrtek" — for a two-hour thing the
 /// answer is a start time, not a date. Both produce the same shape of
 /// candidate ([start, end)), so everything downstream is shared.
-enum TripGranularity {
-  day('day'),
-  time('time');
-
-  const TripGranularity(this.wire);
-
-  final String wire;
-
-  static TripGranularity fromWire(String? v) =>
-      v == 'time' ? TripGranularity.time : TripGranularity.day;
-}
+///
+/// Od M13 se nevybírá, odvozuje se z délky. Volba „celý den vs. pár hodin" je
+/// otázka na implementaci, ne na záměr: kdo řekne „na tři hodiny", už tím
+/// odpověděl.
+enum TripGranularity { day, time }
 
 /// Minutes between proposed start times, in [TripGranularity.time].
 ///
@@ -36,9 +47,19 @@ enum TripGranularity {
 /// trade-off, so it is the user's to make.
 const List<int> kSlotSteps = <int>[15, 30, 45, 60];
 
-/// Offered activity lengths, in minutes. Anything longer is a day trip and
-/// should be planned as one.
-const List<int> kSlotLengths = <int>[30, 45, 60, 90, 120, 180, 240, 360];
+/// Hranice, pod kterou se hledá konkrétní čas a nad kterou celé dny. Je to
+/// tentýž práh, jaký má trigger `trips_derive_duration()` v databázi — kdyby
+/// se ta dvě čísla rozešla, klient by nabízel jiná pole, než jaká server
+/// použije.
+const int kDayMinutes = 1440;
+
+/// Nejkratší a nejdelší výlet. Mirror `trips_duration_minutes_range`.
+const int kMinDurationMinutes = 15;
+const int kMaxDurationMinutes = 30 * kDayMinutes;
+
+/// Nejdelší okno, ve kterém se dá hledat po slotech. Time mód vyrábí řádek na
+/// (den × slot × účastník), takže rok při kroku 15 minut je 35 000 slotů.
+const int kMaxTimeModeWindowDays = 42;
 
 @immutable
 class Trip {
@@ -51,7 +72,7 @@ class Trip {
     required this.originLon,
     required this.windowStart,
     required this.windowEnd,
-    required this.durationDays,
+    required this.durationMinutes,
     required this.transport,
     required this.currency,
     required this.activityTags,
@@ -59,11 +80,10 @@ class Trip {
     required this.calendarSharedCount,
     required this.createdBy,
     required this.isOrganiser,
-    required this.granularity,
     required this.slotStepMinutes,
     required this.dayStart,
     required this.dayEnd,
-    this.slotMinutes,
+    this.kind = TripKind.trip,
     this.description,
     this.budgetPerPerson,
     this.earliestWake,
@@ -78,9 +98,14 @@ class Trip {
   });
 
   final String id;
+  final TripKind kind;
   final String title;
   final String? description;
   final TripStatus status;
+
+  /// Prázdný u setkání — to nemá odkud vyjet. Server to drží checkem
+  /// `trips_origin_required_for_trip`, ne nullable sloupcem, protože u výletu
+  /// je původ pořád povinný.
   final String originLabel;
 
   /// Kde se opravdu nastupuje. Od M7 to je konkrétní zastávka, ne střed
@@ -95,7 +120,12 @@ class Trip {
 
   final DateTime windowStart;
   final DateTime windowEnd;
-  final int durationDays;
+
+  /// Jak dlouho výlet trvá. Od M13 jediný zdroj pravdy o délce — [durationDays],
+  /// [granularity] i [slotMinutes] se z něj odvozují stejným pravidlem, jaké má
+  /// trigger v databázi.
+  final int durationMinutes;
+
   final TransportPref transport;
   final double? budgetPerPerson;
   final String currency;
@@ -115,11 +145,6 @@ class Trip {
 
   final int participantCount;
 
-  final TripGranularity granularity;
-
-  /// How long the activity lasts. Null in day mode, where [durationDays] says
-  /// it instead.
-  final int? slotMinutes;
   final int slotStepMinutes;
 
   /// The usable part of a day. A board-game evening needs the window to reach
@@ -149,9 +174,30 @@ class Trip {
   /// the off-by-one impossible to miss at the call site.
   final DateTime? lockedEnd;
 
+  // --- odvozené z délky ------------------------------------------------------
+  // Počítá se tady, ne v repository, aby to bylo jedno pravidlo místo dvou.
+  // Server má tutéž trojici v triggeru; kdyby se rozešly, uživatel by viděl
+  // jiný počet dní, než na jaký se plánuje.
+
+  /// Kolik kalendářních dnů výlet zabere. `ceil`, ne zaokrouhlení: čtyřicet
+  /// hodin jsou dva dny, ne den a půl.
+  int get durationDays => (durationMinutes + kDayMinutes - 1) ~/ kDayMinutes;
+
+  TripGranularity get granularity => durationMinutes < kDayMinutes
+      ? TripGranularity.time
+      : TripGranularity.day;
+
+  /// Délka slotu. Null v denním módu, kde ji nemá co znamenat.
+  int? get slotMinutes => isTimed ? durationMinutes : null;
+
   bool get isTimed => granularity == TripGranularity.time;
+  bool get isMeeting => kind == TripKind.meeting;
   bool get isDateLocked => lockedStart != null;
 
+  Duration get duration => Duration(minutes: durationMinutes);
+
+  /// Fallback zůstává, aby žádná obrazovka nemusela null-checkovat délku,
+  /// kterou stejně nikdy nezobrazí.
   Duration get slotDuration => Duration(minutes: slotMinutes ?? 120);
 
   bool get isDestinationDecided =>

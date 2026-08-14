@@ -1,4 +1,83 @@
-# Přihlášení kódem místo odkazem
+# Přihlášení
+
+> **Rozhodnutí z 9. srpna 2026: PlanTo zatím jede bez odesílání e-mailů.**
+>
+> Brevo se nepodařilo napojit. Supabase hlásilo 504 na každé cestě, která
+> odesílá mail, v Brevu nebyl jediný záznam o pokusu o spojení, a `Send-Mail‑
+> Message` přímo z počítače selhalo taky. To poslední je důležité: **vyloučilo
+> to Supabase.** Chyba není v konfiguraci projektu, ale někde mezi účtem u
+> Brevo a jeho SMTP branou.
+>
+> Místo dalšího hádání se přihlašování postavilo tak, aby e-mail nepotřebovalo.
+> Není to provizorium — je to funkční stav, se kterým se dá jít i k testerům.
+
+## Co funguje bez e-mailu
+
+| | |
+|---|---|
+| Registrace heslem | ano, `Confirm email` musí být **OFF** |
+| Přihlášení heslem | ano, nikdy mail nepotřebovalo |
+| Pokračovat jako host | ano |
+| Pozvánky do výletu | ano — jsou to odkazy do chatu, ne maily |
+| Sdílení kalendáře, termíny, plán, náklady, balení | ano |
+
+## Co nefunguje a proč to zatím nevadí
+
+**Zapomenuté heslo.** Tlačítko je z obrazovky pryč (chybí i obrazovka pro
+zadání nového hesla). Řeší se v dashboardu: Authentication → Users. Při počtu
+uživatelů v jednotkách je to minuta práce, u dvanácti testerů únosné, u
+veřejného vydání ne.
+
+**Potvrzení schránky.** Nikdo neověří, že adresa patří tomu, kdo ji zadal.
+Pro uzavřené testování je to jedno. Před veřejným spuštěním ne — kdokoli by si
+mohl založit účet na cizí adresu.
+
+**Upozornění a připomínky** (M10) budou chtít push, ne mail, takže je to
+neblokuje.
+
+## Kdy se k tomu vrátit
+
+Nejpozději před otevřením closed testu na Play, protože tam už uživatel
+zapomenuté heslo nemá kde řešit.
+
+Až na to dojde, nejlevnější cesta není nový účet u další služby, ale **SMTP
+Gmailu s heslem aplikace** — `smtp.gmail.com:587`, jméno je tvoje adresa,
+heslo je vygenerované *app password* (vyžaduje zapnuté dvoufázové ověření).
+Limit 500 zpráv denně je na testování řádově dost a odpadá celé ověřování
+odesílatele, se kterým jsme se u Brevo prali.
+
+---
+
+## Až e-mail pojede
+
+**Hlavní cesta je e-mail a heslo.** Registrace jednou, potvrzení schránky,
+a od té chvíle stačí heslo — bez doručeného e-mailu, bez deep linku.
+
+Proč to tak dopadlo: odkaz i jednorázový kód potřebují, aby mail dorazil, a
+odkaz navíc musí trefit zpátky do té konkrétní instalace aplikace. Heslo
+nepotřebuje ani jedno. Když SMTP hodilo 504, přihlášení heslem fungovalo dál.
+
+## Co se s potvrzováním děje
+
+`signUp` posílá **potvrzovací e-mail bez `emailRedirectTo`**, takže odkaz míří
+na Site URL — obyčejnou webovou adresu. Je to schválně: ten odkaz nemá co
+vracet do aplikace, jeho jediná práce je označit schránku za ověřenou. Dovnitř
+se člověk dostane heslem, které už má. Kliknout na něj tedy jde i na počítači.
+
+Tím z přihlášení mizí App Links, `assetlinks.json` i Redirect URLs.
+
+Šablona, která se na tohle používá, je **Confirm signup**, ne *Magic Link* —
+to jsou dvě různé šablony a změna jedné se do druhé nepromítne.
+
+## Co ještě chybí
+
+**Zapomenuté heslo.** Odeslat se dá, ale obrazovka pro zadání nového hesla
+neexistuje — v routeru není recovery cesta. Tlačítko je proto zatím schválně
+pryč; než vznikne, řeší se reset v dashboardu (Authentication → Users).
+
+---
+
+# Dodatek: přihlášení kódem místo odkazem
 
 Cíl: e-mail s **šestimístným kódem** místo magic linku.
 

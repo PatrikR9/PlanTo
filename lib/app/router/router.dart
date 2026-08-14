@@ -1,13 +1,18 @@
+import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Session;
 
 import '../../core/network/supabase_providers.dart';
+import '../../features/availability/presentation/screens/calendar_callback_screen.dart';
 import '../../features/availability/presentation/screens/manual_availability_screen.dart';
 import '../../features/auth/presentation/screens/otp_verify_screen.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
+import '../../features/trips/domain/trip.dart' show TripKind;
 import '../../features/trips/presentation/screens/create_trip_screen.dart';
+import '../../features/trips/presentation/screens/edit_trip_screen.dart';
 import '../../features/invites/presentation/screens/invite_preview_screen.dart';
 import '../../features/trips/presentation/screens/profile_screen.dart';
 import '../../features/trips/presentation/screens/trip_detail_screen.dart';
@@ -16,11 +21,29 @@ import '../env/env.dart';
 import 'routes.dart';
 import 'shell_scaffold.dart';
 
+/// Návrat z Google OAuth na Androidu.
+///
+/// Na webu dorazí callback jako obyčejná routa, protože je to tatáž doména.
+/// Android ho doručí jako `app.planto://calendar-callback?...`, kde je host
+/// mimo cestu — go_router čte `uri.path`, takže by z toho zbylo prázdno a
+/// nesedlo by to na nic.
+///
+/// Odběr se neruší schválně: router žije po celou dobu běhu aplikace a
+/// zrušení by znamenalo, že se na callback přestane čekat přesně ve chvíli,
+/// kdy je uživatel v cizím prohlížeči.
+void _listenForCalendarCallback(GoRouter router) {
+  if (kIsWeb) return;
+  AppLinks().uriLinkStream.listen((Uri uri) {
+    if (uri.scheme != 'app.planto' || uri.host != 'calendar-callback') return;
+    router.go('${Routes.calendarCallback}?${uri.query}');
+  });
+}
+
 final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
   final GlobalKey<NavigatorState> rootKey = GlobalKey<NavigatorState>();
   final GlobalKey<NavigatorState> shellKey = GlobalKey<NavigatorState>();
 
-  return GoRouter(
+  final GoRouter router = GoRouter(
     navigatorKey: rootKey,
     initialLocation: Routes.trips,
     debugLogDiagnostics: !Env.isProd,
@@ -99,6 +122,24 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         builder: (BuildContext context, GoRouterState state) =>
             const CreateTripScreen(),
       ),
+      GoRoute(
+        path: Routes.calendarCallback,
+        name: Routes.calendarCallbackName,
+        parentNavigatorKey: rootKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            CalendarCallbackScreen(
+          code: state.uri.queryParameters['code'],
+          tripId: state.uri.queryParameters['trip'],
+          error: state.uri.queryParameters['error'],
+        ),
+      ),
+      GoRoute(
+        path: Routes.newMeeting,
+        name: Routes.newMeetingName,
+        parentNavigatorKey: rootKey,
+        builder: (BuildContext context, GoRouterState state) =>
+            const CreateTripScreen(kind: TripKind.meeting),
+      ),
 
       // Trip detail sits OUTSIDE the shell: a trip is a context you enter and
       // leave, not a tab (architecture section 6).
@@ -122,6 +163,13 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                 ManualAvailabilityScreen(
               tripId: state.pathParameters['tripId']!,
             ),
+          ),
+          GoRoute(
+            path: 'edit',
+            name: Routes.editTripName,
+            parentNavigatorKey: rootKey,
+            builder: (BuildContext context, GoRouterState state) =>
+                EditTripScreen(tripId: state.pathParameters['tripId']!),
           ),
         ],
       ),
@@ -155,6 +203,9 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       ),
     ],
   );
+
+  _listenForCalendarCallback(router);
+  return router;
 });
 
 /// Bridges Riverpod auth state to GoRouter's Listenable-based refresh.

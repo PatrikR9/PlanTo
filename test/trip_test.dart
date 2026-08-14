@@ -6,21 +6,22 @@ Trip make({
   int shared = 3,
   TripStatus status = TripStatus.planning,
   bool organiser = true,
-  TripGranularity granularity = TripGranularity.day,
-  int? slotMinutes,
+  TripKind kind = TripKind.trip,
+  int durationMinutes = 1440,
   DateTime? lockedStart,
   DateTime? lockedEnd,
 }) {
   return Trip(
     id: 't',
+    kind: kind,
     title: 'Test',
     status: status,
-    originLabel: 'Praha hl.n.',
+    originLabel: kind == TripKind.meeting ? '' : 'Praha hl.n.',
     originLat: 50.0830,
     originLon: 14.4356,
     windowStart: DateTime(2026, 9, 11),
     windowEnd: DateTime(2026, 9, 15),
-    durationDays: 1,
+    durationMinutes: durationMinutes,
     transport: TransportPref.public,
     currency: 'CZK',
     activityTags: const <ActivityTag>[],
@@ -28,8 +29,6 @@ Trip make({
     calendarSharedCount: shared,
     createdBy: 'u',
     isOrganiser: organiser,
-    granularity: granularity,
-    slotMinutes: slotMinutes,
     slotStepMinutes: 30,
     dayStart: const Duration(hours: 7),
     dayEnd: const Duration(hours: 21),
@@ -77,28 +76,54 @@ void main() {
       );
       expect(t.lockedEnd!.subtract(const Duration(days: 1)), t.lockedStart);
     });
+  });
 
-    test('granularity drives the timed flag and the slot duration', () {
-      expect(make().isTimed, isFalse);
-      // Day-mode trips have no slot length; the fallback exists so no screen
-      // has to null-check a duration it will never show.
-      expect(make().slotDuration, const Duration(minutes: 120));
+  group('délka výletu', () {
+    // Tahle trojice je odvozená ze stejného čísla jako trigger v databázi.
+    // Kdyby se ti dva rozešli, klient by nabízel jiná pole, než jaká server
+    // použije — a poznalo by se to až na termínech, které nesedí.
+    test('pod jeden den se hledá čas, od jednoho dne celé dny', () {
+      expect(make(durationMinutes: 1439).isTimed, isTrue);
+      expect(make(durationMinutes: 1440).isTimed, isFalse);
+    });
 
-      final Trip timed =
-          make(granularity: TripGranularity.time, slotMinutes: 90);
-      expect(timed.isTimed, isTrue);
-      expect(timed.slotDuration, const Duration(minutes: 90));
+    test('slot existuje právě v hodinovém módu', () {
+      expect(make(durationMinutes: 90).slotMinutes, 90);
+      expect(make(durationMinutes: 2880).slotMinutes, isNull);
+      // Fallback, aby žádná obrazovka nemusela null-checkovat délku, kterou
+      // stejně nikdy nezobrazí.
+      expect(
+        make(durationMinutes: 2880).slotDuration,
+        const Duration(minutes: 120),
+      );
+    });
+
+    test('dny se zaokrouhlují nahoru', () {
+      // Čtyřicet hodin zabere dva dny, ne den a půl. Dolní zaokrouhlení by
+      // navrhlo termín, ze kterého se skupina vrátí až druhý den.
+      expect(make(durationMinutes: 120).durationDays, 1);
+      expect(make(durationMinutes: 1440).durationDays, 1);
+      expect(make(durationMinutes: 1441).durationDays, 2);
+      expect(make(durationMinutes: 2880).durationDays, 2);
+      expect(make(durationMinutes: 10080).durationDays, 7);
     });
   });
 
-  group('TripGranularity', () {
-    test('maps the database value, defaulting to day', () {
-      expect(TripGranularity.fromWire('time'), TripGranularity.time);
-      expect(TripGranularity.fromWire('day'), TripGranularity.day);
-      // An unknown value must not crash a list builder; day is the safe
-      // reading because it is what every existing row is.
-      expect(TripGranularity.fromWire(null), TripGranularity.day);
-      expect(TripGranularity.fromWire('weekly'), TripGranularity.day);
+  group('TripKind', () {
+    test('maps the database value, defaulting to trip', () {
+      expect(TripKind.fromWire('meeting'), TripKind.meeting);
+      expect(TripKind.fromWire('trip'), TripKind.trip);
+      // Neznámá hodnota nesmí shodit seznam; výlet je bezpečné čtení, protože
+      // je to všechno, co v databázi bylo před M13.
+      expect(TripKind.fromWire(null), TripKind.trip);
+      expect(TripKind.fromWire('holiday'), TripKind.trip);
+    });
+
+    test('setkání nemá původ ani cíl', () {
+      final Trip m = make(kind: TripKind.meeting);
+      expect(m.isMeeting, isTrue);
+      expect(m.originLabel, isEmpty);
+      expect(m.isDestinationDecided, isFalse);
     });
   });
 }

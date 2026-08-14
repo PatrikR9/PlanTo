@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,13 +10,13 @@ import '../domain/trip_repository.dart';
 /// Columns read from the `trips_list` view. Listed explicitly rather than `*`
 /// so adding a column server-side cannot silently change payload size.
 const String _tripColumns = '''
-id, title, description, status, origin_label, origin_lat, origin_lon,
+id, kind, title, description, status, origin_label, origin_lat, origin_lon,
 origin_place_id, window_start, window_end,
-duration_days, transport, budget_per_person, currency, activity_tags,
+duration_minutes, transport, budget_per_person, currency, activity_tags,
 earliest_wake, destination_id, destination_free,
 destination_lat, destination_lon, destination_place_id, created_by,
 participant_count, calendar_shared_count, locked_start, locked_end, my_role,
-granularity, slot_minutes, slot_step_minutes, day_start, day_end
+slot_step_minutes, day_start, day_end
 ''';
 
 class SupabaseTripRepository implements TripRepository {
@@ -44,37 +43,50 @@ class SupabaseTripRepository implements TripRepository {
         return _toTrip(row);
       });
 
+  // Jeden jsonb parametr místo devatenácti pojmenovaných. create_trip mělo
+  // signaturu, kterou každé nové pole nutilo dropnout — a drop bere s sebou
+  // grant, což vypadá jako chyba v aplikaci. Tenhle tvar se už nezmění.
   @override
   Future<String> create(NewTrip draft) => guard(() async {
         final dynamic id = await _client.rpc<dynamic>(
           'create_trip',
           params: <String, dynamic>{
-            'p_title': draft.title,
-            'p_origin_label': draft.originLabel,
-            'p_origin_lat': draft.originLat,
-            'p_origin_lon': draft.originLon,
-            'p_window_start': draft.windowStart.toUtc().toIso8601String(),
-            'p_window_end': draft.windowEnd.toUtc().toIso8601String(),
-            'p_duration_days': draft.durationDays,
-            'p_transport': draft.transport.name,
-            'p_budget_per_person': draft.budgetPerPerson,
-            // .wire, never .name. The Dart constant may be renamed or written
-            // in camelCase; the string in the database is a contract shared
-            // with the packing rules.
-            'p_activity_tags':
-                draft.activityTags.map((ActivityTag t) => t.wire).toList(),
-            'p_description': draft.description,
-            'p_earliest_wake': _timeOfDay(draft.earliestWake),
-            'p_currency': draft.currency,
-            'p_granularity': draft.granularity.wire,
-            'p_slot_minutes': draft.slotMinutes,
-            'p_slot_step_minutes': draft.slotStepMinutes,
-            'p_day_start': _timeOfDay(draft.dayStart),
-            'p_day_end': _timeOfDay(draft.dayEnd),
-            'p_origin_place': draft.originPlaceId,
+            'p': <String, dynamic>{
+              'kind': draft.kind.wire,
+              'title': draft.title,
+              'description': draft.description,
+              'origin_label': draft.originLabel,
+              'origin_lat': draft.originLat,
+              'origin_lon': draft.originLon,
+              'origin_place': draft.originPlaceId,
+              'window_start': draft.windowStart.toUtc().toIso8601String(),
+              'window_end': draft.windowEnd.toUtc().toIso8601String(),
+              'duration_minutes': draft.durationMinutes,
+              'transport': draft.transport.name,
+              'budget_per_person': draft.budgetPerPerson,
+              // .wire, never .name. The Dart constant may be renamed or
+              // written in camelCase; the string in the database is a
+              // contract shared with the packing rules.
+              'activity_tags':
+                  draft.activityTags.map((ActivityTag t) => t.wire).toList(),
+              'earliest_wake': _timeOfDay(draft.earliestWake),
+              'currency': draft.currency,
+              'slot_step_minutes': draft.slotStepMinutes,
+              'day_start': _timeOfDay(draft.dayStart),
+              'day_end': _timeOfDay(draft.dayEnd),
+            },
           },
         );
         return id as String;
+      });
+
+  @override
+  Future<void> update(String id, Map<String, Object?> patch) => guard(() async {
+        if (patch.isEmpty) return;
+        await _client.rpc<dynamic>(
+          'update_trip',
+          params: <String, dynamic>{'p_trip': id, 'p_patch': patch},
+        );
       });
 }
 
@@ -88,16 +100,19 @@ String? _timeOfDay(Duration? d) {
 Trip _toTrip(Map<String, dynamic> row) {
   return Trip(
     id: row['id'] as String,
+    kind: TripKind.fromWire(row['kind'] as String?),
     title: row['title'] as String,
     description: row['description'] as String?,
     status: _status(row['status'] as String),
-    originLabel: row['origin_label'] as String,
+    // Setkání nemá původ. Prázdný řetězec, ne null, aby žádná obrazovka
+    // nemusela null-checkovat pole, které u výletu nikdy prázdné není.
+    originLabel: (row['origin_label'] as String?) ?? '',
     originLat: ((row['origin_lat'] as num?) ?? 0).toDouble(),
     originLon: ((row['origin_lon'] as num?) ?? 0).toDouble(),
     originPlaceId: row['origin_place_id'] as String?,
     windowStart: DateTime.parse(row['window_start'] as String).toLocal(),
     windowEnd: DateTime.parse(row['window_end'] as String).toLocal(),
-    durationDays: (row['duration_days'] as int?) ?? 1,
+    durationMinutes: (row['duration_minutes'] as int?) ?? 1440,
     transport: _transport(row['transport'] as String?),
     budgetPerPerson: (row['budget_per_person'] as num?)?.toDouble(),
     currency: (row['currency'] as String?) ?? 'CZK',
@@ -116,8 +131,6 @@ Trip _toTrip(Map<String, dynamic> row) {
     calendarSharedCount: (row['calendar_shared_count'] as int?) ?? 0,
     createdBy: row['created_by'] as String,
     isOrganiser: row['my_role'] == 'organiser',
-    granularity: TripGranularity.fromWire(row['granularity'] as String?),
-    slotMinutes: row['slot_minutes'] as int?,
     slotStepMinutes: (row['slot_step_minutes'] as int?) ?? 30,
     dayStart:
         _parseTime(row['day_start'] as String?) ?? const Duration(hours: 7),
@@ -170,6 +183,8 @@ class UnconfiguredTripRepository implements TripRepository {
   Future<Trip> byId(String id) async => _fail();
   @override
   Future<String> create(NewTrip draft) async => _fail();
+  @override
+  Future<void> update(String id, Map<String, Object?> patch) async => _fail();
 }
 
 final Provider<TripRepository> tripRepositoryProvider =

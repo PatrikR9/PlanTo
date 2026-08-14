@@ -51,6 +51,26 @@ class BusyInterval {
 abstract final class BusyIntervals {
   static const Duration granularity = Duration(minutes: 15);
 
+  /// Celodenní událost z Androidu je uložená v UTC půlnoci, ne v místní.
+  ///
+  /// `CalendarContract.Instances.BEGIN` u události s `ALL_DAY = 1` je vždycky
+  /// půlnoc UTC toho dne — je to datum, ne okamžik. Přečtené jako obyčejný
+  /// timestamp se v Praze v létě posune na 02:00, takže „celý den 12. září"
+  /// se uloží jako 12. 9. 02:00 – 13. 9. 02:00.
+  ///
+  /// U celodenního výletu je to skoro neviditelné: den je pořád zabraný.
+  /// U akce na dvě hodiny to znamená dvě lži naráz — dopoledne prvního dne se
+  /// tváří volné a stejné dvě hodiny druhého dne zabrané. Čím kratší akce, tím
+  /// větší podíl chyby, a hodinový režim je přesně ten, kvůli kterému tohle
+  /// stojí za opravu.
+  ///
+  /// Časované události se nepřepočítávají — u nich je epocha správně a další
+  /// posun by byl chyba stejné velikosti opačným směrem.
+  static DateTime allDayToLocalMidnight(DateTime fromEpoch) {
+    final DateTime asUtc = fromEpoch.toUtc();
+    return DateTime(asUtc.year, asUtc.month, asUtc.day);
+  }
+
   static List<BusyInterval> prepare(
     List<BusyInterval> raw, {
     required DateTime windowStart,

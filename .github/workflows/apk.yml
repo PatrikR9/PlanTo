@@ -91,7 +91,8 @@ jobs:
             --dart-define=SUPABASE_ANON_KEY="$KEY" \
             --dart-define=GOOGLE_SIGN_IN=false \
             --dart-define=EMAIL_OTP_CODE=${{ inputs.email_otp_code }} \
-            --dart-define=INVITE_BASE="https://$OWNER.github.io/$REPO/i"
+            --dart-define=INVITE_BASE="https://$OWNER.github.io/$REPO/i" \
+            --dart-define=GOOGLE_CALENDAR_CLIENT_ID="${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}"
 
       # Má to APK vůbec přístup k síti?
       #

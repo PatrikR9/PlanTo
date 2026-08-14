@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/env/env.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
@@ -8,6 +9,7 @@ import '../../../trips/domain/trip.dart';
 import '../../data/device_calendar_source.dart';
 import '../../domain/calendar_source.dart';
 import '../availability_controller.dart';
+import '../google_calendar_controller.dart';
 
 /// The first thing an invitee sees, and for most of them the last.
 ///
@@ -83,10 +85,24 @@ class _AvailabilityChooserState extends ConsumerState<AvailabilityChooser> {
     });
   }
 
+  /// Odchod na obrazovku souhlasu Googlu. Vrací se přes docs/oauth.html na
+  /// routu `/calendar-callback`, takže tady se na nic nečeká — selhat může
+  /// jen samotné otevření prohlížeče, a to je jediné, co jde říct hned.
+  Future<void> _connectGoogle() async {
+    setState(() => _error = null);
+    final bool opened = await ref
+        .read(googleCalendarControllerProvider.notifier)
+        .connect(widget.trip.id);
+    if (!mounted || opened) return;
+    setState(() => _error = 'Nepodařilo se otevřít přihlášení ke Googlu.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final CalendarSource source = ref.watch(calendarSourceProvider);
     final bool busy = ref.watch(calendarSyncControllerProvider).isLoading;
+    final bool connecting =
+        ref.watch(googleCalendarControllerProvider).isLoading;
 
     return ListView(
       padding: const EdgeInsets.all(Sp.xl),
@@ -152,10 +168,21 @@ class _AvailabilityChooserState extends ConsumerState<AvailabilityChooser> {
             isLoading: busy,
             onPressed: _connect,
           )
+        // V prohlížeči žádné API ke kalendáři v zařízení není, takže tam je
+        // Google to nejbližší jednomu klepnutí. Scope vrací jen obsazenost,
+        // takže slib o čtení nadpisů platí i tady.
+        else if (Env.googleCalendarEnabled)
+          PtButton(
+            label: 'Připojit kalendář Googlem',
+            icon: Icons.event_available,
+            expand: true,
+            isLoading: connecting,
+            onPressed: connecting ? null : _connectGoogle,
+          )
         else
           PtButton(
-            // In a browser there is no calendar API at all, so the link is
-            // not a fallback here — it is the fast path.
+            // Bez OAuth klienta zbývá odkaz. Skryté tlačítko je lepší než
+            // tlačítko, které skončí na chybové stránce Googlu.
             label: 'Vložit odkaz na kalendář',
             icon: Icons.add_link,
             expand: true,
@@ -163,7 +190,16 @@ class _AvailabilityChooserState extends ConsumerState<AvailabilityChooser> {
           ),
 
         const SizedBox(height: Sp.xs),
-        if (source.isSupported)
+        // Na Androidu je Google druhá cesta, ne první: systémový kalendář už
+        // ty účty obsahuje a nechce po nikom cizí přihlášení.
+        if (source.isSupported && Env.googleCalendarEnabled)
+          PtButton(
+            label: 'Připojit Googlem',
+            variant: PtButtonVariant.text,
+            expand: true,
+            onPressed: connecting ? null : _connectGoogle,
+          ),
+        if (source.isSupported || Env.googleCalendarEnabled)
           PtButton(
             label: 'Mám odkaz na kalendář',
             variant: PtButtonVariant.text,

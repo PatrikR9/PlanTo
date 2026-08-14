@@ -19,6 +19,28 @@ String formatLength(int minutes) {
   return '${(minutes / 60).toStringAsFixed(1).replaceAll('.', ',')} h';
 }
 
+/// `2 dny`, `1 den 6 h`, `90 min`. Délka výletu od čtvrthodiny po měsíc.
+///
+/// [formatLength] končí u hodin, protože vzniklo pro délku slotu. Od M13 je
+/// délka jedno pole přes celý rozsah, takže potřebuje i dny — a s nimi české
+/// tři tvary množného čísla, na které v intl není vzor.
+String formatDuration(int minutes) {
+  if (minutes < 1440) return formatLength(minutes);
+
+  final int days = minutes ~/ 1440;
+  final int rest = minutes % 1440;
+  final String d = '$days ${pluralDays(days)}';
+  return rest == 0 ? d : '$d ${formatLength(rest)}';
+}
+
+/// `den` / `dny` / `dní`. Čeština má tři tvary a hranice nejsou u jedničky,
+/// ale mezi 4 a 5.
+String pluralDays(int n) {
+  if (n == 1) return 'den';
+  if (n >= 2 && n <= 4) return 'dny';
+  return 'dní';
+}
+
 /// Czech weekday and month names come out of intl lowercase, which reads as a
 /// typo at the start of a line.
 String capitalise(String s) =>

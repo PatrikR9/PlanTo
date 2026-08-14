@@ -56,6 +56,19 @@
                 <data android:scheme="app.planto" android:host="login-callback"/>
             </intent-filter>
 
+            <!-- Návrat z Google OAuth při připojování kalendáře.
+                 Vlastní host, ne login-callback: přihlášení a přístup ke
+                 kalendáři jsou dvě různé věci a jeden kód doručený do špatné
+                 obrazovky by skončil tichým nic. Google sem nepřesměrovává
+                 přímo — vlastní schéma u klienta typu Web application
+                 nepovoluje — přeposílá to docs/oauth.html. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="app.planto" android:host="calendar-callback"/>
+            </intent-filter>
+
             <!-- Invite links, currently on GitHub Pages.
                  android:autoVerify is deliberately OFF: verification requires
                  /.well-known/assetlinks.json at the DOMAIN root, and a GitHub

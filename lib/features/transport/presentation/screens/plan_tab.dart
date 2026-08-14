@@ -106,7 +106,8 @@ class _DestinationCard extends ConsumerWidget {
             PtButton(
               label: 'Změnit',
               variant: PtButtonVariant.text,
-              onPressed: () => pickDestination(context, ref, trip.id, near: _originOf(trip)),
+              onPressed: () =>
+                  pickDestination(context, ref, trip.id, near: _originOf(trip)),
             ),
         ],
       ),
@@ -233,7 +234,8 @@ class _NoDestination extends ConsumerWidget {
           icon: Icons.place_outlined,
           actionLabel: trip.isOrganiser ? 'Vybrat cíl' : null,
           onAction: trip.isOrganiser
-              ? () => pickDestination(context, ref, trip.id, near: _originOf(trip))
+              ? () =>
+                  pickDestination(context, ref, trip.id, near: _originOf(trip))
               : null,
         ),
       ],

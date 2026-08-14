@@ -11,18 +11,25 @@ class InvitePreview {
     required this.originLabel,
     required this.windowStart,
     required this.windowEnd,
-    required this.durationDays,
+    required this.durationMinutes,
     required this.participantCount,
     required this.organiserName,
     required this.alreadyMember,
+    this.isMeeting = false,
   });
 
   final String tripId;
+
+  /// Setkání se pozná i tady: náhled nemá co říct o odjezdu z místa, které
+  /// neexistuje.
+  final bool isMeeting;
   final String title;
+
+  /// Prázdný u setkání.
   final String originLabel;
   final DateTime windowStart;
   final DateTime windowEnd;
-  final int durationDays;
+  final int durationMinutes;
   final int participantCount;
   final String organiserName;
   final bool alreadyMember;

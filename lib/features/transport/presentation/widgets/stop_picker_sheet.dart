@@ -204,7 +204,7 @@ class _StopPickerSheetState extends ConsumerState<_StopPickerSheet> {
       );
     }
     if (_controller.text.trim().length < _kMinQuery) {
-      return _Hint(
+      return const _Hint(
         icon: Icons.keyboard_outlined,
         text: 'Napište část názvu zastávky nebo nádraží. '
             'Na diakritice nezáleží.',

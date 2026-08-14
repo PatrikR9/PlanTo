@@ -49,8 +49,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
-            content:
-                Text(errorText(e)),
+            content: Text(errorText(e)),
           ),
         );
     });

@@ -55,17 +55,21 @@ class AndroidCalendarSource implements CalendarSource {
       to: to,
       calendarIds: calendarIds,
     );
-    return raw
-        .map(
-          (DeviceBusyBlock b) => BusyInterval(
-            start: b.start,
-            end: b.end,
-            isAllDay: b.isAllDay,
-          ),
-        )
-        .toList();
+    return raw.map(_toInterval).toList();
   }
 }
+
+/// Jediné místo, kde se rozhoduje, jak se čte čas z Androidu.
+///
+/// Celodenní událost nese datum v UTC půlnoci, časovaná nese skutečný okamžik.
+/// Číst obojí stejně znamená u celodenní posun o offset zóny — viz
+/// [BusyIntervals.allDayToLocalMidnight].
+BusyInterval _toInterval(DeviceBusyBlock b) => BusyInterval(
+      start:
+          b.isAllDay ? BusyIntervals.allDayToLocalMidnight(b.start) : b.start,
+      end: b.isAllDay ? BusyIntervals.allDayToLocalMidnight(b.end) : b.end,
+      isAllDay: b.isAllDay,
+    );
 
 /// Web and iOS-until-V2. Reports itself unsupported so the UI can offer the
 /// manual grid instead of a button that cannot work.

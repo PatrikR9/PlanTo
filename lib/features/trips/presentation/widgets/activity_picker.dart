@@ -112,7 +112,7 @@ class ActivityPickerSheet extends StatefulWidget {
 }
 
 class _ActivityPickerSheetState extends State<ActivityPickerSheet> {
-  late Set<ActivityTag> _selected = <ActivityTag>{...widget.selected};
+  late final Set<ActivityTag> _selected = <ActivityTag>{...widget.selected};
   String _query = '';
 
   void _toggle(ActivityTag t) {

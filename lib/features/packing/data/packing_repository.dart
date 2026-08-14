@@ -8,7 +8,11 @@ import '../domain/packing_item.dart';
 
 abstract interface class PackingRepository {
   Future<List<PackingItem>> forTrip(String tripId);
-  Future<void> setChecked(String tripId, String itemKey, {required bool checked});
+  Future<void> setChecked(
+    String tripId,
+    String itemKey, {
+    required bool checked,
+  });
 }
 
 class SupabasePackingRepository implements PackingRepository {

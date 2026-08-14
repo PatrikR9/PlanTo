@@ -32,6 +32,13 @@ dependencies:
   # going to check anyway.
   url_launcher: ^6.3.1
 
+  # Návrat z Google OAuth přes app.planto://calendar-callback.
+  #
+  # V závislostech byl už dřív — supabase_flutter si ho tahá kvůli
+  # login-callbacku. Je uvedený přímo schválně: používat tranzitivní závislost
+  # znamená, že ji jednou odstraní upgrade cizího balíčku a spadne to nám.
+  app_links: ^7.2.1
+
   # Utils
   intl: any
   collection: ^1.19.0
