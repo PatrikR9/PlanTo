@@ -29,6 +29,12 @@
 <script>
 // Návratová adresa pro Google OAuth.
 //
+// Leží ve web/, ne v docs/, na rozdíl od stránky s pozvánkou. Ta potřebuje při
+// nasazení dosadit adresu backendu, tahle nemluví s ničím — a `flutter build
+// web` i vývojový server obsluhují web/ automaticky. Díky tomu funguje jak na
+// Pages, tak na localhostu, což je jediný způsob, jak celý tok vyzkoušet bez
+// nasazení.
+//
 // Proč jedna statická stránka místo dvou nativních přesměrování: Google
 // nepovoluje vlastní schéma (app.planto://) u klienta typu „Web application",
 // a ten typ potřebujeme, protože jen on má client_secret — bez kterého by

@@ -102,8 +102,14 @@ Bez těchhle kroků se nic z napsaného nespustí.
 4. **Test users**: dokud je aplikace v režimu Testing, přihlásit se smí jen
    e-maily z tohohle seznamu. Přidej sebe a testery.
 5. **Credentials → Create credentials → OAuth client ID → Web application.**
-   Authorized redirect URI, přesně a bez lomítka navíc:
+   Authorized redirect URIs, přesně a bez lomítka navíc — obě:
    `https://patrikr9.github.io/PlanTo/oauth.html`
+   `http://localhost:5173/oauth.html`
+
+   Ta druhá je kvůli `flutter run -d chrome --web-port 5173`. Bez ní se dá tok
+   vyzkoušet až po nasazení, protože Google se vrací jen na adresu, kterou má
+   zapsanou — a čekat na deploy kvůli každé změně je ten nejjistější způsob,
+   jak se přestat obtěžovat s testováním.
 6. Zkopíruj **Client ID** a **Client secret**.
 
 **Supabase**
@@ -132,7 +138,7 @@ nasazená a Google odmítne přesměrovat dřív, než se uživatel k něčemu d
 |---|---|
 | migrace `20260814090000_google_calendar.sql` | **aplikovaná** 14. 8. |
 | Edge Function `google-calendar` | **nasazená** 14. 8. |
-| `docs/oauth.html` + kopírování v `pages.yml` | napsáno, čeká na push |
+| `web/oauth.html` | **nasazená** 14. 8. |
 | intent filter `app.planto://calendar-callback` | napsáno |
 | Flutter: tlačítko, callback routa, `/calendar-callback` | napsáno, nespuštěno |
 | Google Cloud projekt a klient | **na tobě** |

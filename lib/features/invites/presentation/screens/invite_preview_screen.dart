@@ -126,14 +126,13 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
                           icon: Icons.date_range_outlined,
                           label: 'Kdy',
                           value: '${fmt.format(p.windowStart)} – '
-                              '${fmt.format(p.windowEnd)}',
+                              '${fmt.format(lastDayOfWindow(p.windowEnd))}',
                         ),
                         const SizedBox(height: Sp.sm),
                         _Row(
                           icon: Icons.group_outlined,
                           label: 'Kdo',
-                          value: '${p.participantCount} '
-                              '${p.participantCount == 1 ? "člověk" : "lidí"}',
+                          value: formatPeople(p.participantCount),
                         ),
                       ],
                     ),

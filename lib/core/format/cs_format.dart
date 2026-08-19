@@ -41,6 +41,30 @@ String pluralDays(int n) {
   return 'dní';
 }
 
+/// `1 člověk` / `3 lidé` / `5 lidí`.
+///
+/// Náhled pozvánky ukazoval „3 lidí", protože podmínka znala jen jedničku
+/// a všechno ostatní. Je to první věta, kterou o výletu uvidí někdo, kdo
+/// aplikaci nezná, a špatný tvar v ní je drobnost, které si každý Čech všimne.
+String formatPeople(int n) {
+  if (n == 1) return '1 člověk';
+  if (n >= 2 && n <= 4) return '$n lidé';
+  return '$n lidí';
+}
+
+/// Poslední den okna, ve tvaru pro člověka.
+///
+/// `trips.date_window` je půlotevřený interval `[start, end)`, takže jeho horní
+/// mez je den PO posledním použitelném dnu. Vypsat ji rovnou znamená slíbit
+/// skupině o den víc, než na kolik se doopravdy hledá termín — a je to chyba,
+/// kterou nikdo nenahlásí, protože ten den prostě jen nikdy nevyjde.
+///
+/// Počítá se po kalendářních dnech, ne odečtením 24 hodin. Na přechodu času
+/// má den 23 nebo 25 hodin a odečtená doba by spadla o hodinu vedle — což je
+/// tentýž důvod, proč mřížka dostupnosti postupuje přes `DateTime(y, m, d + 1)`.
+DateTime lastDayOfWindow(DateTime endExclusive) =>
+    DateTime(endExclusive.year, endExclusive.month, endExclusive.day - 1);
+
 /// Czech weekday and month names come out of intl lowercase, which reads as a
 /// typo at the start of a line.
 String capitalise(String s) =>

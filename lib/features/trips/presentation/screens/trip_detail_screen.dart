@@ -159,7 +159,7 @@ class _Overview extends ConsumerWidget {
               const SizedBox(height: Sp.xxs),
               Text(
                 '${fmt.format(trip.windowStart)} – '
-                '${fmt.format(trip.windowEnd)}',
+                '${fmt.format(lastDayOfWindow(trip.windowEnd))}',
                 style: context.texts.bodyLarge,
               ),
               const SizedBox(height: Sp.sm),

@@ -49,7 +49,8 @@ class TripCard extends StatelessWidget {
               if (!trip.isMeeting && trip.originLabel.isNotEmpty)
                 trip.originLabel,
               formatDuration(trip.durationMinutes),
-              '${fmt.format(trip.windowStart)} – ${fmt.format(trip.windowEnd)}',
+              '${fmt.format(trip.windowStart)} – '
+                  '${fmt.format(lastDayOfWindow(trip.windowEnd))}',
             ].join(' · '),
             style: context.texts.bodyMedium
                 ?.copyWith(color: context.colors.onSurfaceVariant),

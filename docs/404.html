@@ -72,6 +72,18 @@ const $ = (id) => document.getElementById(id);
 const fmt = (iso) => new Date(iso).toLocaleDateString("cs-CZ",
   { day: "numeric", month: "numeric" });
 
+// date_window je půlotevřený interval, takže window_end je den PO posledním.
+// Vypsat ho rovnou slibuje o den víc, než na kolik se termín hledá.
+const fmtLastDay = (iso) => {
+  const d = new Date(iso);
+  d.setDate(d.getDate() - 1);
+  return d.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" });
+};
+
+// 1 člověk / 3 lidé / 5 lidí. Tři tvary, hranice mezi 4 a 5.
+const people = (n) =>
+  n === 1 ? "1 člověk" : n <= 4 ? n + " lidé" : n + " lidí";
+
 // Setkání nemá odkud vyjet, takže na prvním řádku je délka místo místa.
 // Řádek "Odjezd z —" nenese žádnou informaci kromě té, že něco chybí, a je to
 // první věc, kterou pozvaný uvidí.
@@ -148,9 +160,9 @@ if (SUPABASE_URL.indexOf("__") === 0) {
       $("origin").textContent = meeting
         ? duration(t.duration_minutes)
         : t.origin_label;
-      $("when").textContent = fmt(t.window_start) + " – " + fmt(t.window_end);
-      $("who").textContent = t.participant_count +
-        (t.participant_count === 1 ? " člověk" : " lidí");
+      $("when").textContent =
+        fmt(t.window_start) + " – " + fmtLastDay(t.window_end);
+      $("who").textContent = people(t.participant_count);
     })
     .catch(() => fail("Nepodařilo se pozvánku načíst. Zkuste to prosím znovu."));
 }

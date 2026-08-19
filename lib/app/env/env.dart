@@ -83,11 +83,18 @@ abstract final class Env {
   /// Same rule as [googleEnabled]: an empty value hides the button. The one
   /// thing worse than a missing way to connect a calendar is one that opens
   /// a Google error page.
-  static const String googleCalendarClientId =
+  /// Oříznuté ze stejného důvodu jako [supabaseUrl], a byla to tu chyba:
+  /// kontrola `.trim().isNotEmpty` ořezanou hodnotu ověřila, ale ven se
+  /// posílala neořezaná. Konec řádku, který se do GitHub secretu dostane při
+  /// vložení, je v poli neviditelný, v URL neviditelný taky — a Google na něj
+  /// odpoví `invalid_client: The OAuth client was not found`, což vypadá jako
+  /// smazaný klient, ne jako bílý znak.
+  static const String _rawGoogleCalendarClientId =
       String.fromEnvironment('GOOGLE_CALENDAR_CLIENT_ID');
 
-  static bool get googleCalendarEnabled =>
-      googleCalendarClientId.trim().isNotEmpty;
+  static String get googleCalendarClientId => _rawGoogleCalendarClientId.trim();
+
+  static bool get googleCalendarEnabled => googleCalendarClientId.isNotEmpty;
 
   /// Where Google sends the browser back. A static page next to the invite
   /// landing page, not a route in the app: Google rejects custom schemes for

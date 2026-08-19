@@ -104,14 +104,12 @@ jobs:
           sed -e "s|__SUPABASE_URL__|$SUPABASE_URL|g" \
               -e "s|__SUPABASE_ANON_KEY__|$SUPABASE_ANON_KEY|g" \
               docs/404.html > build/web/404.html
-
-          # Návratová adresa pro Google OAuth. Žádné dosazování — tenhle
-          # soubor kód jen přeposílá dál a nemluví s ničím. Musí ale existovat
-          # na přesné adrese zapsané v Google Cloudu, jinak Google odmítne
-          # přesměrovat a uživatel uvidí chybu Googlu, ne naši.
-          cp docs/oauth.html build/web/oauth.html
-
           touch build/web/.nojekyll
+
+          # oauth.html se sem nekopíruje: leží ve web/ a flutter build web ho
+          # tam odnese sám. Je to i jediný způsob, jak ho obsloužit lokálně na
+          # `flutter run -d chrome` — dev server servíruje web/, ne docs/, a
+          # návratovou adresu, která existuje jen po nasazení, nejde vyzkoušet.
 
       - uses: actions/upload-pages-artifact@v3
         with:
