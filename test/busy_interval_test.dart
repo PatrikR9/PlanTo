@@ -31,8 +31,11 @@ void main() {
 
       expect(out, DateTime(2026, 9, 12));
       expect(out.hour, 0, reason: 'nesmí zůstat posunuté o offset zóny');
-      expect(out.isUtc, isFalse,
-          reason: 'zbytek řetězce počítá v místním čase');
+      expect(
+        out.isUtc,
+        isFalse,
+        reason: 'zbytek řetězce počítá v místním čase',
+      );
     });
 
     test('nezávisí na zóně, ve které test běží', () {

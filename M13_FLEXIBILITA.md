@@ -222,7 +222,7 @@ Meeting je celý v Engine módu. Žádná jeho část se nedotýká AI, takže n
 
 ## 5. Pořadí a co v které etapě spadne
 
-**M13.1 — schéma a editace** — napsáno, nespuštěno
+**M13.1 — schéma a editace** — **aplikováno 13. 8. 2026**
 (`20260813090000_m13_flexible.sql`) `duration_minutes` + trigger, `kind`,
 `create_trip(jsonb)`, `update_trip(jsonb)`, `preview_invite` s druhem
 a délkou, přepsaný `trips_list`. Nesahá na `trip_candidates`,
@@ -231,7 +231,7 @@ a délkou, přepsaný `trips_list`. Nesahá na `trip_candidates`,
 `update trips set duration_minutes = duration_minutes` a kontrola, že se
 hodnoty nepohnuly.
 
-**M13.3 — Flutter** — napsáno, nespuštěno
+**M13.3 — Flutter** — **hotovo, 74 testů zelených**
 `Trip` drží `durationMinutes` a `kind`; `durationDays`, `granularity`
 i `slotMinutes` jsou z něj odvozené gettery, tedy tatáž trojice jako v triggeru
 a na jednom místě. `TripDraft` je stav formuláře pro obě obrazovky a umí
@@ -245,9 +245,15 @@ tři záložky u setkání místo šesti.
 `_trip_weather_point`. Nejrizikovější část, protože jako jediná sahá na kód,
 který na telefonu prokazatelně běží; chce vlastní SQL test dřív než Flutter.
 
-Pořadí spuštění: `VERIFY.md` → `supabase db push` → `flexible_test.sql` →
-`dart format lib test` → `flutter analyze --fatal-infos` → `flutter test`.
-Nic z M13 zatím neprošlo ani jedním z těch kroků.
+Zbývá `flexible_test.sql` — napsaný, nikdy nespuštěný, protože na Windows chybí
+`psql`. Trigger na odvození délky, mazání hlasů při editaci a checky na setkání
+tedy nemá od stolu nic ověřené; potvrzuje je jen to, že aplikace na emulátoru
+proti živé databázi funguje.
+
+Během používání se našly a opravily tři věci, které M13 odhalila, ale
+nezpůsobila: celodenní události z Androidu čtené jako UTC půlnoc, `preview_invite`
+padající na setkání s `null` původem, a exkluzivní konec okna vypisovaný jako
+poslední den na třech místech. Podrobně v Části VIII dokumentace.
 
 Testy, které mají vzniknout se schématem, ne po něm:
 

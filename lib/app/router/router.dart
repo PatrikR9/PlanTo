@@ -60,6 +60,19 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         return null;
       }
 
+      // Návrat z obrazovky souhlasu Googlu se přesměrovat nesmí.
+      //
+      // Guard níž posílá nepřihlášeného na `/auth?from=<cesta>` a `from` nese
+      // jen cestu, ne query — takže by se zahodilo `?code=`. Autorizační kód
+      // je jednorázový a vázaný na redirect_uri, takže druhý pokus neexistuje:
+      // uživatel by musel projít celým souhlasem znovu, a to bez vysvětlení.
+      //
+      // Obrazovka si s chybějící session poradí sama — funkce vrátí 401 a
+      // `CalendarCallbackScreen` z toho udělá větu a tlačítko „Zadat
+      // dostupnost jinak". To je lepší než tiché odbočení na přihlášení,
+      // které tenhle tok navíc nikdy nepotřeboval.
+      if (location == Routes.calendarCallback) return null;
+
       // Without a backend there is nothing to sign in to, so skip the guard
       // entirely and let the UI be reviewed locally.
       if (!Env.isConfigured) {

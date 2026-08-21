@@ -74,26 +74,39 @@ const state = readState(rawState);
 // vlastní doménu bez editace tohohle souboru.
 const APP_BASE = location.pathname.replace(/oauth\.html$/, "");
 
-if (error) {
-  // Uživatel klepl na „Zrušit". Není to chyba, je to odpověď.
-  stop(
-    error === "access_denied"
-      ? "Připojení jste zrušili."
-      : "Google připojení odmítl.",
-    "Můžete okno zavřít a zkusit to znovu, nebo dostupnost zadat ručně."
-  );
-} else if (!code || !state) {
-  stop("Chybí návratový kód.", "Zkuste připojení spustit znovu z aplikace.");
-} else {
-  const target = state.p === "app"
+// Kam se má člověk vrátit. Rozcestník podle platformy ze `state`.
+function targetFor(query) {
+  return state.p === "app"
     // Android: chytí to intent filter na app.planto. Když aplikace mezitím
     // zmizela, nestane se nic a zůstane vidět odkaz níž.
-    ? "app.planto://calendar-callback?code=" + encodeURIComponent(code) +
-      "&trip=" + encodeURIComponent(state.t || "")
-    // Web: zpátky do Flutteru přes hash routu.
-    : APP_BASE + "#/calendar-callback?code=" + encodeURIComponent(code) +
-      "&trip=" + encodeURIComponent(state.t || "");
+    ? "app.planto://calendar-callback?" + query
+    // Web: zpátky do Flutteru přes hash routu, na tomtéž originu — jinak by
+    // se cestou ztratila anonymní Supabase session i členství ve výletu.
+    : APP_BASE + "#/calendar-callback?" + query;
+}
 
+if (!state) {
+  // Bez `state` není kam se vracet: neznáme ani platformu, ani výlet.
+  stop(
+    error ? "Google připojení odmítl." : "Chybí návratový kód.",
+    "Zkuste připojení spustit znovu z aplikace."
+  );
+} else if (!code && !error) {
+  stop("Chybí návratový kód.", "Zkuste připojení spustit znovu z aplikace.");
+} else {
+  // Zrušení i chyba se posílají dál do aplikace, ne jen vypíší tady.
+  //
+  // „Zrušili jste to" je odpověď, ne rozbitý stav, a patří na obrazovku, kde
+  // je vedle ní tlačítko „Zadat dostupnost jinak". Když to skončí na téhle
+  // statické stránce, zbude cizí doména bez cesty zpátky do výletu — a
+  // `CalendarCallbackScreen` má tu větu napsanou, jen se k ní nikdy nedošlo.
+  const query =
+    (error
+      ? "error=" + encodeURIComponent(error)
+      : "code=" + encodeURIComponent(code)) +
+    "&trip=" + encodeURIComponent(state.t || "");
+
+  const target = targetFor(query);
   location.replace(target);
 
   // Když se přesměrování nechytí — typicky když aplikace není nainstalovaná —

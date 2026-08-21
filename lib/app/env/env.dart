@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+
 /// Compile-time configuration. Values arrive via --dart-define-from-file so
 /// nothing sensitive is committed and every flavour builds from one source.
 ///
@@ -96,18 +98,78 @@ abstract final class Env {
 
   static bool get googleCalendarEnabled => googleCalendarClientId.isNotEmpty;
 
-  /// Where Google sends the browser back. A static page next to the invite
-  /// landing page, not a route in the app: Google rejects custom schemes for
-  /// a Web-application client, and that client type is the only one with a
-  /// secret. The page forwards the code onwards — see docs/oauth.html.
+  /// Tvar Client ID: `<číslo projektu>-<32 znaků>.apps.googleusercontent.com`.
   ///
-  /// Derived from [inviteBase] so the two can never drift apart: both live on
-  /// the same host, and moving to planto.app changes one define, not two.
-  static String get oauthRedirectUri {
-    final String base = inviteBase.endsWith('/i')
-        ? inviteBase.substring(0, inviteBase.length - 2)
-        : '$inviteBase/';
-    return '${base}oauth.html';
+  /// `invalid_client: The OAuth client was not found` je nejdražší chyba
+  /// v celém toku. Přijde na cizí doméně, až po odchodu z aplikace, a nedá se
+  /// z ní poznat, jestli je hodnota useknutá, z jiného projektu, nebo tam
+  /// prostě žádný klient není. Dvakrát na ni padl celý večer.
+  ///
+  /// Co jde poznat před odchodem, se má poznat před odchodem. Tohle nepokryje
+  /// hodnotu, která tvar má a klienta za sebou nemá — na tu odpovídá jen
+  /// Google — ale pokryje překlep, uříznutý secret a prohozenou hodnotu.
+  static final RegExp _clientIdShape =
+      RegExp(r'^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$');
+
+  static bool get googleCalendarClientIdLooksValid =>
+      _clientIdShape.hasMatch(googleCalendarClientId);
+
+  /// Kam Google vrátí prohlížeč.
+  ///
+  /// Statická stránka vedle pozvánky, ne routa v aplikaci: Google nepovoluje
+  /// vlastní schéma u klienta typu „Web application", a jen ten typ má
+  /// client_secret. Stránka kód jen přepošle dál — viz web/oauth.html.
+  ///
+  /// **Na webu se odvozuje z adresy, na které aplikace právě běží**, ne
+  /// z [inviteBase]. Důvod je konkrétní a stál jeden špatně čtený příznak:
+  /// `--dart-define-from-file=env/dev.json` žádné `INVITE_BASE` nenastavuje,
+  /// takže se použije výchozí hodnota na GitHub Pages — a lokální
+  /// `flutter run -d chrome` posílal Googlu návratovou adresu nasazeného
+  /// webu. Google se pak vrátil na jiný origin, tedy do jiného localStorage,
+  /// tedy pod jinou anonymní Supabase session. Pozvaný přišel o členství ve
+  /// výletu uprostřed toku a vypadalo to jako chyba autorizace.
+  ///
+  /// Na Androidu žádný origin není, takže tam zůstává [inviteBase]: souhlas
+  /// se musí vrátit na hostovanou stránku, která teprve přesměruje do
+  /// aplikace přes `app.planto://`.
+  ///
+  /// Obě hodnoty musí být zapsané v Google Cloud → Credentials →
+  /// Authorized redirect URIs, znak po znaku.
+  static String get oauthRedirectUri =>
+      kIsWeb ? oauthRedirectForPage(Uri.base) : _hostedOauthRedirectUri;
+
+  static String get _hostedOauthRedirectUri =>
+      hostedOauthRedirectFor(inviteBase);
+
+  /// Hostovaná návratová adresa odvozená z [inviteBase]. Čistá, aby šla
+  /// otestovat — což je celý důvod, proč tu je zvlášť.
+  ///
+  /// Uřízne se **jen `i`, ne `/i`**. To lomítko je oddělovač adresáře a bez
+  /// něj vznikne `https://…/PlanTooauth.html`: adresa, která vypadá skoro
+  /// správně, na kterou Google odpoví `redirect_uri_mismatch`, a která se
+  /// v chybové hlášce nikde nezobrazí. Tenhle jeden znak stál jeden den.
+  @visibleForTesting
+  static String hostedOauthRedirectFor(String base) {
+    final String dir =
+        base.endsWith('/i') ? base.substring(0, base.length - 1) : '$base/';
+    return '${dir}oauth.html';
+  }
+
+  /// Čistá část [oauthRedirectUri], aby šla otestovat bez prohlížeče.
+  ///
+  /// Vrací `oauth.html` ve stejném adresáři, ze kterého se aplikace načetla:
+  /// `/PlanTo/` i `/PlanTo/index.html` i `/PlanTo` dají tutéž adresu, protože
+  /// jediný chybějící lomítko by znamenalo `redirect_uri_mismatch`.
+  @visibleForTesting
+  static String oauthRedirectForPage(Uri page) {
+    String dir = page.path;
+    if (!dir.endsWith('/')) {
+      // `/PlanTo/index.html` je soubor, `/PlanTo` je adresář bez lomítka.
+      final int slash = dir.lastIndexOf('/');
+      final bool isFile = dir.contains('.', slash + 1);
+      dir = isFile ? dir.substring(0, slash + 1) : '$dir/';
+    }
+    return '${page.origin}${dir}oauth.html';
   }
 
   /// Supabase free-tier projects on the built-in mailer cannot edit their auth

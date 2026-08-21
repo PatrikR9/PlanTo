@@ -74,6 +74,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
         run: |
           REPO="${GITHUB_REPOSITORY#*/}"
           OWNER="$(echo "${GITHUB_REPOSITORY%%/*}" | tr '[:upper:]' '[:lower:]')"
@@ -84,6 +85,8 @@ jobs:
           # na adresu, která na obrazovce vypadá naprosto správně.
           URL="$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')"
           KEY="$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d '[:space:]')"
+          GOOGLE_CID="$(printf '%s' "$GOOGLE_CALENDAR_CLIENT_ID" \
+                        | tr -d '[:space:]')"
 
           flutter build apk --release \
             --dart-define=FLAVOUR=${{ inputs.flavour }} \
@@ -92,7 +95,7 @@ jobs:
             --dart-define=GOOGLE_SIGN_IN=false \
             --dart-define=EMAIL_OTP_CODE=${{ inputs.email_otp_code }} \
             --dart-define=INVITE_BASE="https://$OWNER.github.io/$REPO/i" \
-            --dart-define=GOOGLE_CALENDAR_CLIENT_ID="${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}"
+            --dart-define=GOOGLE_CALENDAR_CLIENT_ID="$GOOGLE_CID"
 
       # Má to APK vůbec přístup k síti?
       #

@@ -106,11 +106,11 @@ class _CalendarCallbackScreenState
                       PtButton(
                         label: 'Zadat dostupnost jinak',
                         expand: true,
-                        onPressed: widget.tripId == null
-                            ? () => context.go(Routes.trips)
-                            : () => context.go(Routes.availability(
-                                  widget.tripId!,
-                                )),
+                        onPressed: () => context.go(
+                          widget.tripId == null
+                              ? Routes.trips
+                              : Routes.availability(widget.tripId!),
+                        ),
                       ),
                     ],
                   ),

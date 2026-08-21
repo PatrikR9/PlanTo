@@ -90,6 +90,19 @@ class _AvailabilityChooserState extends ConsumerState<AvailabilityChooser> {
   /// jen samotné otevření prohlížeče, a to je jediné, co jde říct hned.
   Future<void> _connectGoogle() async {
     setState(() => _error = null);
+
+    // Rozbité nastavení se pozná tady, ne na chybové stránce Googlu. Tam už
+    // je člověk mimo aplikaci, mimo výlet a bez jediné věty, která by mu
+    // řekla, co má dělat dál.
+    if (!Env.googleCalendarClientIdLooksValid) {
+      setState(() {
+        _error = 'Připojení Googlem není v této verzi aplikace správně '
+            'nastavené. Dostupnost zatím zadejte ručně nebo odkazem na '
+            'kalendář — na výsledku to nic nemění.';
+      });
+      return;
+    }
+
     final bool opened = await ref
         .read(googleCalendarControllerProvider.notifier)
         .connect(widget.trip.id);
