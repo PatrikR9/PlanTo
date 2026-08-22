@@ -42,18 +42,45 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/**
+ * Povinné serverové tajemství, nebo srozumitelná chyba.
+ *
+ * `Deno.env.get(X)!` u chybějícího secretu nevyhodí nic — pošle se řetězec
+ * "undefined" a odpoví až Google, cizí hláškou o cizí věci. Tenhle tok už
+ * jednou stál týden na chybě, která říkala něco jiného, než co se dělo, a
+ * server má být to poslední místo, kde se to opakuje.
+ */
+function requiredEnv(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) {
+    throw new Error(
+      `Serveru chybí tajemství ${name}. Nastav ho příkazem: ` +
+        `supabase secrets set ${name}="…" a nasaď funkci znovu.`,
+    );
+  }
+  return v;
+}
+
 // ---------------------------------------------------------------- šifrování --
 // Kopie z ical-sync. Sdílet ji přes _shared/ by bylo hezčí, ale znamenalo by
 // to, že jedna změna mění dvě nasazené funkce naráz — a tahle část se nemění.
 async function aesKey(): Promise<CryptoKey> {
-  const secret = Deno.env.get("ICAL_SECRET");
-  if (!secret) {
+  const secret = requiredEnv("ICAL_SECRET");
+  let raw: Uint8Array;
+  try {
+    raw = Uint8Array.from(atob(secret), (c) => c.charCodeAt(0));
+  } catch {
+    throw new Error("ICAL_SECRET není platný base64.");
+  }
+  // Délka se říká nahlas: na Windows se `$(openssl rand -base64 32)`
+  // v PowerShellu vyhodnotí na prázdný řetězec a secrets set ho uloží.
+  if (raw.length !== 32) {
     throw new Error(
-      'ICAL_SECRET is not set. Run: supabase secrets set ICAL_SECRET="$(openssl rand -base64 32)"',
+      `ICAL_SECRET musí být 32 bajtů v base64, má ${raw.length}. ` +
+        "V PowerShellu: [Convert]::ToBase64String((New-Object byte[] 32))" +
+        " s naplněním z RandomNumberGenerator.",
     );
   }
-  const raw = Uint8Array.from(atob(secret), (c) => c.charCodeAt(0));
-  if (raw.length !== 32) throw new Error("ICAL_SECRET must be 32 bytes, base64");
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, [
     "encrypt",
     "decrypt",
@@ -102,8 +129,8 @@ async function tokenRequest(form: Record<string, string>): Promise<TokenResponse
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: Deno.env.get("GOOGLE_CLIENT_ID")!,
-      client_secret: Deno.env.get("GOOGLE_CLIENT_SECRET")!,
+      client_id: requiredEnv("GOOGLE_CLIENT_ID"),
+      client_secret: requiredEnv("GOOGLE_CLIENT_SECRET"),
       ...form,
     }),
     signal: AbortSignal.timeout(20000),
@@ -227,6 +254,19 @@ function prepare(slots: Slot[], windowStart: Date, windowEnd: Date) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
+  // Tajemství se ověří dřív, než se kamkoli sáhne.
+  //
+  // Chybějící secret se jinak projeví až u Googla nebo u šifrování, tedy o tři
+  // kroky dál a cizími slovy. Tady je odpověď jedna věta a je v ní název toho,
+  // co chybí — což je jediné, co v tu chvíli někdo potřebuje vědět.
+  try {
+    for (const name of ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "ICAL_SECRET"]) {
+      requiredEnv(name);
+    }
+  } catch (e) {
+    return json({ error: (e as Error).message }, 500);
+  }
+
   const auth = req.headers.get("Authorization");
   if (!auth) return json({ error: "missing authorization" }, 401);
 
@@ -300,12 +340,22 @@ Deno.serve(async (req) => {
     // u druhého souhlasu téhož účtu už nemusí přijít vůbec. Když nedorazí a
     // účet už uložený máme, není to chyba — starý pořád platí.
     if (tokens.refresh_token) {
+      // Šifrování zvlášť a v try: bez klíče tu dřív vyletěla neodchycená
+      // výjimka a ke klientovi se dostalo prázdné 500, tedy „něco se pokazilo"
+      // místo „serveru chybí ICAL_SECRET".
+      let refreshCipher: string;
+      try {
+        refreshCipher = await encrypt(tokens.refresh_token);
+      } catch (e) {
+        return json({ error: (e as Error).message }, 500);
+      }
+
       const { error: saveError } = await asService
         .from("google_calendar_accounts")
         .upsert({
           user_id: userId,
           email: emailFromIdToken(tokens.id_token),
-          refresh_cipher: await encrypt(tokens.refresh_token),
+          refresh_cipher: refreshCipher,
           scope: tokens.scope,
           connected_at: new Date().toISOString(),
           last_error: null,
@@ -328,10 +378,20 @@ Deno.serve(async (req) => {
       return json({ error: "Kalendář Googlu není připojený." }, 400);
     }
 
+    // Rozšifrování odděleně od dotazu na Google. Když selže tohle, klíč se
+    // změnil nebo chybí — a „připojte se znovu" je špatná rada: uložení
+    // nového tokenu by spadlo na tomtéž místě. Proto tu `reconnect` není.
+    let refreshToken: string;
+    try {
+      refreshToken = await decrypt(account.refresh_cipher);
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
+
     try {
       const tokens = await tokenRequest({
         grant_type: "refresh_token",
-        refresh_token: await decrypt(account.refresh_cipher),
+        refresh_token: refreshToken,
       });
       accessToken = tokens.access_token ?? null;
     } catch (e) {

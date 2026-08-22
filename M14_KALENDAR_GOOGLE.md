@@ -473,3 +473,101 @@ souhlasu s ní došla 21. 8. až k výběru účtu.
 **Tyhle opravy nejsou nasazené, dokud se necommitnou a nepushnou.** Oprava
 GitHub secretu spravila Client ID v nasazeném buildu, ale `Env` se mění
 v `lib/**`, takže se to na Pages dostane až dalším pushem.
+
+
+## 11. Souhlas prochází, kalendář se nenačte — zbývá vrstva tajemství
+
+21. 8. odpoledne: po nasazení opravy projde obrazovka souhlasu bez chyby
+a aplikace se vrátí zpátky, ale obsazenost nedorazí. Změřeno zvenčí:
+
+| vrstva | stav | jak ověřeno |
+|---|---|---|
+| nasazený web | **nový kód i nová `oauth.html`** | řetězce z opravy jsou v `main.dart.js` a v `oauth.html` |
+| Client ID v buildu | **72 znaků, tvar OK** | regulárním výrazem v `main.dart.js` |
+| obrazovka souhlasu | **projde** | žádná Googlova chyba |
+| Edge Function `google-calendar` | **nasazená a běží náš kód** | prázdné tělo vrátí `400 {"error":"trip_id is required"}` |
+| migrace `20260814090000` | **aplikovaná** | `my_google_calendar`, `disconnect_google_calendar`, `my_calendar_feeds`, `ical_sync_request` odpovídají; neexistující RPC vrátí `PGRST202` |
+| **Supabase secrets** | **neověřeno** | jediná vrstva, ke které se zvenčí nedá dohlédnout |
+
+Zbývá tedy přesně to, co oddíl 6 nikdy nepotvrdil: `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET` a `ICAL_SECRET` v Supabase.
+
+### 11.1 Proč to nebylo poznat
+
+Funkce v těchhle případech selhávala **němě**:
+
+- `Deno.env.get("GOOGLE_CLIENT_SECRET")!` u chybějícího secretu nevyhodí nic.
+  Do Googlu odejde řetězec `"undefined"` a vrátí se cizí hláška o cizí věci.
+- `encrypt()` se volal **uvnitř** `upsert(...)`, mimo jakýkoli `try`. Chybějící
+  `ICAL_SECRET` tam vyhodil neodchycenou výjimku, ze které se ke klientovi
+  dostalo prázdné 500 — tedy „něco se pokazilo".
+- `decrypt()` selhával uvnitř bloku, který odpovídá `reconnect: true`, takže
+  špatný klíč radil „připojte se znovu". To nepomůže: uložení nového tokenu
+  spadne na tomtéž místě.
+
+### 11.2 Co se změnilo v `google-calendar/index.ts`
+
+- `requiredEnv(name)` místo `Deno.env.get(x)!`.
+- **Všechna tři tajemství se ověří hned na začátku handleru**, ještě než se
+  kamkoli sáhne. Odpověď je jedna věta a je v ní název toho, co chybí.
+- `encrypt()` vytažené z `upsert` do vlastního `try`.
+- `decrypt()` oddělené od dotazu na Google, bez `reconnect`.
+- `ICAL_SECRET` hlásí i **naměřenou délku** — kvůli pasti z oddílu 8, kdy
+  PowerShell uloží prázdný klíč.
+
+Nasadit: `supabase functions deploy google-calendar`. Od té chvíle aplikace
+sama napíše, které tajemství chybí, místo aby to musel někdo hádat.
+
+
+## 12. Vyřešeno — a poslední nález byl v UI, ne v OAuthu
+
+21. 8. odpoledne, ověřeno proklikáním nasazeného webu od pozvánkového odkazu:
+
+| krok | výsledek |
+|---|---|
+| pozvánka → „Pokračovat v prohlížeči" → anonymní session → připojení k výletu | ✅ |
+| `redirect_uri` odeslaná Googlu | ✅ `https://patrikr9.github.io/PlanTo/oauth.html` |
+| obrazovka souhlasu | ✅ projde |
+| návrat přes `oauth.html` do `/calendar-callback` | ✅ |
+| výměna kódu za tokeny v Edge Function | ✅ |
+| `calendar_shared = true` | ✅ „3 z 3 sdílelo dostupnost" |
+| přepočet dostupnosti | ✅ návrhy termínů se skóre 100, `3/3` volných |
+
+**Celý webový tok funguje.** Poslední „nenačetlo to kalendář" nebyla chyba
+autorizace ani serveru: `freeBusy` vrátil na hlavním kalendáři v rozmezí
+14. 8. – 1. 9. **nula bloků**, a to je platná odpověď.
+
+### 12.1 Proč to vypadalo jako porucha
+
+`manual_availability_screen.dart`:
+
+```dart
+final bool editing = _showEditor || _blocks.isNotEmpty;
+```
+
+Obrazovka se rozhoduje **jen podle počtu bloků**. Úspěšné načtení, které
+nenašlo žádnou obsazenost, tedy skončí zpátky na rozcestníku — se stejným
+tlačítkem „Připojit kalendář Googlem", jako by se nestalo vůbec nic. Server
+přitom už zapsal `calendar_shared = true` a skupina čeká zbytečně.
+
+Prázdný kalendář je přitom ta nejužitečnější odpověď: „nic mi nebrání".
+
+### 12.2 Oprava
+
+`AvailabilityChooser` teď sleduje `googleAccountProvider` a při připojeném
+účtu ukáže nad rozcestníkem potvrzení: „Připojeno jako …" plus větu, že
+v rozmezí výletu není nic zabraného — a upozornění, že obsazenost bývá
+v jiném než **hlavním** kalendáři, který se přes `calendar.freebusy` nečte
+(viz oddíl 2). Odtud vede člověk na iCal odkaz nebo ruční zadání.
+
+### 12.3 Co zbývá, a není to blokující
+
+- **Branding.** Obrazovka souhlasu říká „Pokračovat do aplikace
+  **patrikr9.github.io**", ne „PlanTo" — Verification Center hlásí
+  „Your branding is not being shown to users". Vyřeší se s vlastní doménou.
+- **Data Access má prázdné tabulky scopů.** Přidat `calendar.freebusy` je
+  pořád správný krok a je to jediný způsob, jak zjistit jeho kategorii
+  (viz oddíl 9.5).
+- **Release APK lokálně nejde postavit.** Smart App Control blokuje
+  `gen_snapshot.exe`; to je přesně důvod, proč existuje `apk.yml`. Stavět
+  přes Actions → Build APK, Smart App Control nevypínat.

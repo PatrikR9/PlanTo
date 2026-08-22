@@ -7,7 +7,9 @@ import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
 import '../../../trips/domain/trip.dart';
 import '../../data/device_calendar_source.dart';
+import '../../data/google_calendar_repository.dart';
 import '../../domain/calendar_source.dart';
+import '../../domain/google_calendar.dart';
 import '../availability_controller.dart';
 import '../google_calendar_controller.dart';
 
@@ -117,10 +119,63 @@ class _AvailabilityChooserState extends ConsumerState<AvailabilityChooser> {
     final bool connecting =
         ref.watch(googleCalendarControllerProvider).isLoading;
 
+    // Připojený účet Googlu. Kvůli jediné, ale podstatné větě — viz níž.
+    final GoogleAccount? google = ref.watch(googleAccountProvider).valueOrNull;
+
     return ListView(
       padding: const EdgeInsets.all(Sp.xl),
       children: <Widget>[
         const SizedBox(height: Sp.md),
+
+        // Prázdný kalendář je odpověď, ne selhání — a bez tohohle řádku
+        // vypadal úplně stejně jako rozbité připojení.
+        //
+        // Obrazovka dostupnosti se řídí `_blocks.isNotEmpty`, takže úspěšné
+        // načtení, které nenašlo žádnou obsazenost, skončí zpátky na tomhle
+        // rozcestníku — se stejným tlačítkem, jako by se nestalo nic. Server
+        // přitom už zapsal `calendar_shared = true` a skupina čeká zbytečně.
+        // Stálo to jedno odpoledne hledání chyby, která tam nebyla.
+        if (google != null) ...<Widget>[
+          PtCard(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  Icons.check_circle_outline,
+                  color: context.colors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: Sp.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        google.email == null
+                            ? 'Kalendář Googlem je připojený'
+                            : 'Připojeno jako ${google.email}',
+                        style: context.texts.titleSmall,
+                      ),
+                      const SizedBox(height: Sp.xs),
+                      Text(
+                        'V rozmezí tohohle výletu v něm nemáte nic '
+                        'zabraného, takže vás ostatní vidí jako volného. '
+                        'Pokud to nesedí, obsazenost bývá v jiném než '
+                        'hlavním kalendáři — ten se přes Google nečte. '
+                        'Použijte odkaz na kalendář nebo ji zadejte ručně.',
+                        style: context.texts.bodySmall?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Sp.xl),
+        ],
+
         Text(
           'Kdy máte čas?',
           style: context.texts.headlineSmall,
