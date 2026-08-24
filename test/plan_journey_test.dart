@@ -70,8 +70,11 @@ void main() {
       expect(fare.isEstimate, isTrue);
       expect(fare.min, lessThan(fare.max));
       expect(fare.confidence, FareConfidence.medium);
-      expect(fare.basis, isNotEmpty,
-          reason: 'odhad, který nejde rozebrat, nejde ani opravit');
+      expect(
+        fare.basis,
+        isNotEmpty,
+        reason: 'odhad, který nejde rozebrat, nejde ani opravit',
+      );
     });
 
     test('zpoždění se pozná z rozdílu proti jízdnímu řádu', () {
@@ -94,8 +97,11 @@ void main() {
       });
       expect(s.isEmpty, isTrue);
       expect(s.best, isNull);
-      expect(s.hasTimetable, isTrue,
-          reason: 'vyhledávač odpověděl — jen nic nenašel');
+      expect(
+        s.hasTimetable,
+        isTrue,
+        reason: 'vyhledávač odpověděl — jen nic nenašel',
+      );
     });
 
     test('výpadek poskytovatele se pozná od prázdného výsledku', () {

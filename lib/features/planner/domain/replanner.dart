@@ -533,10 +533,12 @@ class Replanner {
     // Pravidlo 2: zamčený nebo ručně vybraný spoj se nemění, dokud o to
     // uživatel nepožádal přímo.
     if (isUserChoice && need.intent == SegmentIntent.cascade) {
-      problems.add(PlanProblem(
-        PlanProblemCode.lockedConflict,
-        params: <String, String>{'segment': segment.wire},
-      ));
+      problems.add(
+        PlanProblem(
+          PlanProblemCode.lockedConflict,
+          params: <String, String>{'segment': segment.wire},
+        ),
+      );
       return p;
     }
 
@@ -545,23 +547,27 @@ class Replanner {
       // horší než plán s cestou, která nesplňuje nové zadání — a hláška
       // řekne, co se stalo.
       final Journey? miss = result?.nearestMiss;
-      problems.add(PlanProblem(
-        segment == PlanSegment.homeward
-            ? PlanProblemCode.noReturnFound
-            : PlanProblemCode.noOutboundFound,
-        params: <String, String>{
-          if (miss != null) 'earliest': _wall(miss.localArrival),
-          if (miss != null) 'departure': _wall(miss.localDeparture),
-        },
-      ));
+      problems.add(
+        PlanProblem(
+          segment == PlanSegment.homeward
+              ? PlanProblemCode.noReturnFound
+              : PlanProblemCode.noOutboundFound,
+          params: <String, String>{
+            if (miss != null) 'earliest': _wall(miss.localArrival),
+            if (miss != null) 'departure': _wall(miss.localDeparture),
+          },
+        ),
+      );
       return p;
     }
 
     if (isUserChoice && need.intent == SegmentIntent.constraint) {
-      problems.add(PlanProblem(
-        PlanProblemCode.userChoiceReplaced,
-        params: <String, String>{'segment': segment.wire},
-      ));
+      problems.add(
+        PlanProblem(
+          PlanProblemCode.userChoiceReplaced,
+          params: <String, String>{'segment': segment.wire},
+        ),
+      );
     }
 
     final List<PlanItem> replacement = _itemsForJourney(
@@ -607,19 +613,21 @@ class Replanner {
     // případech má osa začínat tím, kdy se má člověk zvednout.
     final JourneyLeg? first = j.legs.firstOrNull;
     if (first != null && !first.isWalk && segment == PlanSegment.outbound) {
-      out.add(PlanItem.atLocal(
-        id: newPlanItemId(),
-        kind: PlanItemKind.walk,
-        segment: segment,
-        localStart: first.localDeparture.subtract(ctx.homeWalk),
-        localEnd: first.localDeparture,
-        zoneOffset: off,
-        titleKey: 'plan.leave_home',
-        titleParams: <String, String>{'stop': first.fromName},
-        toName: first.fromName,
-        confidence: PlanConfidence.rough,
-        source: source,
-      ));
+      out.add(
+        PlanItem.atLocal(
+          id: newPlanItemId(),
+          kind: PlanItemKind.walk,
+          segment: segment,
+          localStart: first.localDeparture.subtract(ctx.homeWalk),
+          localEnd: first.localDeparture,
+          zoneOffset: off,
+          titleKey: 'plan.leave_home',
+          titleParams: <String, String>{'stop': first.fromName},
+          toName: first.fromName,
+          confidence: PlanConfidence.rough,
+          source: source,
+        ),
+      );
     }
 
     JourneyLeg? previous;
@@ -627,54 +635,58 @@ class Replanner {
       if (previous != null) {
         final Duration wait = leg.departure.difference(previous.arrival);
         if (wait.inMinutes >= 1) {
-          out.add(PlanItem.atLocal(
-            id: newPlanItemId(),
-            kind: PlanItemKind.transfer,
-            segment: segment,
-            localStart: previous.localArrival,
-            localEnd: leg.localDeparture,
-            zoneOffset: off,
-            titleKey: 'plan.transfer',
-            titleParams: <String, String>{
-              'stop': previous.toName,
-              'minutes': '${wait.inMinutes}',
-            },
-            fromName: previous.toName,
-            toName: leg.fromName,
-            confidence: PlanConfidence.estimated,
-            source: source,
-            isLocked: locked,
-          ));
+          out.add(
+            PlanItem.atLocal(
+              id: newPlanItemId(),
+              kind: PlanItemKind.transfer,
+              segment: segment,
+              localStart: previous.localArrival,
+              localEnd: leg.localDeparture,
+              zoneOffset: off,
+              titleKey: 'plan.transfer',
+              titleParams: <String, String>{
+                'stop': previous.toName,
+                'minutes': '${wait.inMinutes}',
+              },
+              fromName: previous.toName,
+              toName: leg.fromName,
+              confidence: PlanConfidence.estimated,
+              source: source,
+              isLocked: locked,
+            ),
+          );
         }
       }
 
-      out.add(PlanItem.atLocal(
-        id: newPlanItemId(),
-        kind: leg.isWalk ? PlanItemKind.walk : PlanItemKind.transport,
-        segment: segment,
-        localStart: leg.localDeparture,
-        localEnd: leg.localArrival,
-        zoneOffset: off,
-        titleKey: leg.isWalk ? 'plan.walk' : 'plan.ride',
-        titleParams: <String, String>{
-          'from': leg.fromName,
-          'to': leg.toName,
-          if (leg.lineName != null) 'line': leg.lineName!,
-          if (leg.operatorName != null) 'operator': leg.operatorName!,
-        },
-        // Náš model úseku, ne odpověď poskytovatele. Proto to po roce a po
-        // výměně vyhledávače pořád půjde načíst.
-        detail: <String, dynamic>{
-          ...leg.toWire(),
-          'journey_id': j.id,
-          if (j.deepLink != null) 'deep_link': j.deepLink,
-        },
-        fromName: leg.fromName,
-        toName: leg.toName,
-        confidence: PlanConfidence.estimated,
-        source: source,
-        isLocked: locked,
-      ));
+      out.add(
+        PlanItem.atLocal(
+          id: newPlanItemId(),
+          kind: leg.isWalk ? PlanItemKind.walk : PlanItemKind.transport,
+          segment: segment,
+          localStart: leg.localDeparture,
+          localEnd: leg.localArrival,
+          zoneOffset: off,
+          titleKey: leg.isWalk ? 'plan.walk' : 'plan.ride',
+          titleParams: <String, String>{
+            'from': leg.fromName,
+            'to': leg.toName,
+            if (leg.lineName != null) 'line': leg.lineName!,
+            if (leg.operatorName != null) 'operator': leg.operatorName!,
+          },
+          // Náš model úseku, ne odpověď poskytovatele. Proto to po roce a po
+          // výměně vyhledávače pořád půjde načíst.
+          detail: <String, dynamic>{
+            ...leg.toWire(),
+            'journey_id': j.id,
+            if (j.deepLink != null) 'deep_link': j.deepLink,
+          },
+          fromName: leg.fromName,
+          toName: leg.toName,
+          confidence: PlanConfidence.estimated,
+          source: source,
+          isLocked: locked,
+        ),
+      );
 
       previous = leg;
     }
@@ -682,19 +694,21 @@ class Replanner {
     // Cesta od zastávky domů.
     final JourneyLeg? last = j.legs.lastOrNull;
     if (last != null && !last.isWalk && segment == PlanSegment.homeward) {
-      out.add(PlanItem.atLocal(
-        id: newPlanItemId(),
-        kind: PlanItemKind.walk,
-        segment: segment,
-        localStart: last.localArrival,
-        localEnd: last.localArrival.add(ctx.homeWalk),
-        zoneOffset: off,
-        titleKey: 'plan.walk_home',
-        titleParams: <String, String>{'stop': last.toName},
-        fromName: last.toName,
-        confidence: PlanConfidence.rough,
-        source: source,
-      ));
+      out.add(
+        PlanItem.atLocal(
+          id: newPlanItemId(),
+          kind: PlanItemKind.walk,
+          segment: segment,
+          localStart: last.localArrival,
+          localEnd: last.localArrival.add(ctx.homeWalk),
+          zoneOffset: off,
+          titleKey: 'plan.walk_home',
+          titleParams: <String, String>{'stop': last.toName},
+          fromName: last.toName,
+          confidence: PlanConfidence.rough,
+          source: source,
+        ),
+      );
     }
 
     // Jízdné visí na prvním úseku a nese v detailu, že platí pro celou cestu.
@@ -793,13 +807,15 @@ class Replanner {
       if (it.startsAt.isBefore(notBefore)) {
         if (it.isLocked) {
           // Pravidlo 1. Zámek se nehne ani kvůli tomu, že se na něj nestíhá.
-          problems.add(PlanProblem(
-            PlanProblemCode.arrivalAfterActivity,
-            params: <String, String>{
-              'arrival': _wall(ctx.wallClock(arrival)),
-              'start': _wall(it.localStart),
-            },
-          ));
+          problems.add(
+            PlanProblem(
+              PlanProblemCode.arrivalAfterActivity,
+              params: <String, String>{
+                'arrival': _wall(ctx.wallClock(arrival)),
+                'start': _wall(it.localStart),
+              },
+            ),
+          );
         } else {
           it = it.shiftedBy(notBefore.difference(it.startsAt));
           changed.add(it.id);
@@ -845,10 +861,12 @@ class Replanner {
       rebuilt[last] = shortened;
       changed.add(shortened.id);
     } else {
-      problems.add(const PlanProblem(
-        PlanProblemCode.lockedConflict,
-        params: <String, String>{'segment': 'stay'},
-      ));
+      problems.add(
+        const PlanProblem(
+          PlanProblemCode.lockedConflict,
+          params: <String, String>{'segment': 'stay'},
+        ),
+      );
     }
 
     return (plan: _withStay(p, rebuilt).sorted(), needs: ReplanNeeds.none);
@@ -874,25 +892,29 @@ class Replanner {
     final DateTime? arriveBy = p.arriveBy;
     final DateTime? arrival = p.arrivalAtDestination;
     if (arriveBy != null && arrival != null && arrival.isAfter(arriveBy)) {
-      problems.add(PlanProblem(
-        PlanProblemCode.arrivalAfterRequest,
-        params: <String, String>{
-          'requested': _wall(ctx.wallClock(arriveBy)),
-          'actual': _wall(ctx.wallClock(arrival)),
-        },
-      ));
+      problems.add(
+        PlanProblem(
+          PlanProblemCode.arrivalAfterRequest,
+          params: <String, String>{
+            'requested': _wall(ctx.wallClock(arriveBy)),
+            'actual': _wall(ctx.wallClock(arrival)),
+          },
+        ),
+      );
     }
 
     final DateTime? homeBy = p.homeBy;
     final DateTime? home = p.arrivalHome;
     if (homeBy != null && home != null && home.isAfter(homeBy)) {
-      problems.add(PlanProblem(
-        PlanProblemCode.returnAfterDeadline,
-        params: <String, String>{
-          'deadline': _wall(ctx.wallClock(homeBy)),
-          'actual': _wall(ctx.wallClock(home)),
-        },
-      ));
+      problems.add(
+        PlanProblem(
+          PlanProblemCode.returnAfterDeadline,
+          params: <String, String>{
+            'deadline': _wall(ctx.wallClock(homeBy)),
+            'actual': _wall(ctx.wallClock(home)),
+          },
+        ),
+      );
     }
 
     if (p.items.isNotEmpty && !p.hasTimetable) {

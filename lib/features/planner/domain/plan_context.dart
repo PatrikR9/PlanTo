@@ -84,8 +84,15 @@ class JourneyQuery {
       other.direction == direction;
 
   @override
-  int get hashCode => Object.hash(origin.lat, origin.lon, destination.lat,
-      destination.lon, when, arriveBy, direction);
+  int get hashCode => Object.hash(
+        origin.lat,
+        origin.lon,
+        destination.lat,
+        destination.lon,
+        when,
+        arriveBy,
+        direction,
+      );
 }
 
 @immutable

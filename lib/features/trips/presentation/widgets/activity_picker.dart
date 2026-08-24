@@ -303,8 +303,10 @@ class _ActivityPickerSheetState extends State<ActivityPickerSheet> {
                               runSpacing: Sp.xs,
                               children: <Widget>[
                                 for (final ActivityTag t in _selected.toList()
-                                  ..sort((ActivityTag a, ActivityTag b) =>
-                                      a.label.compareTo(b.label)))
+                                  ..sort(
+                                    (ActivityTag a, ActivityTag b) =>
+                                        a.label.compareTo(b.label),
+                                  ))
                                   InputChip(
                                     label: Text(t.label),
                                     onDeleted: () => _toggle(t),

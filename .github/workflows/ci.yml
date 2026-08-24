@@ -162,10 +162,13 @@ jobs:
           DB_URL="$(supabase status -o env | grep DB_URL | cut -d= -f2- \
                     | tr -d '"')"
           # Každý test ve vlastní transakci, která se na konci zahodí.
-          # Testy jsou psané proti čisté databázi, ne proti sobě navzájem:
-          # bez izolace narazí druhý z nich na profily, které založil první
-          # (`duplicate key ... profiles_pkey`), a `set role` z jednoho
-          # protéká do dalšího jako „permission denied".
+          #
+          # Není to oprava chyby, kterou jsme hledali — kolize profilů byla
+          # uvnitř každého souboru (trigger `on_auth_user_created` založí
+          # profil dřív, než ho test vloží sám), ne mezi nimi. Izolace tu
+          # zůstává proto, že testy jsou psané proti čisté databázi a nemá
+          # smysl je na sebe pouštět: první, kdo něco nechá za sebou, posune
+          # výsledek všech dalších.
           for t in supabase/tests/*.sql; do
             printf 'begin;\n\\i %s\nrollback;\n' "$t" > /tmp/wrapped.sql
             {

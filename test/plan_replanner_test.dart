@@ -44,11 +44,17 @@ void main() {
       final TripPlan p = buildPlan();
 
       expect(p.items.length, 9);
-      expect(p.segment(PlanSegment.outbound).length, 4,
-          reason: 'chůze, vlak, přestup, autobus');
+      expect(
+        p.segment(PlanSegment.outbound).length,
+        4,
+        reason: 'chůze, vlak, přestup, autobus',
+      );
       expect(p.segment(PlanSegment.stay).length, 1);
-      expect(p.segment(PlanSegment.homeward).length, 4,
-          reason: 'autobus, přestup, vlak, chůze domů');
+      expect(
+        p.segment(PlanSegment.homeward).length,
+        4,
+        reason: 'autobus, přestup, vlak, chůze domů',
+      );
 
       // Chronologicky a bez děr v pořadí.
       for (int i = 1; i < p.items.length; i++) {
@@ -60,8 +66,11 @@ void main() {
       }
 
       expect(p.items.first.localStart, wall(8, 10));
-      expect(p.items.last.localEnd, wall(20, 5),
-          reason: 'po posledním vlaku ještě deset minut domů');
+      expect(
+        p.items.last.localEnd,
+        wall(20, 5),
+        reason: 'po posledním vlaku ještě deset minut domů',
+      );
       expect(p.hasTimetable, isTrue);
       expect(p.planDate, DateTime(2026, 9, 12));
     });
@@ -79,10 +88,16 @@ void main() {
 
     test('program vyplní čas mezi příjezdem a odjezdem zpět', () {
       final PlanItem activity = activityOf(buildPlan());
-      expect(activity.localStart, wall(11, 7),
-          reason: 'příjezd 10:52 plus čtvrthodina na rozkoukání');
-      expect(activity.localEnd, wall(16, 55),
-          reason: 'deset minut před odjezdem v 17:05');
+      expect(
+        activity.localStart,
+        wall(11, 7),
+        reason: 'příjezd 10:52 plus čtvrthodina na rozkoukání',
+      );
+      expect(
+        activity.localEnd,
+        wall(16, 55),
+        reason: 'deset minut před odjezdem v 17:05',
+      );
       expect(activity.isLocked, isFalse);
       expect(activity.source, PlanItemSource.generated);
     });
@@ -136,8 +151,11 @@ void main() {
 
       expect(out.origin.name, 'Praha hl.n.');
       expect(out.destination.name, 'Český Krumlov');
-      expect(home.origin.name, 'Český Krumlov',
-          reason: 'zpáteční cesta se hledá z cíle, není to obrácený itinerář');
+      expect(
+        home.origin.name,
+        'Český Krumlov',
+        reason: 'zpáteční cesta se hledá z cíle, není to obrácený itinerář',
+      );
       expect(home.destination.name, 'Praha hl.n.');
       expect(out.arriveBy, isFalse);
       expect(home.arriveBy, isTrue);
@@ -186,8 +204,11 @@ void main() {
       );
 
       final PlanItem activity = activityOf(r.plan);
-      expect(activity.localStart, wall(14, 45),
-          reason: 'příjezd 14:30 plus čtvrthodina');
+      expect(
+        activity.localStart,
+        wall(14, 45),
+        reason: 'příjezd 14:30 plus čtvrthodina',
+      );
       expect(r.changedIds, contains(activity.id));
     });
 
@@ -218,8 +239,11 @@ void main() {
       );
 
       final PlanItem after = activityOf(r.plan);
-      expect(after.localStart, wall(13, 0),
-          reason: 'zamčený bod se nesmí tiše posunout');
+      expect(
+        after.localStart,
+        wall(13, 0),
+        reason: 'zamčený bod se nesmí tiše posunout',
+      );
       expect(r.changedIds, isNot(contains(after.id)));
       expect(
         r.problems.map((PlanProblem e) => e.code),
@@ -265,8 +289,11 @@ void main() {
       );
 
       expect(r.followUp.homeward, isNotNull);
-      expect(r.followUp.outbound, isNull,
-          reason: 'cesta tam se prodloužením programu nemění');
+      expect(
+        r.followUp.outbound,
+        isNull,
+        reason: 'cesta tam se prodloužením programu nemění',
+      );
       expect(
         r.plan.segment(PlanSegment.outbound).map((PlanItem i) => i.id).toList(),
         outboundIds,
@@ -288,8 +315,11 @@ void main() {
           .plan;
 
       final PlanItem activity = activityOf(p);
-      expect(activity.localEnd, wall(15, 20),
-          reason: 'návrat v 15:30 minus deset minut na zastávku');
+      expect(
+        activity.localEnd,
+        wall(15, 20),
+        reason: 'návrat v 15:30 minus deset minut na zastávku',
+      );
       expect(
         p.segment(PlanSegment.homeward).first.source,
         PlanItemSource.userSelected,
@@ -420,7 +450,8 @@ void main() {
       );
 
       final PlanProblem problem = r.problems.firstWhere(
-          (PlanProblem e) => e.code == PlanProblemCode.noReturnFound);
+        (PlanProblem e) => e.code == PlanProblemCode.noReturnFound,
+      );
       expect(problem.params['earliest'], contains('20:42'));
       expect(problem.isBlocking, isTrue);
       // Původní cesta zpět zůstala — plán bez návratu je horší než návrat,
@@ -519,8 +550,11 @@ void main() {
       final PlanItem ride = loaded
           .segment(PlanSegment.outbound)
           .firstWhere((PlanItem i) => i.kind == PlanItemKind.transport);
-      expect(ride.detail['line'], 'R 640',
-          reason: 'spoj se ukládá jako náš model, ne jako odpověď API');
+      expect(
+        ride.detail['line'],
+        'R 640',
+        reason: 'spoj se ukládá jako náš model, ne jako odpověď API',
+      );
       expect(loaded.zoneOffset, kTestOffset);
     });
 
@@ -558,8 +592,11 @@ void main() {
       ];
       final Journey? picked =
           JourneyPick.arrivingBy(js, ctx.instant(wall(20, 0)));
-      expect(picked?.id, 'home-1',
-          reason: 'kdo chce být doma do osmi, chce v cíli zůstat co nejdéle');
+      expect(
+        picked?.id,
+        'home-1',
+        reason: 'kdo chce být doma do osmi, chce v cíli zůstat co nejdéle',
+      );
     });
 
     test('nejbližší nevyhovující spoj se dá nabídnout jako náhrada', () {

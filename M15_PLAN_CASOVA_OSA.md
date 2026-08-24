@@ -347,10 +347,14 @@ prošly, takže **migrace 20260824090000 se aplikovala na skutečný Postgres**.
 
 - `transport_test.ts` čekal u trasy „pěší úsek + vlak + pěší úsek" délku
   52 minut. 07:00 → 09:52 je 172; 52 bylo číslo z ciferníku. Opraveno.
-- SQL testy běžely proti jedné sdílené databázi, takže druhý z nich narazil
-  na profily, které založil první (`duplicate key ... profiles_pkey`), a
-  `set role` protékal do dalšího jako „permission denied". CI teď každý test
-  pouští ve vlastní transakci, která se na konci zahodí.
+- Pět SQL testů padalo na `duplicate key ... profiles_pkey`. Příčina není
+  sdílená databáze, jak to na první pohled vypadalo: trigger
+  `on_auth_user_created` založí profil hned při vložení do `auth.users`,
+  takže následný `insert into profiles` v témže souboru koliduje sám se
+  sebou. Čtyři testy to už ošetřené měly (`on conflict do nothing`), pět ne.
+  Doplněno. CI navíc pouští každý test ve vlastní zahozené transakci — to
+  tuhle chybu neopravilo, ale testy jsou psané proti čisté databázi a nemá
+  smysl je na sebe pouštět.
 - `google-calendar/index.ts` neprošel `deno check` kvůli
   `crypto.subtle.importKey("raw", …)` — od TypeScriptu 5.7 `Uint8Array` nad
   `ArrayBufferLike` nesedí do `BufferSource`. Kopie do čerstvého bufferu.

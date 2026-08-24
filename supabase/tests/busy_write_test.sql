@@ -24,9 +24,14 @@ values
   ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'd@test.cz', now(), now(), now());
 
+-- `on conflict` kvůli triggeru `on_auth_user_created`: vložení do
+-- auth.users už profil založilo, takže tenhle insert do něj jen
+-- doplní jméno. Bez toho test spadne na profiles_pkey dřív, než se
+-- vůbec dostane k tomu, co má ověřit.
 insert into profiles (id, display_name) values
   ('11111111-1111-1111-1111-111111111111', 'Anna'),
-  ('44444444-4444-4444-4444-444444444444', 'Dan');
+  ('44444444-4444-4444-4444-444444444444', 'Dan')
+on conflict (id) do update set display_name = excluded.display_name;
 
 insert into trips (id, created_by, title, origin_label, origin_point,
                    date_window, duration_days)

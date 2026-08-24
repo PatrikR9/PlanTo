@@ -49,32 +49,38 @@ class PlanTimeline extends StatelessWidget {
       final PlanItem item = items[i];
 
       if (item.segment != lastSegment) {
-        rows.add(_SegmentHeader(
-          segment: item.segment,
-          onRefresh: item.segment == PlanSegment.stay
-              ? null
-              : () => onRefreshSegment(item.segment),
-        ));
+        rows.add(
+          _SegmentHeader(
+            segment: item.segment,
+            onRefresh: item.segment == PlanSegment.stay
+                ? null
+                : () => onRefreshSegment(item.segment),
+          ),
+        );
         lastSegment = item.segment;
       }
 
-      rows.add(_TimelineRow(
-        item: item,
-        isFirst: i == 0,
-        isLast: i == items.length - 1,
-        isChanged: changedIds.contains(item.id),
-        onTap: () => onTapItem(item),
-      ));
+      rows.add(
+        _TimelineRow(
+          item: item,
+          isFirst: i == 0,
+          isLast: i == items.length - 1,
+          isChanged: changedIds.contains(item.id),
+          onTap: () => onTapItem(item),
+        ),
+      );
 
       // Mezera do dalšího bodu.
       if (i + 1 < items.length) {
         final PlanItem next = items[i + 1];
         final Duration gap = next.startsAt.difference(item.endsAt);
         if (gap.inMinutes >= 10) {
-          rows.add(_GapRow(
-            length: gap,
-            onAdd: () => onAddAt(item.localEnd, gap),
-          ));
+          rows.add(
+            _GapRow(
+              length: gap,
+              onAdd: () => onAddAt(item.localEnd, gap),
+            ),
+          );
         }
       }
     }
