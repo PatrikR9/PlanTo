@@ -146,6 +146,17 @@ Přepnutí na `motis` je jeden `update` — ne deploy, ne refaktoring. Adaptér 
 normalizace už existují a jsou otestované na vymyšlené odpovědi; první běh
 proti skutečné instanci je potvrdí nebo opraví.
 
+**Doplněno 24. 8. 2026 (M15).** Vedle `motis` je teď i poskytovatel
+`transitous` — stejné API, jiná URL, a **jenom pro vývoj**: řádek v tabulce
+výš se nezměnil, komerční licenci Transitous pořád nemá. Zapnutí je vědomý
+`update app_config`, výchozí hodnota zůstává `estimate`. Endpoint je
+`/api/{verze}/plan` (aktuálně `v6`, verze je v `app_config.motis_api_version`
+a funkce na 404 zkusí starší). Transitous vyžaduje **User-Agent s kontaktem**
+(`app_config.transport_user_agent`) a **viditelný odkaz na
+<https://transitous.org/sources/>** (`app_config.transport_attribution`) —
+text jde s odpovědí serveru, takže se nedá zapnout poskytovatel a zapomenout
+na atribuci. Podrobnosti v `M15_PLAN_CASOVA_OSA.md`.
+
 Jízdné ani po zapnutí MOTISu přesné nebude — přesné ceny české veřejné
 dopravy nevydává zadarmo nikdo. Zůstává tarifní model v `fare_rules`,
 označený jako odhad, s `confidence` a s odkazem na oficiální nákup.

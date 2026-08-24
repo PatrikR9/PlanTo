@@ -23,6 +23,12 @@ DateCandidate make({
     startsAt: s,
     endsAt: e,
     windowEndsAt: windowEndsAt ?? e,
+    // V testu je zóna zařízení i zóna výletu totéž, takže místní časy jsou
+    // shodné s okamžiky. Rozdíl mezi nimi řeší migrace 20260821140000 a
+    // patří do integračního testu, ne sem.
+    localStart: s,
+    localEnd: e,
+    localWindowEnd: windowEndsAt ?? e,
     freeCount: free,
     totalCount: total,
     freeUserIds: const <String>[],

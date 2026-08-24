@@ -1,15 +1,41 @@
 name: CI
 
+# Proč tenhle workflow navíc píše report do větve `ci-report`.
+#
+# Logy z Actions se dají číst jen přihlášeně a asistent, který ten kód píše,
+# na ně nedosáhne — proxy pouští `raw.githubusercontent.com`, ne API. Výsledek
+# byl, že každé kolo oprav stálo jedno „spusť to a vlož mi výstup".
+#
+# Job `report` proto výstup všech tří jobů posbírá a **force-pushne do větve
+# `ci-report`** jako obyčejné textové soubory. Ty jdou přečíst bez tokenu:
+#
+#   https://raw.githubusercontent.com/<owner>/<repo>/ci-report/summary.txt
+#   https://raw.githubusercontent.com/<owner>/<repo>/ci-report/flutter.txt
+#   https://raw.githubusercontent.com/<owner>/<repo>/ci-report/database.txt
+#   https://raw.githubusercontent.com/<owner>/<repo>/ci-report/functions.txt
+#   https://raw.githubusercontent.com/<owner>/<repo>/ci-report/format.patch
+#
+# Větev je pokaždé jeden commit z prázdné historie, takže neroste a nedá se
+# z ní nic omylem smergovat. Push do ní nespouští CI znovu — `on.push` je
+# omezené na `main`.
+#
+# Semantika jobů se nezměnila: kroky pořád selžou, když selže kontrola.
+# Změnilo se jen to, že se výstup nejdřív uloží a teprve pak se job položí.
+
 on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
   schedule:
     - cron: '0 4 */3 * *'   # every 3 days, defeats Supabase auto-pause
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   flutter:
@@ -27,18 +53,72 @@ jobs:
 
       - run: flutter pub get
       - run: flutter gen-l10n
-      - run: dart format --output=none --set-exit-if-changed lib test
-      - run: flutter analyze --fatal-infos
-      - run: flutter test --coverage
+
+      # Jeden krok místo tří, protože `dart format` selže dřív, než se vůbec
+      # spustí `analyze` — a pak není v reportu to jediné, kvůli čemu se sem
+      # člověk dívá. Návratový kód se pamatuje a job se položí až úplně na
+      # konci, po uložení artefaktu.
+      - name: Checks
+        id: checks
+        continue-on-error: true
+        run: |
+          mkdir -p _report
+          rc=0
+          check() {
+            {
+              echo ""
+              echo "═══ $* ═══"
+            } >> _report/flutter.txt
+            if "$@" >> _report/flutter.txt 2>&1; then
+              echo "[ok] $*" >> _report/flutter.txt
+            else
+              echo "[FAILED] $*" >> _report/flutter.txt
+              rc=1
+            fi
+          }
+          check dart format --output=none --set-exit-if-changed lib test
+          check flutter analyze --fatal-infos
+          check flutter test --coverage
+          exit $rc
+
+      # Formátování se dá opravit strojově, takže se rovnou vyrobí záplata.
+      # Je to levnější než popisovat v reportu, kde chybí čárka.
+      - name: Formatting patch
+        if: always()
+        run: |
+          dart format lib test > /dev/null 2>&1 || true
+          git diff > _report/format.patch || true
+          if [ -s _report/format.patch ]; then
+            echo "format.patch: $(wc -l < _report/format.patch) řádků" \
+              >> _report/flutter.txt
+          else
+            echo "format.patch: prázdná (formátování sedí)" \
+              >> _report/flutter.txt
+          fi
+          git checkout -- . || true
 
       # Guardrail from the cost register, section C3: a single AGPL dependency
       # linked into the APK would oblige us to publish the source.
       - name: Reject GPL/AGPL dependencies
+        if: always()
         run: |
           flutter pub deps --style=compact > deps.txt
           if grep -Eiq '(^|[^a-z])a?gpl' deps.txt; then
-            echo "::error::GPL/AGPL dependency detected"; exit 1
+            echo "::error::GPL/AGPL dependency detected" \
+              | tee -a _report/flutter.txt
+            exit 1
           fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-flutter
+          path: _report/
+          if-no-files-found: warn
+
+      - name: Fail if checks failed
+        if: steps.checks.outcome == 'failure'
+        run: exit 1
 
   database:
     name: Migrations
@@ -48,15 +128,46 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - run: supabase db start
-      - run: supabase db lint
-      - name: Solver + RLS tests
+
+      - name: Apply migrations and run SQL tests
+        id: checks
+        continue-on-error: true
         run: |
-          DB_URL="$(supabase status -o env | grep DB_URL | cut -d= -f2-)"
+          mkdir -p _report
+          rc=0
+          check() {
+            {
+              echo ""
+              echo "═══ $* ═══"
+            } >> _report/database.txt
+            if "$@" >> _report/database.txt 2>&1; then
+              echo "[ok] $*" >> _report/database.txt
+            else
+              echo "[FAILED] $*" >> _report/database.txt
+              rc=1
+            fi
+          }
+          # `db start` aplikuje všechny migrace v pořadí — tohle je jediné
+          # místo, kde se nová migrace opravdu spustí proti Postgresu.
+          check supabase db start
+          check supabase db lint
+          DB_URL="$(supabase status -o env | grep DB_URL | cut -d= -f2- \
+                    | tr -d '"')"
           for t in supabase/tests/*.sql; do
-            echo "--- $t"
-            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$t"
+            check psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$t"
           done
+          exit $rc
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-database
+          path: _report/
+          if-no-files-found: warn
+
+      - name: Fail if checks failed
+        if: steps.checks.outcome == 'failure'
+        run: exit 1
 
   functions:
     # The ICS parser decides whether somebody is reported free when they are
@@ -69,11 +180,90 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno check supabase/functions/**/*.ts
-      # No permission flags: Deno grants nothing by default, and the parser
-      # tests must not need any. If one ever asks for the network, that is the
-      # test telling you the parser started fetching something.
-      - run: deno test supabase/functions/_shared/
+
+      - name: Check and test
+        id: checks
+        continue-on-error: true
+        run: |
+          mkdir -p _report
+          rc=0
+          check() {
+            {
+              echo ""
+              echo "═══ $* ═══"
+            } >> _report/functions.txt
+            if "$@" >> _report/functions.txt 2>&1; then
+              echo "[ok] $*" >> _report/functions.txt
+            else
+              echo "[FAILED] $*" >> _report/functions.txt
+              rc=1
+            fi
+          }
+          check deno check supabase/functions/**/*.ts
+          # No permission flags: Deno grants nothing by default, and the
+          # parser tests must not need any. If one ever asks for the network,
+          # that is the test telling you the parser started fetching something.
+          check deno test supabase/functions/_shared/
+          exit $rc
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-functions
+          path: _report/
+          if-no-files-found: warn
+
+      - name: Fail if checks failed
+        if: steps.checks.outcome == 'failure'
+        run: exit 1
+
+  report:
+    name: Publish report
+    needs: [flutter, database, functions]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Assemble
+        run: |
+          mkdir -p out
+          find artifacts -type f -print0 | while IFS= read -r -d '' f; do
+            cp "$f" "out/$(basename "$f")"
+          done
+          {
+            echo "commit:    $GITHUB_SHA"
+            echo "ref:       $GITHUB_REF"
+            echo "run:       $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "finished:  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+            echo "flutter:   ${{ needs.flutter.result }}"
+            echo "database:  ${{ needs.database.result }}"
+            echo "functions: ${{ needs.functions.result }}"
+          } > out/summary.txt
+          ls -la out
+
+      # Prázdná historie a force push: větev je snímek posledního běhu, ne
+      # archiv. Kdyby rostla, byl by v repozitáři druhý strom, který nikdo
+      # nečte a všichni ho klonují.
+      - name: Publish to ci-report
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out
+          git init -q
+          git checkout -q -b ci-report
+          git config user.name  "planto-ci"
+          git config user.email "ci@planto.invalid"
+          git add -A
+          git commit -q -m "report for ${GITHUB_SHA:0:7}"
+          git push -q --force \
+            "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            ci-report
 
   keepalive:
     # Supabase free projects pause after 7 days idle. This is the cheapest
@@ -82,5 +272,9 @@ jobs:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
-      - run: curl -fsS "${{ secrets.SUPABASE_URL }}/rest/v1/" \
-               -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" > /dev/null
+      # Blokový skalár, ne pokračovací zpětné lomítko: `apikey:` uvnitř
+      # plain scalaru YAML rozbije, protože dvojtečku bere jako klíč.
+      - run: >-
+          curl -fsS "${{ secrets.SUPABASE_URL }}/rest/v1/"
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
+          > /dev/null

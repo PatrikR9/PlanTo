@@ -17,6 +17,11 @@ class DateCandidateCard extends StatelessWidget {
     required this.candidate,
     required this.timed,
     required this.onVote,
+    this.showDay = true,
+    this.names = const <String, String>{},
+    this.showWeather = true,
+    this.blockDays = 1,
+    this.note,
     this.isBest = false,
     this.onLock,
     this.onUnlock,
@@ -30,6 +35,39 @@ class DateCandidateCard extends StatelessWidget {
   /// else about the card is identical, which is the point of the shared
   /// candidate model.
   final bool timed;
+
+  /// Zda má podtitulek nést i datum.
+  ///
+  /// False, když nad kartou stojí nadpis dne. Datum dvakrát pod sebou byl
+  /// nejnápadnější zdroj zmatku na téhle záložce: oko ho přečte jako dvě
+  /// různé věci a chvíli hledá rozdíl, který tam není.
+  final bool showDay;
+
+  /// user_id → jméno, pro větu „nemůžou: Anna, Petr".
+  ///
+  /// „3 z 5 volných" je číslo, se kterým se nedá nic udělat. Jméno je věta,
+  /// po které se dá někomu napsat — a u termínu s neshodou je to jediná
+  /// informace, kvůli které se na něj někdo dívá.
+  final Map<String, String> names;
+
+  /// Počasí má smysl u výletu, ne u schůzky.
+  ///
+  /// Hodinové sezení bývá uvnitř a předpověď u něj není informace, je to
+  /// řádek navíc na každé kartě. „32 °C" u kávy v pátek nikoho nezajímá
+  /// a odvádí oko od čísla, které rozhoduje.
+  final bool showWeather;
+
+  /// Kolik dní blok zabírá. U vícedenního výletu je „4 z 5 volných" jiné
+  /// číslo než „4/5" v mřížce: mřížka mluví o jednom dni, karta o celém
+  /// bloku, a člověk musí být volný **každý** jeho den.
+  ///
+  /// Bez tohohle rozlišení vypadají obě čísla stejně a jejich rozdíl jako
+  /// chyba v aplikaci. Stálo to tři kola hlášení.
+  final int blockDays;
+
+  /// Rozpad po dnech, když blok trvá víc než den. Bez něj se nedá poznat,
+  /// který den to kazí — a to je jediná věc, se kterou se dá něco udělat.
+  final String? note;
 
   /// Highest ranked by the engine. The list itself is in time order, so this
   /// is where the ranking lives now — one badge instead of a running order
@@ -74,7 +112,7 @@ class DateCandidateCard extends StatelessWidget {
                     Text(_headline(c, timed), style: context.texts.titleMedium),
                     const SizedBox(height: Sp.xxs),
                     Text(
-                      _subtitle(c, timed),
+                      _subtitle(c, timed, showDay, blockDays),
                       style: context.texts.labelSmall
                           ?.copyWith(color: context.colors.onSurfaceVariant),
                     ),
@@ -107,8 +145,28 @@ class DateCandidateCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: Sp.xs),
-          _WeatherLine(candidate: c, timed: timed),
+          if (note != null) ...<Widget>[
+            const SizedBox(height: Sp.xxs),
+            Text(
+              note!,
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.colors.onSurfaceVariant),
+            ),
+          ],
+
+          if (!c.everyoneFree && c.busyUserIds.isNotEmpty) ...<Widget>[
+            const SizedBox(height: Sp.xs),
+            Text(
+              'Nemůžou: ${_nameList(c.busyUserIds, names)}',
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.planto.availabilityPartial),
+            ),
+          ],
+
+          if (showWeather) ...<Widget>[
+            const SizedBox(height: Sp.xs),
+            _WeatherLine(candidate: c, timed: timed),
+          ],
           const SizedBox(height: Sp.sm),
 
           // emptySelectionAllowed is what makes "I misclicked" recoverable:
@@ -177,24 +235,32 @@ class DateCandidateCard extends StatelessWidget {
   /// leads with the weekday, for the same reason.
   static String _headline(DateCandidate c, bool timed) {
     if (timed) {
-      return '${formatWallClock(_since(c.startsAt))} – '
-          '${formatWallClock(_since(c.endsAt))}';
+      return '${formatWallClock(_since(c.localStart))} – '
+          '${formatWallClock(_since(c.localEnd))}';
     }
     final String start =
-        capitalise(DateFormat('EEEE d. M.', 'cs').format(c.startsAt));
+        capitalise(DateFormat('EEEE d. M.', 'cs').format(c.localStart));
     // endsAt is exclusive, so a trip that ends on the 14th has endsAt on the
     // 15th. Showing the exclusive bound sends people home a day late.
-    final DateTime lastDay = c.endsAt.subtract(const Duration(days: 1));
-    if (!lastDay.isAfter(c.startsAt)) return start;
+    final DateTime lastDay = c.localEnd.subtract(const Duration(days: 1));
+    if (!lastDay.isAfter(c.localStart)) return start;
     return '$start – ${DateFormat('EEEE d. M.', 'cs').format(lastDay)}';
   }
 
-  static String _subtitle(DateCandidate c, bool timed) {
+  static String _subtitle(
+    DateCandidate c,
+    bool timed,
+    bool showDay,
+    int blockDays,
+  ) {
     return <String>[
-      if (timed) capitalise(DateFormat('EEEE d. M.', 'cs').format(c.startsAt)),
-      '${c.freeCount} z ${c.totalCount} volných',
+      if (timed && showDay)
+        capitalise(DateFormat('EEEE d. M.', 'cs').format(c.localStart)),
+      blockDays > 1
+          ? '${c.freeCount} z ${c.totalCount} volných po celý pobyt'
+          : '${c.freeCount} z ${c.totalCount} volných',
       if (timed && c.hasSlack)
-        'volno až do ${formatWallClock(_since(c.windowEndsAt))}',
+        'volno až do ${formatWallClock(_since(c.localWindowEnd))}',
       if (c.isWeekend) 'víkend',
       if (c.isHoliday) 'svátek',
     ].join(' · ');
@@ -203,6 +269,18 @@ class DateCandidateCard extends StatelessWidget {
   /// Wall-clock time of an instant, as a Duration since local midnight.
   static Duration _since(DateTime t) =>
       Duration(hours: t.hour, minutes: t.minute);
+
+  /// Jména obsazených, nebo počet, když je jich moc.
+  ///
+  /// Nad čtyři se seznam přestane číst a začne zalamovat přes tři řádky;
+  /// v tu chvíli je počet užitečnější než výčet.
+  static String _nameList(List<String> ids, Map<String, String> names) {
+    final List<String> out = <String>[
+      for (final String id in ids) names[id] ?? 'Cestovatel',
+    ]..sort();
+    if (out.length <= 4) return out.join(', ');
+    return '${out.take(3).join(', ')} a ${out.length - 3} další';
+  }
 
   static String _tally(DateCandidate c) {
     return <String>[

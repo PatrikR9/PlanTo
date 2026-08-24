@@ -12,6 +12,14 @@ library;
 String formatWallClock(Duration d) =>
     '${d.inHours}:${(d.inMinutes % 60).toString().padLeft(2, '0')}';
 
+/// `7:00`, `18:30` z okamžiku nebo z naivního místního času.
+///
+/// Vedle [formatWallClock], ne místo něj: ta bere [Duration] od půlnoci a
+/// vznikla pro délku dne. Časová osa má v ruce [DateTime] a přepočítávat ho
+/// na Duration jenom kvůli formátu je pozvánka k chybě o půlnoci.
+String formatClock(DateTime d) =>
+    '${d.hour}:${d.minute.toString().padLeft(2, '0')}';
+
 /// `30 min`, `1 h`, `1,5 h`. Decimal comma, and never "1.0 h".
 String formatLength(int minutes) {
   if (minutes < 60) return '$minutes min';

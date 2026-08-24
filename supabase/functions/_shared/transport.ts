@@ -48,6 +48,17 @@ export interface TransportLeg {
   tripId: string | null;
   routeId: string | null;
   intermediateStops: number | null;
+  /** Jmena mezizastavek. Prazdne pole, kdyz je poskytovatel neposila. */
+  intermediateStopNames: string[];
+  /** Jizdni rad proti realite. Kdyz se lisi, je spoj zpozdeny. */
+  scheduledDeparture: string | null;
+  scheduledArrival: string | null;
+  realTime: boolean;
+  cancelled: boolean;
+  /** Nastenne hodiny v zone vyletu, ISO bez offsetu. Klient nema tz databazi
+   *  a `toLocal()` na zarizeni v UTC posune cely plan (migrace 20260821140000). */
+  localDeparture: string | null;
+  localArrival: string | null;
 }
 
 export interface FareEstimate {
@@ -72,6 +83,8 @@ export interface TransportOption {
   mode: TransportMode;
   departure: string;
   arrival: string;
+  localDeparture: string | null;
+  localArrival: string | null;
   durationMinutes: number;
   transfers: number;
   walkMinutes: number;
@@ -115,18 +128,23 @@ export function cacheKey(input: {
   destLon: number;
   windowStart: string;
   arriveBy: boolean;
+  direction: string;
   modes: TransportMode[];
 }): string {
   const t = Math.floor(Date.parse(input.windowStart) / (15 * 60_000));
   const pt = (id: string | null, lat: number, lon: number) =>
     id ?? `${lat.toFixed(4)},${lon.toFixed(4)}`;
   return [
-    "v1",
+    "v2",
     input.provider,
     pt(input.originId, input.originLat, input.originLon),
     pt(input.destId, input.destLat, input.destLon),
     t,
     input.arriveBy ? "arr" : "dep",
+    // Smer je v klici i pres to, ze ho origin/destination uz odlisuji. Az
+    // pribude parametr, ktery se pro zpatecni cestu lisi (jina sada modu,
+    // jina tolerance prestupu), byl by bez nej vysledek sdileny mezi smery.
+    input.direction,
     [...input.modes].sort().join("+"),
   ].join("|");
 }
@@ -135,14 +153,32 @@ export function cacheKey(input: {
 // Normalizace MOTISu
 // ---------------------------------------------------------------------------
 
+/** MOTIS `Mode` -> nas druh dopravy.
+ *
+ *  Seznam je opsany z `components/schemas/Mode` v openapi.yaml MOTISu
+ *  (motis-project/motis), ne odhadnuty. Dve poznamky, ktere stoji za to:
+ *  MOTIS pise `CABLE_CAR` (ne CABLECAR) a zna `METRO` i `SUBWAY` jako dve
+ *  hodnoty tehoz. `TROLLEYBUS` v enumu NENI -- trolejbusy chodi jako `BUS`.
+ */
 const MOTIS_MODES: Record<string, TransportMode> = {
   WALK: "walk",
+  BIKE: "walk",
+  CAR: "car",
+  CAR_PARKING: "car",
+  CAR_DROPOFF: "car",
+  RENTAL: "other",
+  ODM: "other",
+  RIDE_SHARING: "car",
+  FLEX: "other",
+  TRANSIT: "other",
   RAIL: "train",
   HIGHSPEED_RAIL: "train",
   LONG_DISTANCE: "train",
   NIGHT_RAIL: "train",
   REGIONAL_RAIL: "train",
   REGIONAL_FAST_RAIL: "train",
+  SUBURBAN: "train",
+  MONORAIL: "metro",
   METRO: "metro",
   SUBWAY: "metro",
   TRAM: "tram",
@@ -150,9 +186,12 @@ const MOTIS_MODES: Record<string, TransportMode> = {
   BUS: "bus",
   COACH: "bus",
   FERRY: "ferry",
+  AIRPLANE: "other",
   FUNICULAR: "funicular",
+  CABLE_CAR: "cablecar",
   AERIAL_LIFT: "cablecar",
-  CAR: "car",
+  AREAL_LIFT: "cablecar",
+  OTHER: "other",
 };
 
 function motisMode(raw: unknown): TransportMode {
@@ -160,12 +199,117 @@ function motisMode(raw: unknown): TransportMode {
   return MOTIS_MODES[key] ?? "other";
 }
 
-/** Odpověď MOTISu na PlanTo model.
+/** Hodnoty pro `transitModes` v dotazu na MOTIS.
  *
- *  Defenzivní schválně. Píše se to proti API, které nemáme jak vyzkoušet
- *  dřív, než poběží vlastní instance, takže chybějící pole je prázdná
- *  hodnota a ne výjimka — jedna přejmenovaná vlastnost nesmí shodit celou
- *  obrazovku.
+ *  Posila se jenom to, co enum opravdu zna. Nase `trolleybus` v nem neni a
+ *  poslat ho znamena 400 na cely dotaz -- proto padne do `BUS`, kterym
+ *  trolejbusy v GTFS stejne jezdi.
+ */
+export function motisTransitModes(modes: TransportMode[]): string[] {
+  const out = new Set<string>();
+  for (const m of modes) {
+    switch (m) {
+      case "train":
+        out.add("RAIL");
+        break;
+      case "metro":
+        out.add("SUBWAY");
+        break;
+      case "tram":
+        out.add("TRAM");
+        break;
+      case "bus":
+      case "trolleybus":
+        out.add("BUS");
+        break;
+      case "ferry":
+        out.add("FERRY");
+        break;
+      case "funicular":
+        out.add("FUNICULAR");
+        break;
+      case "cablecar":
+        out.add("AERIAL_LIFT");
+        break;
+      default:
+        break;
+    }
+  }
+  // Prazdny seznam nebo plna sada: `TRANSIT` je levnejsi na strane MOTISu a
+  // navic pokryje druhy, ktere nase enum nezna (SUBURBAN, COACH, NIGHT_RAIL).
+  if (out.size === 0 || out.size >= 5) return ["TRANSIT"];
+  return [...out].sort();
+}
+
+// ---------------------------------------------------------------------------
+// Mistni cas
+// ---------------------------------------------------------------------------
+
+/** Okamzik jako nastenne hodiny v dane zone, ISO bez offsetu.
+ *
+ *  MOTIS vraci casy s offsetem zastavky, takze by sla wall clock vytahnout i
+ *  ze samotneho retezce. Geometricky odhad ale zadny offset nema (je to
+ *  `toISOString()`, tedy Z), a dve ruzna pravidla pro dva poskytovatele jsou
+ *  presne ten druh rozdilu, ktery se projevi az u uzivatele v UTC. Prevadi se
+ *  proto oboji stejne, pres zonu vyletu.
+ *
+ *  `sv-SE` je zkratka na ISO tvar: 2026-09-12 08:25:00.
+ */
+export function localIso(instant: string, timeZone: string): string | null {
+  const ms = Date.parse(instant);
+  if (!Number.isFinite(ms)) return null;
+  try {
+    return new Intl.DateTimeFormat("sv-SE", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date(ms)).replace(" ", "T");
+  } catch {
+    // Neznama zona nesmi shodit odpoved. Klient si poradi i bez mistniho casu
+    // -- ukaze cas v zone telefonu, coz je horsi, ne rozbite.
+    return null;
+  }
+}
+
+/** Doplni mistni casy do vsech legu i do hlavicky varianty. */
+export function withLocalTimes(
+  options: TransportOption[],
+  timeZone: string,
+): TransportOption[] {
+  for (const o of options) {
+    o.localDeparture = localIso(o.departure, timeZone);
+    o.localArrival = localIso(o.arrival, timeZone);
+    for (const l of o.legs) {
+      l.localDeparture = localIso(l.departure, timeZone);
+      l.localArrival = localIso(l.arrival, timeZone);
+    }
+  }
+  return options;
+}
+
+// ---------------------------------------------------------------------------
+// Normalizace MOTISu
+// ---------------------------------------------------------------------------
+
+/** Odpoved MOTISu (a tim i Transitousu) na PlanTo model.
+ *
+ *  Nazvy poli jsou z `components/schemas/{Itinerary,Leg,Place}` v openapi.yaml
+ *  MOTISu, ne hadane:
+ *    Itinerary: duration (SEKUNDY), startTime, endTime, transfers, legs
+ *    Leg:       mode, from, to, duration (SEKUNDY), startTime, endTime,
+ *               scheduledStartTime, scheduledEndTime, realTime, distance
+ *               (METRY), headsign, agencyName, tripId, routeShortName,
+ *               routeLongName, displayName, cancelled, intermediateStops
+ *    Place:     name, stopId, lat, lon, arrival, departure, scheduledArrival,
+ *               scheduledDeparture, track, scheduledTrack
+ *
+ *  Defenzivni zustava. Verze API se meni (v1..v6) a jedno prejmenovane pole
+ *  nesmi shodit obrazovku -- chybejici hodnota je null, ne vyjimka.
  */
 export function normaliseMotis(json: unknown): TransportOption[] {
   const root = json as Record<string, unknown>;
@@ -181,28 +325,48 @@ export function normaliseMotis(json: unknown): TransportOption[] {
       const l = lAny as Record<string, unknown>;
       const from = (l.from ?? {}) as Record<string, unknown>;
       const to = (l.to ?? {}) as Record<string, unknown>;
-      const dep = String(l.startTime ?? l.departure ?? "");
-      const arr = String(l.endTime ?? l.arrival ?? "");
+      const dep = String(l.startTime ?? from.departure ?? "");
+      const arr = String(l.endTime ?? to.arrival ?? "");
+      // Leg bez casu neni useku cesty, je to sum. Preskocit ho je lepsi nez
+      // ho pustit dal s epochou 1970 -- to by v case ose vypadalo jako plan.
       if (!dep || !arr) continue;
+
+      const stops = Array.isArray(l.intermediateStops)
+        ? (l.intermediateStops as Record<string, unknown>[])
+        : [];
+
       legs.push({
         mode: motisMode(l.mode),
-        operatorName: str(l.agencyName ?? l.operator),
-        lineName: str(l.routeShortName ?? l.route ?? l.line),
-        headsign: str(l.headsign ?? l.tripHeadsign),
+        operatorName: str(l.agencyName),
+        // routeShortName je "S9", displayName "S9 Praha-Beroun". Kratke jmeno
+        // je to, co je na cedulce na peronu.
+        lineName: str(l.routeShortName ?? l.displayName ?? l.routeLongName),
+        headsign: str(l.headsign),
         fromName: String(from.name ?? ""),
         toName: String(to.name ?? ""),
-        fromStopId: str(from.stopId ?? from.id),
-        toStopId: str(to.stopId ?? to.id),
+        fromStopId: str(from.stopId),
+        toStopId: str(to.stopId),
         departure: dep,
         arrival: arr,
+        // MOTIS posila `duration` v SEKUNDACH. Vzit ho primo a nazvat to
+        // minutami je chyba, kterou nikdo nenahlasi -- jenom se plan rozjede.
         durationMinutes: minutesBetween(dep, arr),
         distanceMeters: num(l.distance),
-        platform: str(from.track ?? from.platformCode),
+        // `track` je aktualni nastupiste vcetne realtime, `scheduledTrack`
+        // to z jizdniho radu. Clovek stoji na tom prvnim.
+        platform: str(from.track ?? from.scheduledTrack),
         tripId: str(l.tripId),
-        routeId: str(l.routeId),
-        intermediateStops: Array.isArray(l.intermediateStops)
-          ? l.intermediateStops.length
-          : null,
+        routeId: str(l.routeLongName ?? l.agencyId),
+        intermediateStops: stops.length > 0 ? stops.length : null,
+        intermediateStopNames: stops
+          .map((sp) => String(sp.name ?? ""))
+          .filter((n) => n !== ""),
+        scheduledDeparture: str(l.scheduledStartTime ?? from.scheduledDeparture),
+        scheduledArrival: str(l.scheduledEndTime ?? to.scheduledArrival),
+        realTime: l.realTime === true,
+        cancelled: l.cancelled === true || from.cancelled === true,
+        localDeparture: null,
+        localArrival: null,
       });
     }
 
@@ -210,19 +374,26 @@ export function normaliseMotis(json: unknown): TransportOption[] {
 
     const departure = legs[0].departure;
     const arrival = legs[legs.length - 1].arrival;
-    const transit = legs.filter((l) => l.mode !== "walk");
+    const transit = legs.filter((l) => l.mode !== "walk" && l.mode !== "car");
+
+    // Zrusena jizda neni varianta. Vratit ji jako spoj by znamenalo poslat
+    // nekoho na nadrazi na vlak, ktery nepojede.
+    if (legs.some((l) => l.cancelled)) continue;
 
     out.push({
-      // Deterministické ID. Náhodné by znamenalo, že se karta po refreshi
-      // považuje za jinou a seznam pod prstem přeskočí.
+      // Deterministicke ID. Nahodne by znamenalo, ze se karta po refreshi
+      // povazuje za jinou a seznam pod prstem preskoci.
       id: `${departure}|${arrival}|${transit.map((l) => l.lineName ?? l.mode).join(">")}`,
       mode: transit[0]?.mode ?? "walk",
       departure,
       arrival,
+      localDeparture: null,
+      localArrival: null,
       durationMinutes: minutesBetween(departure, arrival),
-      // Přestup je mezera mezi dvěma jízdami, ne počet legů: pěší úsek na
-      // začátku a na konci není přestup a počítat ho by nafouklo každé
-      // spojení o dva.
+      // Prestup je mezera mezi dvema jizdami, ne pocet legu: pesi usek na
+      // zacatku a na konci neni prestup a pocitat ho by nafouklo kazde
+      // spojeni o dva. `it.transfers` z MOTISu rika totez, ale spolehnout se
+      // na nej znamena verit poli, ktere starsi verze API nemely.
       transfers: Math.max(0, transit.length - 1),
       walkMinutes: legs
         .filter((l) => l.mode === "walk")

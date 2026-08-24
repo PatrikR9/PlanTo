@@ -49,7 +49,14 @@ class _NameGateState extends ConsumerState<NameGate> {
 
   Future<void> _save() async {
     final String value = _name.text.trim();
-    if (value.isEmpty) return;
+    if (value.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('Napište prosím jméno.')),
+        );
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -91,19 +98,39 @@ class _NameGateState extends ConsumerState<NameGate> {
           autofocus: true,
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.done,
+          // Jméno, ne esej. Bez stropu se do sloupce vejde cokoli a na
+          // obrazovce s termíny to pak rozhodí každý řádek, kde se vypisuje.
+          maxLength: 40,
           decoration: const InputDecoration(
             labelText: 'Jméno',
             hintText: 'Anna',
+            counterText: '',
           ),
-          onChanged: (_) => setState(() {}),
           onSubmitted: (_) => _save(),
         ),
         const SizedBox(height: Sp.lg),
-        PtButton(
-          label: 'Pokračovat',
-          expand: true,
-          isLoading: _saving,
-          onPressed: _name.text.trim().isEmpty ? null : _save,
+
+        // Překresluje se jen tlačítko, ne celá obrazovka.
+        //
+        // Předtím tu bylo `onChanged: (_) => setState(() {})`, takže každý
+        // stisk klávesy přestavěl celý ListView — nadpis, odstavec, pole
+        // i tlačítko. Na emulátoru se to pozná: písmena se opožďují za
+        // psaním. Stav toho pole už jeden posluchač má, je jím sám
+        // controller, a stačí poslouchat na jednom místě.
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _name,
+          builder: (BuildContext context, TextEditingValue value, _) {
+            return PtButton(
+              label: 'Pokračovat',
+              expand: true,
+              isLoading: _saving,
+              // Tlačítko zůstává klikatelné i prázdné a chybu řekne až po
+              // klepnutí. Zamknuté tlačítko sní první klepnutí bez jediné
+              // odezvy a vypadá to, že aplikace zamrzla — což se stalo
+              // i mně při testování.
+              onPressed: _saving ? null : _save,
+            );
+          },
         ),
         const SizedBox(height: Sp.xs),
         Text(

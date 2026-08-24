@@ -4,10 +4,19 @@ import '../../data/trip_repository_impl.dart';
 import '../../domain/trip.dart';
 import '../../domain/trip_repository.dart';
 import 'trip_invalidation.dart';
+import '../../domain/trip_member.dart';
 
 final FutureProvider<List<Trip>> myTripsProvider =
     FutureProvider<List<Trip>>((Ref ref) {
   return ref.watch(tripRepositoryProvider).myTrips();
+});
+
+/// Účastníci výletu. Vlastní provider, ne pole na [Trip]: seznam se mění
+/// jindy než výlet sám (kdokoli se připojí nebo sdílí dostupnost) a načítat
+/// ho s každou kartou v seznamu výletů by byl dotaz navíc za nic.
+final FutureProviderFamily<List<TripMember>, String> tripMembersProvider =
+    FutureProvider.family<List<TripMember>, String>((Ref ref, String id) {
+  return ref.watch(tripRepositoryProvider).members(id);
 });
 
 final FutureProviderFamily<Trip, String> tripProvider =

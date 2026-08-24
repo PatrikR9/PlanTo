@@ -10,8 +10,9 @@ import '../../../costs/presentation/screens/costs_tab.dart';
 import '../../../dates/presentation/screens/dates_tab.dart';
 import '../../../invites/presentation/screens/share_invite_sheet.dart';
 import '../../../packing/presentation/screens/packing_tab.dart';
-import '../../../transport/presentation/screens/plan_tab.dart';
+import '../../../planner/presentation/screens/plan_tab.dart';
 import '../../domain/trip.dart';
+import '../../domain/trip_member.dart';
 import '../controllers/trips_controller.dart';
 
 /// Trip shell with inner tabs. Tabs are a query param so a notification can
@@ -191,6 +192,13 @@ class _Overview extends ConsumerWidget {
                 style: context.texts.bodyMedium
                     ?.copyWith(color: context.colors.onSurfaceVariant),
               ),
+
+              // Jména, ne jen počet. „Čekáme na 2 z 5" je stav; „čekáme na
+              // Annu a Petra" je věta, po které se dá někomu napsat — a to je
+              // jediná akce, která ten výlet posune.
+              const SizedBox(height: Sp.sm),
+              _Members(tripId: trip.id),
+
               const SizedBox(height: Sp.md),
               // One button, not two. The availability screen offers both the
               // calendar import and hand entry side by side, so making the
@@ -204,8 +212,7 @@ class _Overview extends ConsumerWidget {
               if (trip.awaitingCalendarCount > 0) ...<Widget>[
                 const SizedBox(height: Sp.xs),
                 Text(
-                  'Čekáme ještě na ${trip.awaitingCalendarCount} '
-                  'z ${trip.participantCount}. Pošlete jim odkaz.',
+                  'Komu chybí odpověď, je v seznamu výš. Pošlete jim odkaz.',
                   style: context.texts.labelSmall
                       ?.copyWith(color: context.colors.onSurfaceVariant),
                 ),
@@ -213,6 +220,66 @@ class _Overview extends ConsumerWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Seznam lidí ve výletu.
+///
+/// Řazení dělá RPC: organizátor první, pak ti, kdo ještě nesdíleli. Kdo chybí,
+/// je nahoře — to je ten seznam, kvůli kterému se sem člověk dívá.
+///
+/// Chyba se schová schválně. Je to doplněk vedle počtu, který stojí o řádek
+/// výš a platí i bez něj; červený pruh přes půl přehledu kvůli seznamu jmen
+/// by byl horší než jeho nepřítomnost.
+class _Members extends ConsumerWidget {
+  const _Members({required this.tripId});
+
+  final String tripId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<TripMember>> members =
+        ref.watch(tripMembersProvider(tripId));
+
+    final List<TripMember>? list = members.valueOrNull;
+    if (list == null || list.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        for (final TripMember m in list)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Sp.xxs),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  m.calendarShared
+                      ? Icons.check_circle_outline
+                      : Icons.hourglass_empty,
+                  size: 16,
+                  color: m.calendarShared
+                      ? context.planto.availabilityFull
+                      : context.colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: Sp.xs),
+                Expanded(
+                  child: Text(
+                    m.isMe ? '${m.displayName} (vy)' : m.displayName,
+                    style: context.texts.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (m.isOrganiser)
+                  Text(
+                    'organizátor',
+                    style: context.texts.labelSmall
+                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                  ),
+              ],
+            ),
+          ),
       ],
     );
   }

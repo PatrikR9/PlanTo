@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/design_system/components/components.dart';
 import '../../../trips/domain/trip.dart';
-import '../../../transport/presentation/screens/plan_tab.dart';
+import '../../../transport/presentation/widgets/destination_card.dart';
 import '../../data/cost_repository.dart';
 import '../../domain/cost_line.dart';
 

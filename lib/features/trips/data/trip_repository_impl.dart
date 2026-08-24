@@ -5,6 +5,7 @@ import '../../../core/error/error_mapper.dart';
 import '../../../core/error/failure.dart';
 import '../../../core/network/supabase_providers.dart';
 import '../domain/trip.dart';
+import '../domain/trip_member.dart';
 import '../domain/trip_repository.dart';
 
 /// Columns read from the `trips_list` view. Listed explicitly rather than `*`
@@ -23,6 +24,18 @@ class SupabaseTripRepository implements TripRepository {
   const SupabaseTripRepository(this._client);
 
   final SupabaseClient _client;
+
+  @override
+  Future<List<TripMember>> members(String tripId) => guard(() async {
+        final List<dynamic> rows = await _client.rpc<List<dynamic>>(
+          'trip_members',
+          params: <String, dynamic>{'p_trip': tripId},
+        );
+        return rows
+            .cast<Map<String, dynamic>>()
+            .map(TripMember.fromRow)
+            .toList();
+      });
 
   @override
   Future<List<Trip>> myTrips() => guard(() async {
@@ -179,6 +192,8 @@ class UnconfiguredTripRepository implements TripRepository {
 
   @override
   Future<List<Trip>> myTrips() async => <Trip>[];
+  @override
+  Future<List<TripMember>> members(String tripId) async => <TripMember>[];
   @override
   Future<Trip> byId(String id) async => _fail();
   @override

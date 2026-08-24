@@ -1,4 +1,5 @@
 import 'trip.dart';
+import 'trip_member.dart';
 
 /// Everything M2 needs. Deliberately small — methods get added when a screen
 /// needs them, not in anticipation.
@@ -10,6 +11,10 @@ abstract interface class TripRepository {
   /// Patch, ne replace: mapa nese jen změněná pole. Klíč s null maže.
   /// Prázdná mapa se nikam neposílá — viz [TripDraft.patchFrom].
   Future<void> update(String id, Map<String, Object?> patch);
+
+  /// Kdo je ve výletu. Přes RPC, ne selectem: `profiles` je pod RLS a členství
+  /// ve stejném výletu je jediný důvod, proč smí být cizí jméno vidět.
+  Future<List<TripMember>> members(String tripId);
 }
 
 /// The creation payload, separate from [Trip] because a trip that does not

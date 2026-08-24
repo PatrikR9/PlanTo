@@ -9,6 +9,10 @@ import '../domain/date_candidate.dart';
 abstract interface class DateRepository {
   Future<List<DateCandidate>> candidates(String tripId);
 
+  /// Všechny časy jednoho dne, nesloučené. Jen pro časový režim; v denním
+  /// vrací prázdno, protože tam „slot" znamená celý den.
+  Future<List<DateCandidate>> daySlots(String tripId, DateTime day);
+
   /// Warms the forecast cache for this trip.
   ///
   /// Cheap and idempotent: the Edge Function returns immediately unless
@@ -36,8 +40,35 @@ class SupabaseDateRepository implements DateRepository {
   @override
   Future<List<DateCandidate>> candidates(String tripId) => guard(() async {
         final List<dynamic> rows = await _client.rpc<List<dynamic>>(
-          'trip_candidates',
-          params: <String, dynamic>{'p_trip': tripId},
+          'trip_candidates_local',
+          params: <String, dynamic>{
+            'p_trip': tripId,
+            // Výchozích 20 řadí podle skóre, takže termíny, kde někdo nemůže,
+            // vypadnou za těmi, kde můžou všichni — a filtr „neshoda" by pak
+            // u delšího okna neměl co ukázat. Řádek je malý; strop je tu
+            // proti runaway dotazu, ne kvůli šířce pásma.
+            // 200, ne 60: mřížka se kreslí z těchhle běhů a useknutý seznam
+            // by v ní nechal šedé díry, které vypadají jako „nevíme" místo
+            // „nevešlo se do žebříčku". Řádek je malý; strop je proti
+            // runaway dotazu, ne kvůli šířce pásma.
+            'p_limit': 200,
+          },
+        );
+        return rows.cast<Map<String, dynamic>>().map(_toCandidate).toList();
+      });
+
+  @override
+  Future<List<DateCandidate>> daySlots(String tripId, DateTime day) =>
+      guard(() async {
+        final List<dynamic> rows = await _client.rpc<List<dynamic>>(
+          'trip_day_slots_local',
+          params: <String, dynamic>{
+            'p_trip': tripId,
+            // Datum, ne instant: funkce si den skládá v časové zóně výletu.
+            'p_day': '${day.year.toString().padLeft(4, '0')}-'
+                '${day.month.toString().padLeft(2, '0')}-'
+                '${day.day.toString().padLeft(2, '0')}',
+          },
         );
         return rows.cast<Map<String, dynamic>>().map(_toCandidate).toList();
       });
@@ -89,7 +120,20 @@ DateCandidate _toCandidate(Map<String, dynamic> r) {
     // the whole point of the candidate.
     startsAt: DateTime.parse(r['starts_at'] as String).toLocal(),
     endsAt: DateTime.parse(r['ends_at'] as String).toLocal(),
-    windowEndsAt: DateTime.parse(r['window_ends_at'] as String).toLocal(),
+    // trip_day_slots tenhle sloupec nevrací: slot žádný „zbytek okna" nemá,
+    // je to jeden krok mřížky. Bez fallbacku by mapování spadlo na null.
+    windowEndsAt: DateTime.parse(
+      (r['window_ends_at'] ?? r['ends_at']) as String,
+    ).toLocal(),
+    // Bez zóny, takže DateTime.parse dá naivní čas — přesně to, co chceme:
+    // je to už čas výletu a nesmí se znovu přepočítávat.
+    localStart: _local(r, 'local_starts_at', r['starts_at'] as String),
+    localEnd: _local(r, 'local_ends_at', r['ends_at'] as String),
+    localWindowEnd: _local(
+      r,
+      'local_window_ends_at',
+      (r['window_ends_at'] ?? r['ends_at']) as String,
+    ),
     freeCount: (r['free_count'] as int?) ?? 0,
     totalCount: (r['total_count'] as int?) ?? 0,
     freeUserIds: (r['free_user_ids'] as List<dynamic>? ?? const <dynamic>[])
@@ -119,6 +163,17 @@ DateCandidate _toCandidate(Map<String, dynamic> r) {
 /// Parses a timestamptz coming back from PostgREST. Named apart from
 /// [_instant], which goes the other way — one `_instant` for both directions
 /// compiled to a name clash, not an overload.
+/// Místní čas výletu, s návratem k zóně zařízení, kdyby sloupec chyběl.
+///
+/// Fallback existuje kvůli jedinému případu: nasazený klient proti databázi
+/// bez migrace 20260821140000. Špatný den je pořád lepší než prázdná
+/// obrazovka, a je to stav, který sám zmizí po `supabase db push`.
+DateTime _local(Map<String, dynamic> r, String key, String fallbackUtc) {
+  final String? v = r[key] as String?;
+  if (v != null && v.isNotEmpty) return DateTime.parse(v);
+  return DateTime.parse(fallbackUtc).toLocal();
+}
+
 DateTime? _parseInstant(String? v) =>
     v == null ? null : DateTime.parse(v).toLocal();
 
@@ -128,6 +183,11 @@ class UnconfiguredDateRepository implements DateRepository {
 
   @override
   Future<List<DateCandidate>> candidates(String t) async => <DateCandidate>[];
+  // Prázdno, ne _fail(): bez backendu se UI prohlíží a prázdný den je
+  // legitimní stav obrazovky, ne chyba, kterou by měla hlásit.
+  @override
+  Future<List<DateCandidate>> daySlots(String t, DateTime d) async =>
+      <DateCandidate>[];
   @override
   Future<void> vote(String t, DateTime s, DateVote? v) async => _fail();
   @override
@@ -143,6 +203,22 @@ final Provider<DateRepository> dateRepositoryProvider =
   final SupabaseClient? client = ref.watch(supabaseClientProvider);
   if (client == null) return const UnconfiguredDateRepository();
   return SupabaseDateRepository(client);
+});
+
+/// Klíč pro [daySlotsProvider]. Record, protože rodina potřebuje hodnotovou
+/// rovnost — a den se normalizuje na datum, aby dvě instance téhož dne
+/// s jiným časem nezaložily dva různé dotazy.
+typedef DaySlotsKey = ({String tripId, DateTime day});
+
+DaySlotsKey daySlotsKey(String tripId, DateTime day) =>
+    (tripId: tripId, day: DateTime(day.year, day.month, day.day));
+
+/// Načítá se až po výběru dne, ne s obrazovkou: je to jeden dotaz na den,
+/// který si někdo vybral, místo jednoho na každý den okna.
+final FutureProviderFamily<List<DateCandidate>, DaySlotsKey> daySlotsProvider =
+    FutureProvider.family<List<DateCandidate>, DaySlotsKey>(
+        (Ref ref, DaySlotsKey k) {
+  return ref.watch(dateRepositoryProvider).daySlots(k.tripId, k.day);
 });
 
 final FutureProviderFamily<List<DateCandidate>, String> dateCandidatesProvider =

@@ -16,10 +16,13 @@ import {
   estimateFare,
   type FareRule,
   idosLink,
+  localIso,
+  motisTransitModes,
   normaliseMotis,
   rank,
   type TransportLeg,
   type TransportOption,
+  withLocalTimes,
 } from "./transport.ts";
 
 // ---------------------------------------------------------------------------
@@ -44,6 +47,13 @@ function leg(p: Partial<TransportLeg> = {}): TransportLeg {
     tripId: null,
     routeId: null,
     intermediateStops: 4,
+    intermediateStopNames: [],
+    scheduledDeparture: null,
+    scheduledArrival: null,
+    realTime: false,
+    cancelled: false,
+    localDeparture: null,
+    localArrival: null,
     ...p,
   };
 }
@@ -55,6 +65,8 @@ function option(p: Partial<TransportOption> = {}): TransportOption {
     mode: "train",
     departure: legs[0].departure,
     arrival: legs[legs.length - 1].arrival,
+    localDeparture: null,
+    localArrival: null,
     durationMinutes: 150,
     transfers: 0,
     walkMinutes: 0,
@@ -265,6 +277,7 @@ const BASE = {
   destLon: 16.612,
   windowStart: "2026-09-12T07:00:00Z",
   arriveBy: false,
+  direction: "outbound",
   modes: ["train", "bus"] as const,
 };
 
@@ -417,4 +430,297 @@ Deno.test("odkaz do IDOS nese obě zastávky i datum", () => {
   assertEquals(u.searchParams.get("f"), "Praha hl.n.");
   assertEquals(u.searchParams.get("t"), "Brno hl.n.");
   assert(u.searchParams.get("date")?.includes("2026"));
+});
+
+Deno.test("cesta tam a cesta zpět nesdílejí klíč", () => {
+  // Zpáteční cesta se hledá samostatně a musí mít vlastní záznam v cache i
+  // ve chvíli, kdy by se ostatní parametry náhodou potkaly.
+  assertNotEquals(
+    cacheKey({ ...BASE, modes: [...BASE.modes] }),
+    cacheKey({ ...BASE, modes: [...BASE.modes], direction: "return" }),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Druhy dopravy v dotazu
+// ---------------------------------------------------------------------------
+
+Deno.test("trolejbus se posílá jako BUS, protože MOTIS jiný nezná", () => {
+  assertEquals(motisTransitModes(["trolleybus"]), ["BUS"]);
+});
+
+Deno.test("plná sada se zjednoduší na TRANSIT", () => {
+  assertEquals(
+    motisTransitModes(["train", "bus", "tram", "metro", "trolleybus", "walk"]),
+    ["TRANSIT"],
+  );
+});
+
+Deno.test("prázdný výběr znamená všechno, ne nic", () => {
+  assertEquals(motisTransitModes([]), ["TRANSIT"]);
+  assertEquals(motisTransitModes(["walk"]), ["TRANSIT"]);
+});
+
+Deno.test("úzký výběr se posílá jmenovitě", () => {
+  assertEquals(motisTransitModes(["train"]), ["RAIL"]);
+  assertEquals(motisTransitModes(["train", "tram"]), ["RAIL", "TRAM"]);
+});
+
+// ---------------------------------------------------------------------------
+// Místní čas
+// ---------------------------------------------------------------------------
+
+Deno.test("místní čas je nástěnné hodiny v zóně výletu", () => {
+  // 05:14 UTC je v Praze 07:14 letního času. Kdyby klient dostal jenom UTC,
+  // ukázal by na zařízení v UTC odjezd v pět ráno.
+  assertEquals(
+    localIso("2026-09-12T05:14:00Z", "Europe/Prague"),
+    "2026-09-12T07:14:00",
+  );
+  // A v zimě o hodinu jinak — proto se to nedá řešit pevným offsetem.
+  assertEquals(
+    localIso("2026-01-12T05:14:00Z", "Europe/Prague"),
+    "2026-01-12T06:14:00",
+  );
+});
+
+Deno.test("neznámá zóna nebo nesmyslný čas nespadnou", () => {
+  assertEquals(localIso("nesmysl", "Europe/Prague"), null);
+  assertEquals(localIso("2026-09-12T05:14:00Z", "Mars/Olympus"), null);
+});
+
+Deno.test("místní časy se doplní do varianty i do každého legu", () => {
+  const o = option({
+    legs: [
+      leg({
+        departure: "2026-09-12T05:14:00Z",
+        arrival: "2026-09-12T07:44:00Z",
+      }),
+    ],
+    departure: "2026-09-12T05:14:00Z",
+    arrival: "2026-09-12T07:44:00Z",
+  });
+  withLocalTimes([o], "Europe/Prague");
+  assertEquals(o.localDeparture, "2026-09-12T07:14:00");
+  assertEquals(o.legs[0].localArrival, "2026-09-12T09:44:00");
+});
+
+// ---------------------------------------------------------------------------
+// Normalizace — skutečný tvar odpovědi MOTISu
+// ---------------------------------------------------------------------------
+
+/** Odpověď opsaná podle `components/schemas/{Itinerary,Leg,Place}` z
+ *  openapi.yaml MOTISu. Tři přestupy, pěší úseky na obou koncích, nástupiště,
+ *  realtime i mezizastávky — tedy všechno, co časová osa umí zobrazit. */
+const MOTIS_RESPONSE = {
+  from: { name: "Praha hl.n.", lat: 50.083, lon: 14.435, level: 0 },
+  to: { name: "Český Krumlov", lat: 48.81, lon: 14.315, level: 0 },
+  itineraries: [
+    {
+      duration: 9720,
+      startTime: "2026-09-12T08:10:00+02:00",
+      endTime: "2026-09-12T10:52:00+02:00",
+      transfers: 1,
+      legs: [
+        {
+          mode: "WALK",
+          duration: 900,
+          startTime: "2026-09-12T08:10:00+02:00",
+          endTime: "2026-09-12T08:25:00+02:00",
+          scheduledStartTime: "2026-09-12T08:10:00+02:00",
+          scheduledEndTime: "2026-09-12T08:25:00+02:00",
+          realTime: false,
+          scheduled: true,
+          distance: 820,
+          from: { name: "Domov", lat: 50.08, lon: 14.43, level: 0 },
+          to: { name: "Praha hl.n.", lat: 50.083, lon: 14.435, level: 0 },
+          legGeometry: { points: "", length: 0 },
+        },
+        {
+          mode: "RAIL",
+          duration: 4920,
+          startTime: "2026-09-12T08:25:00+02:00",
+          endTime: "2026-09-12T09:47:00+02:00",
+          scheduledStartTime: "2026-09-12T08:25:00+02:00",
+          scheduledEndTime: "2026-09-12T09:45:00+02:00",
+          realTime: true,
+          scheduled: true,
+          distance: 169_000,
+          from: {
+            name: "Praha hl.n.",
+            stopId: "cz:5457232:1",
+            lat: 50.083,
+            lon: 14.435,
+            level: 0,
+            track: "3",
+            scheduledTrack: "2",
+            departure: "2026-09-12T08:25:00+02:00",
+            scheduledDeparture: "2026-09-12T08:25:00+02:00",
+          },
+          to: {
+            name: "České Budějovice",
+            stopId: "cz:5457900:1",
+            lat: 48.974,
+            lon: 14.487,
+            level: 0,
+            arrival: "2026-09-12T09:47:00+02:00",
+          },
+          routeShortName: "R 640",
+          routeLongName: "Šumava",
+          displayName: "R 640 Šumava",
+          agencyName: "České dráhy",
+          agencyId: "cd",
+          headsign: "České Budějovice",
+          tripId: "trip-640",
+          intermediateStops: [
+            { name: "Praha-Smíchov", lat: 50.06, lon: 14.4, level: 0 },
+            { name: "Tábor", lat: 49.41, lon: 14.66, level: 0 },
+          ],
+          legGeometry: { points: "", length: 0 },
+        },
+        {
+          mode: "BUS",
+          duration: 3060,
+          startTime: "2026-09-12T10:01:00+02:00",
+          endTime: "2026-09-12T10:52:00+02:00",
+          scheduledStartTime: "2026-09-12T10:01:00+02:00",
+          scheduledEndTime: "2026-09-12T10:52:00+02:00",
+          realTime: false,
+          scheduled: true,
+          from: {
+            name: "České Budějovice",
+            stopId: "cz:5457900:9",
+            lat: 48.974,
+            lon: 14.487,
+            level: 0,
+          },
+          to: {
+            name: "Český Krumlov",
+            stopId: "cz:5458100:1",
+            lat: 48.81,
+            lon: 14.315,
+            level: 0,
+          },
+          routeShortName: "340",
+          agencyName: "ČSAD Jihotrans",
+          headsign: "Český Krumlov",
+          tripId: "trip-340",
+          legGeometry: { points: "", length: 0 },
+        },
+      ],
+    },
+  ],
+};
+
+Deno.test("odpověď MOTISu se přeloží na náš model se vším, co osa potřebuje", () => {
+  const opts = normaliseMotis(MOTIS_RESPONSE);
+  assertEquals(opts.length, 1);
+  const o = opts[0];
+
+  assertEquals(o.transfers, 1, "vlak → autobus je jeden přestup");
+  assertEquals(o.walkMinutes, 15);
+  assertEquals(o.durationMinutes, 162, "08:10 → 10:52 je 2 h 42 min");
+  assertEquals(o.legs.length, 3);
+
+  const train = o.legs[1];
+  assertEquals(train.mode, "train");
+  assertEquals(train.lineName, "R 640", "na ceduli je krátké jméno linky");
+  assertEquals(train.operatorName, "České dráhy");
+  assertEquals(train.headsign, "České Budějovice");
+  assertEquals(train.fromStopId, "cz:5457232:1");
+  assertEquals(train.platform, "3", "aktuální nástupiště přebíjí plánované");
+  assertEquals(train.tripId, "trip-640");
+  assertEquals(train.durationMinutes, 82);
+  assertEquals(train.distanceMeters, 169_000);
+  assertEquals(train.realTime, true);
+  assertEquals(train.scheduledArrival, "2026-09-12T09:45:00+02:00");
+  assertEquals(train.intermediateStops, 2);
+  assertEquals(train.intermediateStopNames, ["Praha-Smíchov", "Tábor"]);
+
+  // Čekání na přestup se nedopočítává na serveru — vyplývá z časů a časová
+  // osa si ho spočítá sama. Tady jenom kontrola, že ta data existují.
+  const wait = Date.parse(o.legs[2].departure) - Date.parse(o.legs[1].arrival);
+  assertEquals(wait / 60_000, 14, "přestup 14 minut");
+});
+
+Deno.test("víc přestupů se spočítá správně", () => {
+  const opts = normaliseMotis({
+    itineraries: [
+      {
+        legs: [
+          {
+            mode: "WALK",
+            startTime: "2026-09-12T06:00:00Z",
+            endTime: "2026-09-12T06:05:00Z",
+            from: {}, to: {},
+          },
+          {
+            mode: "TRAM",
+            startTime: "2026-09-12T06:05:00Z",
+            endTime: "2026-09-12T06:20:00Z",
+            from: {}, to: {},
+          },
+          {
+            mode: "RAIL",
+            startTime: "2026-09-12T06:30:00Z",
+            endTime: "2026-09-12T07:40:00Z",
+            from: {}, to: {},
+          },
+          {
+            mode: "BUS",
+            startTime: "2026-09-12T07:55:00Z",
+            endTime: "2026-09-12T08:30:00Z",
+            from: {}, to: {},
+          },
+        ],
+      },
+    ],
+  });
+  assertEquals(opts[0].transfers, 2, "tři jízdy = dva přestupy");
+});
+
+Deno.test("žádná nalezená trasa je prázdný seznam, ne vymyšlený spoj", () => {
+  assertEquals(normaliseMotis({ itineraries: [] }).length, 0);
+  assertEquals(normaliseMotis({ from: {}, to: {} }).length, 0);
+});
+
+Deno.test("zrušený spoj se nenabízí", () => {
+  const opts = normaliseMotis({
+    itineraries: [
+      {
+        legs: [
+          {
+            mode: "RAIL",
+            startTime: "2026-09-12T06:00:00Z",
+            endTime: "2026-09-12T07:00:00Z",
+            cancelled: true,
+            from: {}, to: {},
+          },
+        ],
+      },
+    ],
+  });
+  assertEquals(opts.length, 0, "poslat někoho na zrušený vlak je horší než nic");
+});
+
+Deno.test("CABLE_CAR i AERIAL_LIFT jsou lanovka", () => {
+  const mk = (mode: string) =>
+    normaliseMotis({
+      itineraries: [
+        {
+          legs: [
+            {
+              mode,
+              startTime: "2026-09-12T06:00:00Z",
+              endTime: "2026-09-12T06:12:00Z",
+              from: {}, to: {},
+            },
+          ],
+        },
+      ],
+    })[0].legs[0].mode;
+  assertEquals(mk("CABLE_CAR"), "cablecar");
+  assertEquals(mk("AERIAL_LIFT"), "cablecar");
+  assertEquals(mk("SUBURBAN"), "train");
+  assertEquals(mk("NECO_NOVEHO"), "other");
 });

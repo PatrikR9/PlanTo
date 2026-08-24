@@ -11,15 +11,21 @@
 // Klient nikdy nemluví s třetí stranou. Tím je „v aplikaci nejsou žádné
 // klíče" strukturální vlastnost, ne slib, který si někdo pamatuje. Navíc
 // cache i rate limit musí být sdílené — pětičlenná skupina otevírající jednu
-// obrazovku jinak vyrobí pět stejných dotazů.
+// obrazovku jinak vyrobí pět stejných dotazů. A hlavně: klient tím nikdy
+// nevidí Transitous-specific JSON, takže výměna poskytovatele je práce
+// v tomhle souboru a nikde jinde.
 //
 // POSKYTOVATELÉ
-//   estimate  geometrie + tarifní model. Výchozí, nic nestojí, nemá jízdní
-//             řád. Je to současný stav produktu a zůstává jako fallback.
-//   motis     skutečné spojení. Zapne se přepsáním app_config.
-//             transport_provider — komunitní Transitous NENÍ komerčně
-//             licencovaný, takže do produkce patří jenom vlastní instance.
-//   ors       auto. Bez klíče se auto počítá geometricky jako dosud.
+//   estimate   geometrie + tarifní model. Výchozí, nic nestojí, nemá jízdní
+//              řád. Je to současný stav produktu a zůstává jako fallback.
+//   transitous komunitní hostovaný MOTIS. Skutečné jízdní řády. **NENÍ
+//              komerčně licencovaný** (TRANSIT_DATA.md §5) — je to vývojový
+//              a testovací poskytovatel, do produkce nepatří. Vyžaduje
+//              User-Agent s kontaktem a viditelnou atribuci; obojí drží
+//              app_config, aby to nešlo zapnout a zapomenout.
+//   motis      vlastní instance MOTISu (software je MIT). Tohle je produkční
+//              cíl. Stejné API, jiná URL a případný token z prostředí.
+//   ors        auto. Bez klíče se auto počítá geometricky jako dosud.
 //
 // Volba je v databázi a ne v kódu schválně: přepnutí na vlastní MOTIS je pak
 // změna jednoho řádku, ne deploy.
@@ -34,11 +40,13 @@ import {
   type FareRule,
   idosLink,
   minutesBetween,
+  motisTransitModes,
   normaliseMotis,
   rank,
   type TransportLeg,
   type TransportMode,
   type TransportOption,
+  withLocalTimes,
 } from "../_shared/transport.ts";
 
 const CORS = {
@@ -63,6 +71,19 @@ function fail(code: string, message: string, status: number, retryable = false) 
 
 const MAX_HORIZON_DAYS = 60;
 const MAX_PAST_HOURS = 2;
+const DEFAULT_TZ = "Europe/Prague";
+
+/** Verze plánovacího endpointu MOTISu, na které se povedlo dovolat.
+ *
+ *  MOTIS verzuje cestu (/api/v6/plan) a Transitous běží na tom, co zrovna
+ *  nasadili. Zapamatovat si funkční verzi po dobu života isolate ušetří dva
+ *  zbytečné 404 na každý dotaz; přežít restart nemusí.
+ */
+let discoveredVersion: string | null = null;
+
+/** Odzhora dolů. Novější první — starší verze vracejí stejná pole, jen jich
+ *  mají míň, a normalizace je defenzivní právě proto. */
+const MOTIS_VERSIONS = ["v6", "v5", "v4", "v3", "v2", "v1"];
 
 interface Body {
   origin?: { placeId?: string; lat?: number; lon?: number; name?: string };
@@ -72,6 +93,12 @@ interface Body {
   modes?: TransportMode[];
   groupSize?: number;
   tripId?: string;
+  /** 'outbound' | 'return'. Neovlivňuje vyhledání, ale je v klíči do cache a
+   *  v odpovědi — cesta zpět musí být samostatný dotaz, ne obrácená cesta tam,
+   *  a tohle je to, co dělá tu samostatnost viditelnou. */
+  direction?: string;
+  numItineraries?: number;
+  maxTransfers?: number;
 }
 
 Deno.serve(async (req) => {
@@ -133,12 +160,25 @@ Deno.serve(async (req) => {
     : ["train", "bus", "tram", "metro", "trolleybus", "walk"];
   const groupSize = clamp(Number(body.groupSize ?? 1), 1, 20);
   const arriveBy = body.arriveBy === true;
+  const direction = body.direction === "return" ? "return" : "outbound";
+  const numItineraries = clamp(Number(body.numItineraries ?? 5), 1, 10);
+  const maxTransfers = Number.isFinite(Number(body.maxTransfers))
+    ? clamp(Number(body.maxTransfers), 0, 6)
+    : null;
   const windowStart = new Date(when).toISOString();
+
+  // Zóna výletu, ne zóna serveru. Bez ní by místní časy v odpovědi byly UTC
+  // a klient by je zobrazil o dvě hodiny vedle — přesně chyba, kterou
+  // opravovala migrace 20260821140000.
+  const tz = await tripTimezone(user, body.tripId);
 
   // --- konfigurace ---------------------------------------------------------
   const cfg = await config(admin);
   const provider = String(cfg.transport_provider ?? "estimate");
   const ttlMin = Number(cfg.transport_cache_ttl_min ?? 180);
+  const attribution = cfg.transport_attribution == null
+    ? null
+    : String(cfg.transport_attribution);
 
   const key = cacheKey({
     provider,
@@ -150,6 +190,7 @@ Deno.serve(async (req) => {
     destLon: dest.lon,
     windowStart,
     arriveBy,
+    direction,
     modes,
   });
 
@@ -173,18 +214,57 @@ Deno.serve(async (req) => {
   // --- poskytovatel --------------------------------------------------------
   let options: TransportOption[] = [];
   let usedProvider = provider;
+  let providerError: string | null = null;
+
   try {
-    if (provider === "motis") {
-      options = await viaMotis(origin, dest, windowStart, arriveBy, modes);
+    if (provider === "transitous" || provider === "motis") {
+      options = await viaMotisApi(provider, cfg, {
+        origin,
+        dest,
+        when: windowStart,
+        arriveBy,
+        modes,
+        numItineraries,
+        maxTransfers,
+      });
     }
   } catch (e) {
     // Výpadek poskytovatele degraduje na odhad, nespadne. Obrazovka pak
     // ukáže totéž, co ukazovala před M7 — což je kompletní, ne rozbité.
-    console.error("motis failed, falling back to estimate", e);
+    // Důvod jde ale do odpovědi: „časy jsou odhad" je jiná věta než „časy
+    // jsou odhad, protože vyhledávač neodpověděl", a uživatel má právo znát
+    // tu druhou.
+    console.error("transit provider failed, falling back to estimate", e);
+    providerError = e instanceof Error ? e.message : String(e);
     options = [];
   }
 
   if (options.length === 0) {
+    // Pozor na rozdíl: „poskytovatel nenašel spoj" a „poskytovatel neběží"
+    // vypadají tady stejně, a nesmí. Když poskytovatel odpověděl a nic
+    // nenašel, je odpověď prázdná — vymyslet místo toho geometrický odhad by
+    // znamenalo tvrdit, že spoj existuje.
+    if ((provider === "transitous" || provider === "motis") && providerError === null) {
+      const emptyPayload = {
+        origin,
+        destination: dest,
+        direction,
+        searched_at: new Date().toISOString(),
+        provider,
+        has_timetable: true,
+        attribution,
+        options: [],
+        picks: { best: null, cheapest: null, fastest: null, fewest_transfers: null },
+        cached: false,
+        provider_error: null,
+      };
+      // Prázdný výsledek se cachuje taky, a krátce. Bez toho by každé otevření
+      // obrazovky vyrobilo nový dotaz na komunitní službu kvůli spojení, které
+      // stejně neexistuje.
+      writeCache(admin, key, provider, origin, dest, windowStart, when, emptyPayload,
+        Math.min(ttlMin, 30));
+      return json(emptyPayload);
+    }
     usedProvider = "estimate";
     options = geometricEstimate(origin, dest, windowStart, groupSize);
   }
@@ -205,16 +285,24 @@ Deno.serve(async (req) => {
     o.deepLink ??= idosLink(origin.name, dest.name, o.departure);
   }
 
+  withLocalTimes(options, tz);
+
   const ranked = rank(options, { groupSize });
 
   const payload = {
     origin,
     destination: dest,
+    direction,
+    timezone: tz,
     searched_at: new Date().toISOString(),
     provider: usedProvider,
     // Jasně řečené na úrovni odpovědi, ne jen u ceny: bez jízdního řádu
     // nejsou odhad jen peníze, ale i časy.
-    has_timetable: usedProvider === "motis",
+    has_timetable: usedProvider === "transitous" || usedProvider === "motis",
+    // Transitous vyžaduje viditelný odkaz na zdroje dat. Text jde s odpovědí,
+    // takže se nedá zapnout poskytovatel a zapomenout na atribuci.
+    attribution,
+    provider_error: providerError,
     options: ranked.options.map(serialise),
     picks: {
       best: ranked.best,
@@ -225,25 +313,42 @@ Deno.serve(async (req) => {
     cached: false,
   };
 
-  // Zápis do cache nesmí zdržet odpověď ani ji shodit.
-  const expires = new Date(Date.now() + ttlMin * 60_000).toISOString();
+  writeCache(admin, key, usedProvider, origin, dest, windowStart, when, payload, ttlMin);
+
+  return json(payload);
+});
+
+// ---------------------------------------------------------------------------
+// Cache
+// ---------------------------------------------------------------------------
+
+/** Zápis do cache nesmí zdržet odpověď ani ji shodit. */
+function writeCache(
+  admin: ReturnType<typeof createClient>,
+  key: string,
+  provider: string,
+  origin: Resolved,
+  dest: Resolved,
+  windowStart: string,
+  when: number,
+  payload: unknown,
+  ttlMin: number,
+): void {
   admin
     .from("transport_cache")
     .upsert({
       cache_key: key,
-      provider: usedProvider,
+      provider,
       origin_id: origin.id,
       dest_id: dest.id,
       window_start: windowStart,
       window_end: new Date(when + 6 * 3600_000).toISOString(),
       payload,
-      expires_at: expires,
+      expires_at: new Date(Date.now() + ttlMin * 60_000).toISOString(),
       fetched_at: new Date().toISOString(),
     })
     .then(() => {}, (e: unknown) => console.error("cache write failed", e));
-
-  return json(payload);
-});
+}
 
 // ---------------------------------------------------------------------------
 // Vstupy
@@ -295,6 +400,21 @@ async function resolvePlace(
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Zóna výletu. Čte se přes RLS klienta, takže cizí výlet nic nevrátí. */
+async function tripTimezone(
+  client: ReturnType<typeof createClient>,
+  tripId: string | undefined,
+): Promise<string> {
+  if (typeof tripId !== "string" || !UUID.test(tripId)) return DEFAULT_TZ;
+  const { data } = await client
+    .from("trips")
+    .select("timezone")
+    .eq("id", tripId)
+    .maybeSingle();
+  const tz = (data as { timezone?: string } | null)?.timezone;
+  return typeof tz === "string" && tz.length > 0 ? tz : DEFAULT_TZ;
+}
+
 async function config(
   admin: ReturnType<typeof createClient>,
 ): Promise<Record<string, unknown>> {
@@ -305,6 +425,10 @@ async function config(
       "transport_provider",
       "transport_cache_ttl_min",
       "transport_max_walk_m",
+      "transitous_url",
+      "motis_api_version",
+      "transport_user_agent",
+      "transport_attribution",
     ]);
   const out: Record<string, unknown> = {};
   for (const r of data ?? []) out[(r as { key: string }).key] = (r as { value: unknown }).value;
@@ -316,70 +440,94 @@ function clamp(n: number, lo: number, hi: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// MOTIS
+// MOTIS / Transitous
 // ---------------------------------------------------------------------------
 
-/** Vyhledání přes MOTIS.
- *
- *  URL a případný token jsou v prostředí funkce, nikdy v aplikaci. Bez URL
- *  se sem vůbec nedojde — app_config.transport_provider zůstane 'estimate'.
- *
- *  Psáno proti dokumentaci MOTIS v2, neověřeno proti běžící instanci.
- *  Normalizace je proto defenzivní a výpadek degraduje na odhad; první běh
- *  proti vlastní instanci to potvrdí nebo opraví.
- */
-async function viaMotis(
-  origin: Resolved,
-  dest: Resolved,
-  when: string,
-  arriveBy: boolean,
-  modes: TransportMode[],
-): Promise<TransportOption[]> {
-  const base = Deno.env.get("MOTIS_URL");
-  if (!base) throw new Error("MOTIS_URL is not set");
-
-  const u = new URL("/api/v1/plan", base);
-  u.searchParams.set("fromPlace", `${origin.lat},${origin.lon}`);
-  u.searchParams.set("toPlace", `${dest.lat},${dest.lon}`);
-  u.searchParams.set("time", when);
-  u.searchParams.set("arriveBy", String(arriveBy));
-  u.searchParams.set("numItineraries", "5");
-  u.searchParams.set(
-    "transitModes",
-    modes.filter((m) => m !== "walk").map(motisModeName).join(","),
-  );
-
-  const headers: Record<string, string> = { Accept: "application/json" };
-  const token = Deno.env.get("MOTIS_TOKEN");
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  // Timeout je povinný. Bez něj visí Edge Function na cizí nedostupné
-  // službě až do vlastního limitu a uživatel kouká na točící se kolečko.
-  const res = await fetch(u, {
-    headers,
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!res.ok) throw new Error(`MOTIS ${res.status}`);
-  return normaliseMotis(await res.json());
+interface MotisQuery {
+  origin: Resolved;
+  dest: Resolved;
+  when: string;
+  arriveBy: boolean;
+  modes: TransportMode[];
+  numItineraries: number;
+  maxTransfers: number | null;
 }
 
-function motisModeName(m: TransportMode): string {
-  switch (m) {
-    case "train":
-      return "RAIL";
-    case "metro":
-      return "SUBWAY";
-    case "tram":
-      return "TRAM";
-    case "trolleybus":
-      return "TROLLEYBUS";
-    case "bus":
-      return "BUS";
-    case "ferry":
-      return "FERRY";
-    default:
-      return "TRANSIT";
+/** Vyhledání přes MOTIS API.
+ *
+ *  Jedna implementace pro obě instance. Transitous a vlastní MOTIS mluví
+ *  stejným protokolem — liší se jenom základní URL a to, odkud se bere:
+ *  komunitní z app_config (je veřejná), vlastní z prostředí funkce (může
+ *  nést token). Nikde v kódu není natvrdo napsaný host.
+ *
+ *  Endpoint je /api/{verze}/plan a verze se mění (aktuálně v6). Konfigurace
+ *  drží tu očekávanou; na 404 se zkusí ostatní a nalezená si zapamatuje.
+ *  Alternativa — natvrdo v1 — je přesně to, co se jednou tiše rozbije.
+ */
+async function viaMotisApi(
+  provider: string,
+  cfg: Record<string, unknown>,
+  q: MotisQuery,
+): Promise<TransportOption[]> {
+  const base = provider === "motis"
+    ? Deno.env.get("MOTIS_URL")
+    : String(cfg.transitous_url ?? "");
+  if (!base) throw new Error(`${provider}: base URL is not configured`);
+
+  const headers: Record<string, string> = { Accept: "application/json" };
+  // Transitous to vyžaduje: název aplikace, verze a kontakt. Bez toho je
+  // dotaz anonymní zátěž na komunitní službě a oni mají plné právo ho
+  // odmítnout.
+  const ua = String(cfg.transport_user_agent ?? "");
+  if (ua) headers["User-Agent"] = ua;
+  const token = Deno.env.get("MOTIS_TOKEN");
+  if (token && provider === "motis") headers.Authorization = `Bearer ${token}`;
+
+  const configured = String(cfg.motis_api_version ?? "v6");
+  const order = [
+    discoveredVersion ?? configured,
+    ...MOTIS_VERSIONS.filter((v) => v !== (discoveredVersion ?? configured)),
+  ];
+
+  let lastStatus = 0;
+  for (const version of order) {
+    const res = await fetch(planUrl(base, version, q), {
+      headers,
+      // Timeout je povinný. Bez něj visí Edge Function na cizí nedostupné
+      // službě až do vlastního limitu a uživatel kouká na točící se kolečko.
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.status === 404) {
+      // Tělo se musí přečíst, jinak Deno nechá spojení viset.
+      await res.body?.cancel();
+      lastStatus = 404;
+      continue;
+    }
+    if (!res.ok) {
+      await res.body?.cancel();
+      throw new Error(`${provider} ${res.status}`);
+    }
+    discoveredVersion = version;
+    return normaliseMotis(await res.json());
   }
+  throw new Error(`${provider}: no /api/*/plan endpoint answered (last ${lastStatus})`);
+}
+
+function planUrl(base: string, version: string, q: MotisQuery): URL {
+  const u = new URL(`/api/${version}/plan`, base);
+  // Souřadnice, ne ID zastávky. ID v naší databázi je naše vlastní UUID
+  // z `transit_places` a pro MOTIS nic neznamená — jeho stop ID pocházejí
+  // z GTFS feedů, které importujeme jenom kvůli názvům a poloze.
+  u.searchParams.set("fromPlace", `${q.origin.lat},${q.origin.lon}`);
+  u.searchParams.set("toPlace", `${q.dest.lat},${q.dest.lon}`);
+  u.searchParams.set("time", q.when);
+  u.searchParams.set("arriveBy", String(q.arriveBy));
+  u.searchParams.set("numItineraries", String(q.numItineraries));
+  u.searchParams.set("transitModes", motisTransitModes(q.modes).join(","));
+  if (q.maxTransfers != null) {
+    u.searchParams.set("maxTransfers", String(q.maxTransfers));
+  }
+  return u;
 }
 
 // ---------------------------------------------------------------------------
@@ -428,6 +576,13 @@ function geometricEstimate(
     tripId: null,
     routeId: null,
     intermediateStops: null,
+    intermediateStopNames: [],
+    scheduledDeparture: null,
+    scheduledArrival: null,
+    realTime: false,
+    cancelled: false,
+    localDeparture: null,
+    localArrival: null,
   };
 
   return [
@@ -436,6 +591,8 @@ function geometricEstimate(
       mode: "train",
       departure: leg.departure,
       arrival: leg.arrival,
+      localDeparture: null,
+      localArrival: null,
       durationMinutes: minutesBetween(leg.departure, leg.arrival),
       transfers: 0,
       walkMinutes: 0,
@@ -478,6 +635,8 @@ function serialise(o: TransportOption) {
     mode: o.mode,
     departure: o.departure,
     arrival: o.arrival,
+    local_departure: o.localDeparture,
+    local_arrival: o.localArrival,
     duration_minutes: o.durationMinutes,
     transfers: o.transfers,
     walk_minutes: o.walkMinutes,
@@ -492,12 +651,18 @@ function serialise(o: TransportOption) {
       to_stop_id: l.toStopId,
       departure: l.departure,
       arrival: l.arrival,
+      local_departure: l.localDeparture,
+      local_arrival: l.localArrival,
+      scheduled_departure: l.scheduledDeparture,
+      scheduled_arrival: l.scheduledArrival,
+      real_time: l.realTime,
       duration_minutes: l.durationMinutes,
       distance_meters: l.distanceMeters,
       platform: l.platform,
       trip_id: l.tripId,
       route_id: l.routeId,
       intermediate_stops: l.intermediateStops,
+      intermediate_stop_names: l.intermediateStopNames,
     })),
     fare: o.fare && {
       min: o.fare.min,

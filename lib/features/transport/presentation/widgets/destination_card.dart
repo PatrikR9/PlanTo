@@ -11,71 +11,15 @@ import '../../../trips/presentation/controllers/trips_controller.dart';
 import '../../data/transport_repository.dart';
 import '../../domain/transit_stop.dart';
 import '../../domain/transport_option.dart';
-import '../widgets/stop_picker_sheet.dart';
+import 'stop_picker_sheet.dart';
 
-/// The Plan tab: how the group gets there, and what it costs.
+/// Cíl výletu a odhad cesty k němu.
 ///
-/// Everything on this screen is an estimate and says so. There is no
-/// timetable behind it — a real itinerary needs a routing engine, and the
-/// only free one covering this region is a community service with no
-/// commercial licence. So the numbers come from geometry and a fare model,
-/// and the departure time comes from IDOS, which is where a Czech person was
-/// going to look anyway.
-///
-/// The alternative was inventing a departure. "Odjezd 7:14" that is not a
-/// real train is worse than no departure at all: it is the one number on the
-/// screen somebody would act on.
-class PlanTab extends ConsumerWidget {
-  const PlanTab({required this.trip, super.key});
-
-  final Trip trip;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (!trip.hasDestination) {
-      return _NoDestination(trip: trip);
-    }
-
-    final AsyncValue<List<TransportOption>> options =
-        ref.watch(transportOptionsProvider(trip.id));
-
-    return AsyncValueView<List<TransportOption>>(
-      value: options,
-      onRetry: () => ref.invalidate(transportOptionsProvider(trip.id)),
-      isEmpty: (List<TransportOption> o) => o.isEmpty,
-      empty: () => _NoDestination(trip: trip),
-      data: (List<TransportOption> list) => ListView(
-        padding: const EdgeInsets.all(Sp.md),
-        children: <Widget>[
-          _DestinationCard(trip: trip),
-          const SizedBox(height: Sp.lg),
-          Text('Jak se tam dostat', style: context.texts.labelLarge),
-          const SizedBox(height: Sp.xs),
-          for (final TransportOption o in list) ...<Widget>[
-            _OptionCard(option: o, trip: trip),
-            const SizedBox(height: Sp.xs),
-          ],
-          const SizedBox(height: Sp.sm),
-          Container(
-            padding: const EdgeInsets.all(Sp.sm),
-            decoration: BoxDecoration(
-              color: context.colors.surfaceContainerHighest,
-              borderRadius: Radii.inputAll,
-            ),
-            child: Text(
-              'Časy a ceny jsou odhad ze vzdálenosti a průměrných tarifů — '
-              'ne z jízdního řádu. Konkrétní spoj a cenu najdete v IDOS.',
-              style: context.texts.labelSmall,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DestinationCard extends ConsumerWidget {
-  const _DestinationCard({required this.trip});
+/// Přesunuto sem z původní záložky Plán, když se z ní stala časová osa.
+/// Výběr cíle ani srovnání „vlakem versus autem" tím nezmizely — jenom
+/// přestaly být tím jediným, co na té záložce je.
+class DestinationCard extends ConsumerWidget {
+  const DestinationCard({required this.trip, super.key});
 
   final Trip trip;
 
@@ -107,10 +51,64 @@ class _DestinationCard extends ConsumerWidget {
               label: 'Změnit',
               variant: PtButtonVariant.text,
               onPressed: () =>
-                  pickDestination(context, ref, trip.id, near: _originOf(trip)),
+                  pickDestination(context, ref, trip.id, near: originOf(trip)),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Výlet zatím nemá kam jet.
+class NoDestinationView extends ConsumerWidget {
+  const NoDestinationView({required this.trip, super.key});
+
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PtEmptyState(
+      title: 'Kam pojedete?',
+      message: trip.isOrganiser
+          ? 'Vyberte cíl a sestavíme plán cesty i s časy spojů.'
+          : 'Organizátor zatím nevybral cíl. Až ho vybere, uvidíte tady '
+              'celý plán výletu.',
+      icon: Icons.place_outlined,
+      actionLabel: trip.isOrganiser ? 'Vybrat cíl' : null,
+      onAction: trip.isOrganiser
+          ? () => pickDestination(context, ref, trip.id, near: originOf(trip))
+          : null,
+    );
+  }
+}
+
+/// Srovnání „veřejnou dopravou versus autem" z geometrického modelu.
+///
+/// Zůstává vedle časové osy schválně: osa říká, jak se jede veřejnou
+/// dopravou, tahle karta říká, jestli se to vůbec vyplatí proti autu. Jsou to
+/// dvě různé otázky a odpověď na tu druhou by se zrušením karty zmizela.
+class TransportComparisonCard extends ConsumerWidget {
+  const TransportComparisonCard({required this.trip, super.key});
+
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<TransportOption>> options =
+        ref.watch(transportOptionsProvider(trip.id));
+    final List<TransportOption>? list = options.valueOrNull;
+    if (list == null || list.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Srovnání variant', style: context.texts.labelLarge),
+        const SizedBox(height: Sp.xs),
+        for (final TransportOption o in list) ...<Widget>[
+          _OptionCard(option: o, trip: trip),
+          const SizedBox(height: Sp.xs),
+        ],
+      ],
     );
   }
 }
@@ -138,7 +136,7 @@ class _OptionCard extends StatelessWidget {
               const SizedBox(width: Sp.sm),
               Expanded(
                 child: Text(
-                  isCar ? 'Autem' : 'Vlakem nebo autobusem',
+                  isCar ? 'Autem' : 'Veřejnou dopravou',
                   style: context.texts.titleMedium,
                 ),
               ),
@@ -213,36 +211,6 @@ class _OptionCard extends StatelessWidget {
   }
 }
 
-class _NoDestination extends ConsumerWidget {
-  const _NoDestination({required this.trip});
-
-  final Trip trip;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      padding: const EdgeInsets.all(Sp.xl),
-      children: <Widget>[
-        const SizedBox(height: Sp.xxl),
-        PtEmptyState(
-          title: 'Kam pojedete?',
-          message: trip.isOrganiser
-              ? 'Vyberte cíl a spočítáme, jak dlouho to trvá a co to bude '
-                  'stát.'
-              : 'Organizátor zatím nevybral cíl. Až ho vybere, uvidíte tady '
-                  'cestu i odhad ceny.',
-          icon: Icons.place_outlined,
-          actionLabel: trip.isOrganiser ? 'Vybrat cíl' : null,
-          onAction: trip.isOrganiser
-              ? () =>
-                  pickDestination(context, ref, trip.id, near: _originOf(trip))
-              : null,
-        ),
-      ],
-    );
-  }
-}
-
 /// Vybere cíl a přepočítá, co na něm visí.
 ///
 /// Od M7 to je skutečná zastávka, ne položka z ručně psaného seznamu:
@@ -290,5 +258,5 @@ Future<void> pickDestination(
 /// Není to poloha uživatele — tu aplikace nemá a kvůli řazení si o ni říkat
 /// nebude. Je to lepší přiblížení, než žádné: kdo jede z Ostravy, hledá
 /// obvykle něco, kam se z Ostravy dá dojet.
-({double lat, double lon}) _originOf(Trip trip) =>
+({double lat, double lon}) originOf(Trip trip) =>
     (lat: trip.originLat, lon: trip.originLon);

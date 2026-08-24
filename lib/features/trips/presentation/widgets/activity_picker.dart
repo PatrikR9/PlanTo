@@ -115,6 +115,17 @@ class _ActivityPickerSheetState extends State<ActivityPickerSheet> {
   late final Set<ActivityTag> _selected = <ActivityTag>{...widget.selected};
   String _query = '';
 
+  /// Rozbalené sekce.
+  ///
+  /// Se 73 aktivitami je rozbalené všechno stejná zeď, jakou byl kdysi jeden
+  /// plochý `Wrap` — jen delší. Otevřené jsou proto na začátku jen sekce, ve
+  /// kterých už něco vybraného je; kdo nemá nic, uvidí šest nadpisů a rozhodne
+  /// se, kam se vůbec dívat.
+  late final Set<ActivitySection> _open = <ActivitySection>{
+    for (final ActivitySection s in ActivitySection.values)
+      if (ActivityTag.inSection(s).any(_selected.contains)) s,
+  };
+
   void _toggle(ActivityTag t) {
     setState(() {
       if (!_selected.remove(t)) _selected.add(t);
@@ -126,6 +137,93 @@ class _ActivityPickerSheetState extends State<ActivityPickerSheet> {
     if (_query.trim().isEmpty) return true;
     final String q = foldCz(_query.trim());
     return foldCz(t.label).contains(q) || foldCz(t.section.label).contains(q);
+  }
+
+  /// Jedna sbalitelná sekce.
+  ///
+  /// Při hledání je vždy otevřená: filtr už seznam zkrátil sám a nechat
+  /// výsledek schovaný za klepnutím by znamenalo hledat dvakrát.
+  Widget _section(BuildContext context, ActivitySection s, bool searching) {
+    final List<ActivityTag> tags = <ActivityTag>[
+      for (final ActivityTag t in ActivityTag.inSection(s))
+        if (!searching || _matches(t)) t,
+    ];
+    final int chosen = tags.where(_selected.contains).length;
+    final bool open = searching || _open.contains(s);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        InkWell(
+          onTap: searching
+              ? null
+              : () => setState(() {
+                    if (!_open.remove(s)) _open.add(s);
+                  }),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: Sp.sm),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(s.label, style: context.texts.titleSmall),
+                ),
+                // Počet vybraných uvnitř. Bez něj se po sbalení nedá poznat,
+                // jestli v sekci něco je — a to je celý smysl sbalování.
+                if (chosen > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Sp.xs,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.colors.primaryContainer,
+                      borderRadius: Radii.pillAll,
+                    ),
+                    child: Text(
+                      '$chosen',
+                      style: context.texts.labelSmall?.copyWith(
+                        color: context.colors.onPrimaryContainer,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    '${tags.length}',
+                    style: context.texts.labelSmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                if (!searching) ...<Widget>[
+                  const SizedBox(width: Sp.xs),
+                  Icon(
+                    open ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (open)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Sp.xs),
+            child: Wrap(
+              spacing: Sp.xs,
+              runSpacing: Sp.xs,
+              children: <Widget>[
+                for (final ActivityTag t in tags)
+                  FilterChip(
+                    label: Text(t.label),
+                    selected: _selected.contains(t),
+                    onSelected: (_) => _toggle(t),
+                  ),
+              ],
+            ),
+          ),
+        Divider(height: 1, color: context.planto.hairline),
+      ],
+    );
   }
 
   @override
@@ -187,14 +285,14 @@ class _ActivityPickerSheetState extends State<ActivityPickerSheet> {
                     : ListView(
                         controller: scroll,
                         children: <Widget>[
-                          for (final ActivitySection s in sections) ...<Widget>[
+                          // Vybrané nahoře a pohromadě. Jinak je jediný způsob,
+                          // jak zjistit, co už mám, projít všech šest sekcí —
+                          // a odebrat něco znamená to nejdřív najít.
+                          if (!searching && _selected.isNotEmpty) ...<Widget>[
                             Padding(
-                              padding: const EdgeInsets.only(
-                                top: Sp.sm,
-                                bottom: Sp.xxs,
-                              ),
+                              padding: const EdgeInsets.only(bottom: Sp.xxs),
                               child: Text(
-                                s.label,
+                                'Vybrané',
                                 style: context.texts.labelMedium?.copyWith(
                                   color: context.colors.onSurfaceVariant,
                                 ),
@@ -204,17 +302,19 @@ class _ActivityPickerSheetState extends State<ActivityPickerSheet> {
                               spacing: Sp.xs,
                               runSpacing: Sp.xs,
                               children: <Widget>[
-                                for (final ActivityTag t
-                                    in ActivityTag.inSection(s))
-                                  if (!searching || _matches(t))
-                                    FilterChip(
-                                      label: Text(t.label),
-                                      selected: _selected.contains(t),
-                                      onSelected: (_) => _toggle(t),
-                                    ),
+                                for (final ActivityTag t in _selected.toList()
+                                  ..sort((ActivityTag a, ActivityTag b) =>
+                                      a.label.compareTo(b.label)))
+                                  InputChip(
+                                    label: Text(t.label),
+                                    onDeleted: () => _toggle(t),
+                                  ),
                               ],
                             ),
+                            const Divider(height: Sp.xl),
                           ],
+                          for (final ActivitySection s in sections)
+                            _section(context, s, searching),
                           const SizedBox(height: Sp.md),
                         ],
                       ),
