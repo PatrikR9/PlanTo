@@ -480,8 +480,14 @@ insert into app_config (key, value) values
   -- Cesta k plánovači je verzovaná (/api/v6/plan). Edge Function si při 404
   -- sáhne po starších verzích a najdenou si zapamatuje do konce běhu.
   ('motis_api_version',    '"v6"'::jsonb),
+  -- Kontakt musí být dohledatelný, jinak je to anonymní zátěž na komunitní
+  -- službě a Transitous ji má právo odmítnout. Výchozí hodnota míří na
+  -- repozitář, protože ten existuje; `planto.app` je zatím záměr, ne doména.
+  -- Před prvním ostrým během to přepiš na sebe:
+  --   update app_config set value = '"PlanTo/0.1 (+mailto:ty@example.cz)"'
+  --    where key = 'transport_user_agent';
   ('transport_user_agent',
-   '"PlanTo/0.1 (+https://planto.app; kontakt@planto.app)"'::jsonb),
+   '"PlanTo/0.1 (+https://github.com/PatrikR9/PlanTo)"'::jsonb),
   ('transport_attribution',
    '"Spojení: Transitous (transitous.org/sources) · data OpenStreetMap a dopravců"'::jsonb),
   -- Kolik minut navíc si nechat na přestup nad rámec toho, co spočítal

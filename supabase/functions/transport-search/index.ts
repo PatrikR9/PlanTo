@@ -492,7 +492,18 @@ async function viaMotisApi(
   // Transitous to vyžaduje: název aplikace, verze a kontakt. Bez toho je
   // dotaz anonymní zátěž na komunitní službě a oni mají plné právo ho
   // odmítnout.
+  //
+  // Proto se to kontroluje, ne jen doufá. Podmínka licence, na kterou se dá
+  // zapomenout, je podmínka, na kterou se zapomene — a zjistí se to až ve
+  // chvíli, kdy nás někdo zablokuje. Chybějící kontakt degraduje na
+  // geometrický odhad a důvod jde v `provider_error` na obrazovku.
   const ua = String(cfg.transport_user_agent ?? "");
+  if (provider === "transitous" && !/@|https?:\/\//.test(ua)) {
+    throw new Error(
+      "transitous: transport_user_agent neobsahuje kontakt (e-mail nebo URL). " +
+        "Doplň ho v app_config, než na komunitní službu pošleš první dotaz.",
+    );
+  }
   if (ua) headers["User-Agent"] = ua;
   const token = Deno.env.get("MOTIS_TOKEN");
   if (token && provider === "motis") headers.Authorization = `Bearer ${token}`;

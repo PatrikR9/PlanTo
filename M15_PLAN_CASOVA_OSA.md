@@ -282,7 +282,10 @@ Zapnutí skutečných jízdních řádů (vývojově):
 
 ```sql
 update app_config set value = '"transitous"' where key = 'transport_provider';
-update app_config set value = '"PlanTo/0.1 (+https://planto.app; TVUJ@MAIL)"'
+-- Kontakt musí být dohledatelný. `planto.app` zatím neexistuje, takže buď
+-- e-mail, nebo adresa repozitáře. Bez kontaktu funkce Transitous nezavolá
+-- a degraduje na odhad s vysvětlením v `provider_error`.
+update app_config set value = '"PlanTo/0.1 (+mailto:ty@example.cz)"'
   where key = 'transport_user_agent';
 ```
 
