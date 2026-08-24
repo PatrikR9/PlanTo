@@ -201,44 +201,50 @@ function motisMode(raw: unknown): TransportMode {
 
 /** Hodnoty pro `transitModes` v dotazu na MOTIS.
  *
- *  Posila se jenom to, co enum opravdu zna. Nase `trolleybus` v nem neni a
- *  poslat ho znamena 400 na cely dotaz -- proto padne do `BUS`, kterym
- *  trolejbusy v GTFS stejne jezdi.
+ *  Naše enum je hrubší než to MOTISu a rozdil není kosmetický: `COACH` je
+ *  v MOTISu jiná hodnota než `BUS`, takže poslat jenom `BUS` by z výsledků
+ *  vyřadilo RegioJet a FlixBus -- u cesty přes půl republiky zrovna to, co
+ *  člověk hledá. Každý náš druh se proto rozvine na všechny hodnoty, které
+ *  pokrývá. `TROLLEYBUS` v enumu MOTISu není; trolejbusy jezdí jako `BUS`.
+ *
+ *  Když jsou vybrané všechny běžné druhy, jde ven `TRANSIT`: je to levnější
+ *  na straně MOTISu a navíc pokryje i to, co naše enum neumí pojmenovat.
  */
+const MOTIS_QUERY_MODES: Partial<Record<TransportMode, string[]>> = {
+  train: [
+    "RAIL",
+    "HIGHSPEED_RAIL",
+    "LONG_DISTANCE",
+    "NIGHT_RAIL",
+    "REGIONAL_RAIL",
+    "REGIONAL_FAST_RAIL",
+    "SUBURBAN",
+  ],
+  metro: ["SUBWAY", "METRO"],
+  tram: ["TRAM"],
+  bus: ["BUS", "COACH"],
+  trolleybus: ["BUS", "COACH"],
+  ferry: ["FERRY"],
+  funicular: ["FUNICULAR"],
+  cablecar: ["AERIAL_LIFT", "CABLE_CAR"],
+};
+
+/** Druhy, jejichž současný výběr znamená "vsechno". Je to výchozí sada
+ *  aplikace, takže běžná cesta končí u `TRANSIT`. */
+const EVERYDAY_MODES: TransportMode[] = ["train", "bus", "tram", "metro"];
+
 export function motisTransitModes(modes: TransportMode[]): string[] {
-  const out = new Set<string>();
-  for (const m of modes) {
-    switch (m) {
-      case "train":
-        out.add("RAIL");
-        break;
-      case "metro":
-        out.add("SUBWAY");
-        break;
-      case "tram":
-        out.add("TRAM");
-        break;
-      case "bus":
-      case "trolleybus":
-        out.add("BUS");
-        break;
-      case "ferry":
-        out.add("FERRY");
-        break;
-      case "funicular":
-        out.add("FUNICULAR");
-        break;
-      case "cablecar":
-        out.add("AERIAL_LIFT");
-        break;
-      default:
-        break;
-    }
+  const selected = new Set(modes);
+  if (selected.size === 0 || EVERYDAY_MODES.every((m) => selected.has(m))) {
+    return ["TRANSIT"];
   }
-  // Prazdny seznam nebo plna sada: `TRANSIT` je levnejsi na strane MOTISu a
-  // navic pokryje druhy, ktere nase enum nezna (SUBURBAN, COACH, NIGHT_RAIL).
-  if (out.size === 0 || out.size >= 5) return ["TRANSIT"];
-  return [...out].sort();
+  const out = new Set<string>();
+  for (const m of selected) {
+    for (const v of MOTIS_QUERY_MODES[m] ?? []) out.add(v);
+  }
+  // Výběr, ze kterého nezbylo nic (jenom chůze), znamená "vsechno" -- ne
+  // prázdný filtr, který by MOTIS odmítl.
+  return out.size === 0 ? ["TRANSIT"] : [...out].sort();
 }
 
 // ---------------------------------------------------------------------------

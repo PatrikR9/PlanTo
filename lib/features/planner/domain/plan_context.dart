@@ -84,9 +84,8 @@ class JourneyQuery {
       other.direction == direction;
 
   @override
-  int get hashCode =>
-      Object.hash(origin.lat, origin.lon, destination.lat, destination.lon,
-          when, arriveBy, direction);
+  int get hashCode => Object.hash(origin.lat, origin.lon, destination.lat,
+      destination.lon, when, arriveBy, direction);
 }
 
 @immutable
@@ -170,8 +169,7 @@ class PlanContext {
       groupSize: (r['group_size'] as num?)?.toInt() ?? 1,
       transferBuffer:
           Duration(minutes: (r['transfer_buffer_min'] as num?)?.toInt() ?? 5),
-      homeWalk:
-          Duration(minutes: (r['home_walk_min'] as num?)?.toInt() ?? 10),
+      homeWalk: Duration(minutes: (r['home_walk_min'] as num?)?.toInt() ?? 10),
     );
   }
 
@@ -222,7 +220,9 @@ DateTime? _date(String? v) {
 /// o půlnoci, by poslal skupinu na noční spoj.
 DateTime _at(DateTime day, String? hhmm, int fallbackHour) {
   final List<String> parts = (hhmm ?? '').split(':');
-  final int h = parts.length >= 2 ? (int.tryParse(parts[0]) ?? fallbackHour) : fallbackHour;
+  final int h = parts.length >= 2
+      ? (int.tryParse(parts[0]) ?? fallbackHour)
+      : fallbackHour;
   final int m = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
   return DateTime(day.year, day.month, day.day, h, m);
 }

@@ -162,8 +162,7 @@ class _JourneyCard extends StatelessWidget {
               journey.isDirect
                   ? 'bez přestupu'
                   : '${journey.transfers} × přestup',
-              if (journey.walkMinutes > 0)
-                'pěšky ${journey.walkMinutes} min',
+              if (journey.walkMinutes > 0) 'pěšky ${journey.walkMinutes} min',
               for (final JourneyLeg l in journey.transitLegs)
                 if (l.lineName != null) l.lineName!,
             ].join(' · '),

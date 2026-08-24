@@ -37,9 +37,7 @@ String planItemTitle(PlanItem item) {
     case 'plan.transfer':
       {
         final String? where = p['stop'];
-        return where == null || where.isEmpty
-            ? 'Přestup'
-            : 'Přestup — $where';
+        return where == null || where.isEmpty ? 'Přestup' : 'Přestup — $where';
       }
     case 'plan.activity_default':
       {

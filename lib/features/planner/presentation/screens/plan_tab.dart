@@ -175,8 +175,7 @@ class _Body extends ConsumerWidget {
     final DateTime day = plan.planDate ?? DateTime.now();
     final DateTime local =
         DateTime(day.year, day.month, day.day, time.hour, time.minute);
-    _controller(ref)
-        .apply(home ? SetHomeBy(local) : SetArriveBy(local));
+    _controller(ref).apply(home ? SetHomeBy(local) : SetArriveBy(local));
   }
 
   Future<void> _openItem(
@@ -193,9 +192,8 @@ class _Body extends ConsumerWidget {
       case PlanItemChooseJourney(:final PlanSegment segment):
         final Journey? picked = await showJourneySheet(
           context,
-          title: segment == PlanSegment.homeward
-              ? 'Spoje domů'
-              : 'Spoje do cíle',
+          title:
+              segment == PlanSegment.homeward ? 'Spoje domů' : 'Spoje do cíle',
           search: _controller(ref).alternatives(segment),
         );
         if (picked == null) return;
@@ -399,9 +397,7 @@ class _Problems extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Icon(
-                    p.isBlocking
-                        ? Icons.error_outline
-                        : Icons.info_outline,
+                    p.isBlocking ? Icons.error_outline : Icons.info_outline,
                     size: 16,
                     color: blocking
                         ? context.colors.onErrorContainer

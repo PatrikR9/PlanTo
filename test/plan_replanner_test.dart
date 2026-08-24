@@ -149,8 +149,7 @@ void main() {
       final ReplanNeeds needs =
           engine.needsFor(buildPlan(), SetArriveBy(wall(12, 0)), ctx);
       expect(needs.outbound, isNotNull);
-      expect(needs.homeward, isNull,
-          reason: 'cesta zpět s tím nemá co dělat');
+      expect(needs.homeward, isNull, reason: 'cesta zpět s tím nemá co dělat');
       expect(needs.outbound!.query.arriveBy, isTrue);
       expect(needs.outbound!.query.when, ctx.instant(wall(12, 0)));
     });
@@ -256,10 +255,8 @@ void main() {
   group('minimální nutná změna', () {
     test('prodloužení programu si vyžádá jenom nový spoj domů', () {
       final TripPlan p = buildPlan();
-      final List<String> outboundIds = p
-          .segment(PlanSegment.outbound)
-          .map((PlanItem i) => i.id)
-          .toList();
+      final List<String> outboundIds =
+          p.segment(PlanSegment.outbound).map((PlanItem i) => i.id).toList();
 
       final ReplanOutcome r = engine.apply(
         p,
@@ -422,8 +419,8 @@ void main() {
         ),
       );
 
-      final PlanProblem problem = r.problems
-          .firstWhere((PlanProblem e) => e.code == PlanProblemCode.noReturnFound);
+      final PlanProblem problem = r.problems.firstWhere(
+          (PlanProblem e) => e.code == PlanProblemCode.noReturnFound);
       expect(problem.params['earliest'], contains('20:42'));
       expect(problem.isBlocking, isTrue);
       // Původní cesta zpět zůstala — plán bez návratu je horší než návrat,
@@ -436,7 +433,8 @@ void main() {
         buildPlan(),
         SetArriveBy(wall(9, 0)),
         ctx,
-        outbound: const SegmentResult(provider: 'transitous', hasTimetable: true),
+        outbound:
+            const SegmentResult(provider: 'transitous', hasTimetable: true),
       );
       expect(
         r.problems.map((PlanProblem e) => e.code),

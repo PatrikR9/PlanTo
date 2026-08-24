@@ -101,8 +101,7 @@ class FareEstimate {
       max: max,
       currency: (r['currency'] as String?) ?? 'CZK',
       confidence: FareConfidence.fromWire(r['confidence'] as String?),
-      basis:
-          (r['basis'] as List<dynamic>? ?? const <dynamic>[]).cast<String>(),
+      basis: (r['basis'] as List<dynamic>? ?? const <dynamic>[]).cast<String>(),
     );
   }
 
@@ -328,7 +327,8 @@ class Journey {
       transfers: (r['transfers'] as num?)?.toInt() ?? 0,
       walkMinutes: (r['walk_minutes'] as num?)?.toInt() ?? 0,
       legs: <JourneyLeg>[
-        for (final Object? l in (r['legs'] as List<dynamic>? ?? const <dynamic>[]))
+        for (final Object? l
+            in (r['legs'] as List<dynamic>? ?? const <dynamic>[]))
           JourneyLeg.fromWire(l! as Map<String, dynamic>),
       ],
       fare: FareEstimate.fromWire(r['fare'] as Map<String, dynamic>?),
@@ -430,8 +430,7 @@ DateTime localOr(String? local, DateTime instant) {
   return DateTime(l.year, l.month, l.day, l.hour, l.minute, l.second);
 }
 
-String _naive(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-'
+String _naive(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}T'
     '${d.hour.toString().padLeft(2, '0')}:'

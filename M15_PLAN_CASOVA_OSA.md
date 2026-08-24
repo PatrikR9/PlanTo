@@ -316,3 +316,67 @@ podle deadlinu.
 **Neotestováno:** cokoli proti skutečné instanci MOTISu, SQL migrace proti
 skutečné databázi, a chování UI. Testy API běží proti mockovaným odpovědím
 schválně — test suite nesmí záviset na dostupnosti komunitní služby.
+
+
+---
+
+## 12. První běh CI (24. 8. 2026, commit 4bd3028)
+
+Záložka „Plán" prošla líp, než se čekalo, a vypadly z toho dvě cizí chyby.
+
+**Co prošlo:** `flutter test` — **120 testů zeleně**, včetně všech nových
+(replanner, parsování spojení, persistence). `supabase db start` a `db lint`
+prošly, takže **migrace 20260824090000 se aplikovala na skutečný Postgres**.
+`deno test` — 31 z 34 případů v `transport_test.ts`.
+
+**Co bylo z M15 a je opravené:**
+
+- `flutter analyze --fatal-infos` hlásil 32 věcí, všechny `info` (chybějící
+  čárky, jedno `prefer_final_locals`). Žádná chyba, žádný warning. Opraveno
+  záplatou z CI a jedním `final`.
+- `motisTransitModes()` vracela u plné sady čtyři hodnoty místo `TRANSIT`.
+  Při opravě se ukázalo něco horšího: náš `bus` se mapoval jenom na `BUS`,
+  jenže **dálkové autobusy jsou v MOTISu `COACH`** — RegioJet a FlixBus by
+  z výsledků vypadly. Každý druh se teď rozvíjí na všechny hodnoty, které
+  pokrývá.
+- `deno check` neprošel na `transport-search/index.ts`: `createClient` vrací
+  s options a bez nich dvě různé instanciace generik. Vyřešeno aliasem `Db`
+  na jednom místě, s poznámkou, kam patří generovaný `Database` typ.
+
+**Co bylo červené už před M15 a opravené je:**
+
+- `transport_test.ts` čekal u trasy „pěší úsek + vlak + pěší úsek" délku
+  52 minut. 07:00 → 09:52 je 172; 52 bylo číslo z ciferníku. Opraveno.
+- SQL testy běžely proti jedné sdílené databázi, takže druhý z nich narazil
+  na profily, které založil první (`duplicate key ... profiles_pkey`), a
+  `set role` protékal do dalšího jako „permission denied". CI teď každý test
+  pouští ve vlastní transakci, která se na konci zahodí.
+- `google-calendar/index.ts` neprošel `deno check` kvůli
+  `crypto.subtle.importKey("raw", …)` — od TypeScriptu 5.7 `Uint8Array` nad
+  `ArrayBufferLike` nesedí do `BufferSource`. Kopie do čerstvého bufferu.
+
+**Co je červené a nesahal jsem na to** (obojí je mimo M15 a obojí je skutečná
+chyba, ne rozbitý test):
+
+1. `rebuild_transit_places()` v migraci `20260808090000` zakládá
+   `create temporary table _clust on commit drop`. Test ji volá dvakrát
+   v jedné transakci, takže druhé volání spadne na „relation `_clust` already
+   exists". Funkce není idempotentní uvnitř transakce; oprava je nová migrace
+   s `create or replace` a `drop table if exists _clust` na začátku.
+2. `ics_test.ts` — „a weekly rule expands inside the window only" čeká
+   07:00Z a dostane 08:00Z. Týdenní RRULE se rozvíjí s pevným posunem od
+   `DTSTART` místo v zóně, takže **přes přechod letního času vyjde termín
+   o hodinu vedle**. To není kosmetika: je to dostupnost hlášená špatně.
+
+## 13. Jak číst výsledky CI
+
+`ci.yml` po každém běhu force-pushne report do větve `ci-report`:
+
+    ci-report/summary.txt     výsledek každého jobu + commit
+    ci-report/flutter.txt     format, analyze, test
+    ci-report/database.txt    migrace, lint, SQL testy
+    ci-report/functions.txt   deno check, deno test
+    ci-report/fixes.patch     `dart fix --apply` + `dart format`, k aplikování
+
+Záplata se aplikuje `git apply` v kořeni repozitáře. Větev je pokaždé jeden
+commit z prázdné historie — neroste a nedá se z ní nic smergovat.

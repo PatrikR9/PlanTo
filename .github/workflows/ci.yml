@@ -83,19 +83,27 @@ jobs:
 
       # Formátování se dá opravit strojově, takže se rovnou vyrobí záplata.
       # Je to levnější než popisovat v reportu, kde chybí čárka.
-      - name: Formatting patch
+      # Co jde opravit strojově, se opraví strojově a vyleze jako záplata.
+      # `dart fix` umí i chybějící čárky a `prefer_final_locals`, takže to
+      # pokrývá skoro celý zbytek `analyze --fatal-infos`.
+      #
+      # Diff je omezený na lib/ a test/. Bez toho se do záplaty dostane
+      # `.flutter-plugins-dependencies` s cestami runneru a přepsalo by to
+      # cesty na vývojářském stroji.
+      - name: Fix patch
         if: always()
         run: |
+          dart fix --apply > /dev/null 2>&1 || true
           dart format lib test > /dev/null 2>&1 || true
-          git diff > _report/format.patch || true
-          if [ -s _report/format.patch ]; then
-            echo "format.patch: $(wc -l < _report/format.patch) řádků" \
+          git diff -- lib test > _report/fixes.patch || true
+          if [ -s _report/fixes.patch ]; then
+            echo "fixes.patch: $(wc -l < _report/fixes.patch) řádků" \
               >> _report/flutter.txt
           else
-            echo "format.patch: prázdná (formátování sedí)" \
+            echo "fixes.patch: prázdná (není co opravit)" \
               >> _report/flutter.txt
           fi
-          git checkout -- . || true
+          git checkout -- lib test || true
 
       # Guardrail from the cost register, section C3: a single AGPL dependency
       # linked into the APK would oblige us to publish the source.
@@ -153,8 +161,19 @@ jobs:
           check supabase db lint
           DB_URL="$(supabase status -o env | grep DB_URL | cut -d= -f2- \
                     | tr -d '"')"
+          # Každý test ve vlastní transakci, která se na konci zahodí.
+          # Testy jsou psané proti čisté databázi, ne proti sobě navzájem:
+          # bez izolace narazí druhý z nich na profily, které založil první
+          # (`duplicate key ... profiles_pkey`), a `set role` z jednoho
+          # protéká do dalšího jako „permission denied".
           for t in supabase/tests/*.sql; do
-            check psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$t"
+            printf 'begin;\n\\i %s\nrollback;\n' "$t" > /tmp/wrapped.sql
+            {
+              echo ""
+              echo "─── $t ───"
+            } >> _report/database.txt
+            check psql "$DB_URL" -v ON_ERROR_STOP=1 \
+                  -c 'reset role' -f /tmp/wrapped.sql
           done
           exit $rc
 

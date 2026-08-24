@@ -49,6 +49,20 @@ import {
   withLocalTimes,
 } from "../_shared/transport.ts";
 
+/** Typ klienta supabase-js.
+ *
+ *  `createClient(url, key)` a `createClient(url, key, options)` vracejí dvě
+ *  různé instanciace stejných generik a přiřadit jednu do druhé nejde —
+ *  `deno check` to hlásí jako TS2345 na každé pomocné funkci. Funkce níž
+ *  o schématu databáze nic nevědí (volají `rpc` a `from` s literály), takže
+ *  je pro ně ten typ stejně bez informace.
+ *
+ *  Až projekt bude mít generovaný `Database` typ, tohle je jediné místo,
+ *  kde se doplní.
+ */
+// deno-lint-ignore no-explicit-any
+type Db = any;
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -324,7 +338,7 @@ Deno.serve(async (req) => {
 
 /** Zápis do cache nesmí zdržet odpověď ani ji shodit. */
 function writeCache(
-  admin: ReturnType<typeof createClient>,
+  admin: Db,
   key: string,
   provider: string,
   origin: Resolved,
@@ -368,7 +382,7 @@ interface Resolved {
  *  rozcestník), ne proto, aby si klient mohl přepsat, kde zastávka leží.
  */
 async function resolvePlace(
-  client: ReturnType<typeof createClient>,
+  client: Db,
   input: Body["origin"],
 ): Promise<Resolved | null> {
   if (!input) return null;
@@ -402,7 +416,7 @@ const UUID =
 
 /** Zóna výletu. Čte se přes RLS klienta, takže cizí výlet nic nevrátí. */
 async function tripTimezone(
-  client: ReturnType<typeof createClient>,
+  client: Db,
   tripId: string | undefined,
 ): Promise<string> {
   if (typeof tripId !== "string" || !UUID.test(tripId)) return DEFAULT_TZ;
@@ -416,7 +430,7 @@ async function tripTimezone(
 }
 
 async function config(
-  admin: ReturnType<typeof createClient>,
+  admin: Db,
 ): Promise<Record<string, unknown>> {
   const { data } = await admin
     .from("app_config")

@@ -257,7 +257,8 @@ class PlanItem {
       );
 
   /// Nový začátek při zachované délce.
-  PlanItem movedTo(DateTime newStart) => shiftedBy(newStart.difference(startsAt));
+  PlanItem movedTo(DateTime newStart) =>
+      shiftedBy(newStart.difference(startsAt));
 
   /// Nový začátek zadaný v místním čase. Uživatel vybírá „v deset", ne
   /// okamžik, a posun se musí počítat proti té samé reprezentaci.
@@ -364,7 +365,8 @@ class PlanItem {
       localEnd: _localOr(r['local_ends_at'] as String?, end),
       titleKey: (r['title_key'] as String?) ?? 'plan.item',
       titleParams: _stringMap(r['title_params']),
-      detail: (r['detail'] as Map<String, dynamic>?) ?? const <String, dynamic>{},
+      detail:
+          (r['detail'] as Map<String, dynamic>?) ?? const <String, dynamic>{},
       fromName: r['from_name'] as String?,
       toName: r['to_name'] as String?,
       placeId: r['place_id'] as String?,

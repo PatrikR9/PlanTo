@@ -64,8 +64,7 @@ class TripPlan {
 
   bool get isEmpty => items.isEmpty;
 
-  bool get hasBlockingProblem =>
-      warnings.any((PlanProblem p) => p.isBlocking);
+  bool get hasBlockingProblem => warnings.any((PlanProblem p) => p.isBlocking);
 
   /// Posun zóny výletu proti UTC, odvozený z položek.
   ///
@@ -134,7 +133,8 @@ class TripPlan {
         tripId: tripId,
         variant: variant,
         planDate: planDate ?? this.planDate,
-        departAfter: clearDepartAfter ? null : (departAfter ?? this.departAfter),
+        departAfter:
+            clearDepartAfter ? null : (departAfter ?? this.departAfter),
         arriveBy: clearArriveBy ? null : (arriveBy ?? this.arriveBy),
         homeBy: clearHomeBy ? null : (homeBy ?? this.homeBy),
         provider: provider ?? this.provider,
@@ -151,7 +151,8 @@ class TripPlan {
   /// druhého a třetího kritéria vrátí `sort` pro stejná data dvě různá
   /// pořadí a osa pod prstem přeskočí.
   TripPlan sorted() {
-    final List<PlanItem> copy = <PlanItem>[...items]..sort((PlanItem a, PlanItem b) {
+    final List<PlanItem> copy = <PlanItem>[...items]
+      ..sort((PlanItem a, PlanItem b) {
         final int t = a.startsAt.compareTo(b.startsAt);
         if (t != 0) return t;
         final int s = a.segment.index.compareTo(b.segment.index);

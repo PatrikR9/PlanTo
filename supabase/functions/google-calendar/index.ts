@@ -81,7 +81,14 @@ async function aesKey(): Promise<CryptoKey> {
         " s naplněním z RandomNumberGenerator.",
     );
   }
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, [
+  // Kopie do čerstvého bufferu, ne přetypování. Od TypeScriptu 5.7 je
+  // `Uint8Array<ArrayBufferLike>` (což vrací dekodér base64) nekompatibilní
+  // s `BufferSource`, protože `SharedArrayBuffer` nemá `resizable`. Cast by
+  // tu neshodu jenom schoval; třicet dva zkopírovaných bajtů je levnější než
+  // vysvětlovat příštímu člověku, proč tam ten cast je.
+  const keyBytes = new Uint8Array(raw.length);
+  keyBytes.set(raw);
+  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, [
     "encrypt",
     "decrypt",
   ]);

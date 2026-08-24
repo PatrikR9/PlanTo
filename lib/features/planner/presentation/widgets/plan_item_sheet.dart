@@ -277,9 +277,8 @@ class _LengthRow extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.remove_circle_outline),
           tooltip: 'Zkrátit o 15 minut',
-          onPressed: length - _step >= _min
-              ? () => onChanged(length - _step)
-              : null,
+          onPressed:
+              length - _step >= _min ? () => onChanged(length - _step) : null,
         ),
         SizedBox(
           width: 72,

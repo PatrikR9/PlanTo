@@ -249,8 +249,7 @@ class Replanner {
       case BuildPlan():
         {
           p = p.copyWith(items: const <PlanItem>[], planDate: ctx.planDate);
-          needOut =
-              SegmentNeed(_outboundQuery(p, ctx), SegmentIntent.explicit);
+          needOut = SegmentNeed(_outboundQuery(p, ctx), SegmentIntent.explicit);
           needHome =
               SegmentNeed(_homewardByDeadline(p, ctx), SegmentIntent.explicit);
         }
@@ -773,7 +772,7 @@ class Replanner {
     Set<String> changed,
     List<PlanProblem> problems,
   ) {
-    TripPlan p = plan.sorted();
+    final TripPlan p = plan.sorted();
     final DateTime? arrival = p.arrivalAtDestination;
     final List<PlanItem> stay = p.segment(PlanSegment.stay);
 
@@ -818,8 +817,7 @@ class Replanner {
 
     // --- program přerostl odjezd domů ---------------------------------------
     final bool homewardFixed = p.segment(PlanSegment.homeward).any(
-          (PlanItem i) =>
-              i.isLocked || i.source == PlanItemSource.userSelected,
+          (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
         );
 
     if (!homewardFixed) {
@@ -841,8 +839,7 @@ class Replanner {
     // hlavně to nemění nic, co si nastavil.
     final DateTime limit = departure.subtract(ctx.readyBeforeDeparture);
     final int last = rebuilt.lastIndexWhere((PlanItem i) => !i.isLocked);
-    if (last >= 0 &&
-        limit.isAfter(rebuilt[last].startsAt.add(_minimumStay))) {
+    if (last >= 0 && limit.isAfter(rebuilt[last].startsAt.add(_minimumStay))) {
       final PlanItem shortened =
           rebuilt[last].resizedTo(limit.difference(rebuilt[last].startsAt));
       rebuilt[last] = shortened;
@@ -935,8 +932,7 @@ class _LocalPass {
 
 /// Čas do parametru hlášky. Naivní ISO v zóně výletu — prezentační vrstva ho
 /// naformátuje, ale nemusí ho znovu převádět.
-String _wall(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-'
+String _wall(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}T'
     '${d.hour.toString().padLeft(2, '0')}:'

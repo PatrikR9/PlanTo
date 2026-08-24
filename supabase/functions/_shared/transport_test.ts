@@ -7,7 +7,6 @@
 
 import {
   assert,
-  assertAlmostEquals,
   assertEquals,
   assertNotEquals,
 } from "jsr:@std/assert@1";
@@ -368,7 +367,9 @@ Deno.test("pěší úseky na krajích nejsou přestupy", () => {
   assertEquals(opts[0].walkMinutes, 16);
   assertEquals(opts[0].legs[1].platform, "3");
   assertEquals(opts[0].legs[1].operatorName, "ČD");
-  assertAlmostEquals(opts[0].durationMinutes, 52, 1);
+  // 07:00 -> 09:52 je 172 minut. Puvodni 52 bylo cislo z ciferniku,
+  // ne delka cesty -- test padal uz pred M15.
+  assertEquals(opts[0].durationMinutes, 172);
 });
 
 Deno.test("dvě jízdy znamenají jeden přestup", () => {
@@ -446,7 +447,7 @@ Deno.test("cesta tam a cesta zpět nesdílejí klíč", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("trolejbus se posílá jako BUS, protože MOTIS jiný nezná", () => {
-  assertEquals(motisTransitModes(["trolleybus"]), ["BUS"]);
+  assertEquals(motisTransitModes(["trolleybus"]), ["BUS", "COACH"]);
 });
 
 Deno.test("plná sada se zjednoduší na TRANSIT", () => {
@@ -461,9 +462,15 @@ Deno.test("prázdný výběr znamená všechno, ne nic", () => {
   assertEquals(motisTransitModes(["walk"]), ["TRANSIT"]);
 });
 
-Deno.test("úzký výběr se posílá jmenovitě", () => {
-  assertEquals(motisTransitModes(["train"]), ["RAIL"]);
-  assertEquals(motisTransitModes(["train", "tram"]), ["RAIL", "TRAM"]);
+Deno.test("úzký výběr se rozvine na podtypy, ne na jedinou hodnotu", () => {
+  const rail = motisTransitModes(["train"]);
+  assert(rail.includes("RAIL"));
+  assert(rail.includes("REGIONAL_RAIL"), "osobák je pořád vlak");
+  assert(!rail.includes("BUS"));
+  // Tohle je ten rozdíl, kvůli kterému se to vůbec rozvíjí: dálkový autobus
+  // je v MOTISu COACH, a kdo pošle jen BUS, nedostane RegioJet.
+  assert(motisTransitModes(["bus"]).includes("COACH"));
+  assert(motisTransitModes(["train", "tram"]).includes("TRAM"));
 });
 
 // ---------------------------------------------------------------------------
