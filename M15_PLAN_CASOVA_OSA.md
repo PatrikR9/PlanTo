@@ -352,9 +352,7 @@ prošly, takže **migrace 20260824090000 se aplikovala na skutečný Postgres**.
   `on_auth_user_created` založí profil hned při vložení do `auth.users`,
   takže následný `insert into profiles` v témže souboru koliduje sám se
   sebou. Čtyři testy to už ošetřené měly (`on conflict do nothing`), pět ne.
-  Doplněno. CI navíc pouští každý test ve vlastní zahozené transakci — to
-  tuhle chybu neopravilo, ale testy jsou psané proti čisté databázi a nemá
-  smysl je na sebe pouštět.
+  Doplněno — a tím se poprvé dostaly dál než na dvacátý řádek (§14).
 - `google-calendar/index.ts` neprošel `deno check` kvůli
   `crypto.subtle.importKey("raw", …)` — od TypeScriptu 5.7 `Uint8Array` nad
   `ArrayBufferLike` nesedí do `BufferSource`. Kopie do čerstvého bufferu.
@@ -384,3 +382,44 @@ chyba, ne rozbitý test):
 
 Záplata se aplikuje `git apply` v kořeni repozitáře. Větev je pokaždé jeden
 commit z prázdné historie — neroste a nedá se z ní nic smergovat.
+
+
+---
+
+## 14. Třetí běh CI (commit d0d6924) — a co odkryl
+
+    flutter:   success      analyze --fatal-infos: No issues found, 120 testů
+    functions: failure      deno check ok, 46/47 (zbývá cizí DST chyba)
+    database:  failure      migrace + lint ok, testy viz níž
+
+Záložka Plán je z pohledu CI hotová: formátování, analyzátor ani testy nemají
+co vytknout a `fixes.patch` chodí prázdná.
+
+**SQL testy jsou zajímavější.** Oprava kolize profilů (§12) je pustila přes
+setup a **teprve teď je vidět, na čem doopravdy padají**. Nic z toho nezpůsobil
+M15 — jenom to do teď zakrývala chyba na dvacátém řádku:
+
+| test | padá na | co to nejspíš je |
+|---|---|---|
+| `availability_test` | — | prochází |
+| `busy_write_test:88` | `permission denied for table trip_participants` | chybějící `grant select` pro roli `authenticated` |
+| `dates_test:107` | totéž | totéž |
+| `flexible_test:150` | `permission denied for table trips` | totéž |
+| `costs_test:115` | `jidlo neskaluje: 1 den = 150, 3 dny = 150` | **skutečná chyba v cenovém modelu** |
+| `packing_test:161` | `celovka nechybi ani neni pri navratu za sera` | **skutečná chyba v pravidlech balení** |
+| `transit_stops_test:162` | `relation "_clust" already exists` | `rebuild_transit_places()` není idempotentní v transakci |
+| `transport_test`, `weather_test` | — | prochází |
+
+Dvě z toho nejsou problémy testů: **jídlo se neškáluje s délkou výletu** a
+**čelovka se nepřidá při návratu za šera**. Obojí jsou funkce, které uživatel
+uvidí jako špatné číslo a chybějící věc v batohu.
+
+Tři „permission denied" vypadají na chybějící grant: testy čtou `trips`
+a `trip_participants` přímo pod rolí `authenticated`, zatímco aplikace k nim
+chodí přes pohled `trips_list` a RPC. Buď testům chybí grant, nebo mají číst
+totéž co aplikace — to je rozhodnutí, ne oprava.
+
+**Co jsem v CI vrátil:** obalování každého testu do zahozené transakce.
+Neopravilo to nic (kolize byla uvnitř souborů) a testy si `begin`/`rollback`
+i `set local role` řídí samy — vnořený `begin` Postgres ignoruje. Vrstva,
+která nic nepřináší a může mást, je horší než žádná.
