@@ -111,8 +111,10 @@ class _TravelSheet extends ConsumerWidget {
               ),
               const Spacer(),
               if (outline.duration case final Duration d)
-                Text(formatSpan(d.inMinutes),
-                    style: context.texts.bodyMedium),
+                Text(
+                  formatSpan(d.inMinutes),
+                  style: context.texts.bodyMedium,
+                ),
             ],
           ),
 

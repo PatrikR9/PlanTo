@@ -394,9 +394,8 @@ class _StayControl extends StatelessWidget {
         // Sevřít do rozsahu, ne spolehnout se na data: showDatePicker na
         // initialDate mimo rozsah spadne na assertu, a je to přesně ten
         // případ, který nastane po přesunutí termínu.
-        initialDate: day.isBefore(first)
-            ? first
-            : (day.isAfter(last) ? last : day),
+        initialDate:
+            day.isBefore(first) ? first : (day.isAfter(last) ? last : day),
         firstDate: first,
         lastDate: last,
         helpText: 'Který den vyrazíte zpátky?',
