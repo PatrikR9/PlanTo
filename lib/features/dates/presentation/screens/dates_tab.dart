@@ -203,11 +203,6 @@ class _CandidateListState extends ConsumerState<_CandidateList> {
             padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 0),
             child: _LockedBanner(trip: trip),
           ),
-        if (trip.awaitingCalendarCount > 0)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Sp.md, Sp.md, Sp.md, 0),
-            child: _WaitingBanner(count: trip.awaitingCalendarCount),
-          ),
         const SizedBox(height: Sp.md),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Sp.md),
@@ -749,48 +744,6 @@ class _LockedBanner extends StatelessWidget {
                 const SizedBox(height: Sp.xxs),
                 Text(when, style: context.texts.bodyLarge),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WaitingBanner extends StatelessWidget {
-  const _WaitingBanner({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(Sp.sm),
-      decoration: BoxDecoration(
-        color: context.colors.surfaceContainerHighest,
-        borderRadius: Radii.inputAll,
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(
-            Icons.hourglass_empty,
-            size: 18,
-            color: context.colors.onSurfaceVariant,
-          ),
-          const SizedBox(width: Sp.xs),
-          Expanded(
-            child: Text(
-              // Three plural forms, and this is why nothing user-visible is
-              // stored as a finished sentence (architecture section 20).
-              switch (count) {
-                1 => 'Čekáme ještě na 1 člověka — návrhy se můžou změnit.',
-                2 ||
-                3 ||
-                4 =>
-                  'Čekáme ještě na $count lidi — návrhy se můžou změnit.',
-                _ => 'Čekáme ještě na $count lidí — návrhy se můžou změnit.',
-              },
-              style: context.texts.labelSmall,
             ),
           ),
         ],

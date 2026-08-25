@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../costs/data/cost_repository.dart';
 import '../../../dates/data/date_repository.dart';
 import '../../../packing/presentation/packing_controller.dart';
+import '../../../planner/presentation/plan_controller.dart';
 import '../../../transport/data/transport_repository.dart';
 import 'trips_controller.dart';
 
@@ -23,5 +24,6 @@ void invalidateTripDerived(Ref ref, String tripId) {
     ..invalidate(dateCandidatesProvider(tripId))
     ..invalidate(transportOptionsProvider(tripId))
     ..invalidate(costEstimateProvider(tripId))
-    ..invalidate(packingControllerProvider(tripId));
+    ..invalidate(packingControllerProvider(tripId))
+    ..invalidate(planControllerProvider(tripId));
 }

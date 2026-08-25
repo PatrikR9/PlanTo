@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../packing/presentation/packing_controller.dart';
+import '../../planner/presentation/plan_controller.dart';
 import '../../trips/presentation/controllers/trips_controller.dart';
 import '../data/date_repository.dart';
 import '../domain/date_candidate.dart';
@@ -61,6 +62,10 @@ class DatesController extends AsyncNotifier<void> {
         // it stale would show a raincoat for a day the group is no longer
         // going on.
         ref.invalidate(packingControllerProvider(tripId));
+        // Plán stojí na zamčeném termínu — bez tohohle si drží kontext
+        // z doby, kdy žádný termín nebyl, a záložka dál nabízí „nejdřív
+        // vyberte termín" nad výletem, který termín má.
+        ref.invalidate(planControllerProvider(tripId));
       }
     });
     return !state.hasError;

@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
@@ -101,6 +102,18 @@ class _Body extends ConsumerWidget {
     }
 
     final TripPlan? plan = state.plan;
+    final PlanContext? ctx = state.context;
+
+    // Plán uložený na jiný den, než na jaký je teď zamčený termín.
+    //
+    // Nastane, když se termín přesune až po sestavení plánu. Přepočítat ho
+    // potichu by znamenalo zahodit všechno, co si člověk nastavil, kvůli
+    // rozhodnutí, které udělal někdo jiný na jiné záložce — a nechat ho tam
+    // beze slova by byl plán na den, na který se nejede.
+    final bool staleDate = plan != null &&
+        plan.planDate != null &&
+        ctx != null &&
+        !_sameDay(plan.planDate!, ctx.planDate);
 
     return ListView(
       padding: const EdgeInsets.all(Sp.md),
@@ -122,6 +135,16 @@ class _Body extends ConsumerWidget {
                 _setConstraint(ref, plan, t, home: false),
             onHomeBy: (TimeOfDay t) => _setConstraint(ref, plan, t, home: true),
           ),
+          if (staleDate) ...<Widget>[
+            const SizedBox(height: Sp.sm),
+            _StaleDate(
+              planDate: plan.planDate!,
+              lockedDate: ctx!.planDate,
+              onRebuild: state.isReplanning
+                  ? null
+                  : () => _controller(ref).rebuild(),
+            ),
+          ],
           if (plan.warnings.isNotEmpty) ...<Widget>[
             const SizedBox(height: Sp.sm),
             _Problems(problems: plan.warnings),
@@ -238,6 +261,52 @@ class _Body extends ConsumerWidget {
           source: PlanItemSource.userCreated,
           confidence: PlanConfidence.exact,
         ),
+      ),
+    );
+  }
+}
+
+bool _sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+/// Plán je na jiný den, než na jaký se teď jede.
+class _StaleDate extends StatelessWidget {
+  const _StaleDate({
+    required this.planDate,
+    required this.lockedDate,
+    required this.onRebuild,
+  });
+
+  final DateTime planDate;
+  final DateTime lockedDate;
+  final VoidCallback? onRebuild;
+
+  @override
+  Widget build(BuildContext context) {
+    final DateFormat fmt = DateFormat('d. M. y', 'cs');
+    return Container(
+      padding: const EdgeInsets.all(Sp.sm),
+      decoration: BoxDecoration(
+        color: context.colors.errorContainer,
+        borderRadius: Radii.inputAll,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Tenhle plán je na ${fmt.format(planDate)}, ale jede se '
+            '${fmt.format(lockedDate)}. Časy spojů proto neplatí.',
+            style: context.texts.labelSmall
+                ?.copyWith(color: context.colors.onErrorContainer),
+          ),
+          const SizedBox(height: Sp.xs),
+          PtButton(
+            label: 'Sestavit plán na nový termín',
+            variant: PtButtonVariant.tonal,
+            icon: Icons.refresh,
+            onPressed: onRebuild,
+          ),
+        ],
       ),
     );
   }
