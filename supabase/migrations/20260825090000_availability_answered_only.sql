@@ -10,20 +10,22 @@
 --
 -- Nebyla to chyba zobrazení. Solver odpovídal na otázku „kdo může" číslem,
 -- které z poloviny vzniklo z ticha, a na tom čísle skupina zamyká termín.
--- U produktu, jehož jediný slib je „najdi termín, který všem vyjde", je to
--- nejdražší možná chyba: vypadá jako správná odpověď.
 --
 -- ROZHODNUTÍ
 --
 -- Počítají se jen ti, kdo dostupnost zadali (`calendar_shared`). Kdo ji
--- nezadal, není v žádném čísle — ani jako volný, ani jako chybějící. „5/5"
--- teď znamená pět lidí, o kterých něco víme, a ne pět lidí, z nichž čtyři
--- mlčí.
---
+-- nezadal, není v žádném čísle — ani jako volný, ani jako chybějící.
 -- Skóre dělí `nullif(p_total, 0)`, takže nula odpovědí dá NULL, ne pád.
--- Obrazovka má na „zatím nikdo nesdílel" vlastní stav (`canProposeDates`).
 --
--- `create or replace` zachovává granty, takže se znovu neudělují.
+-- POZOR NA TVAR `trip_candidates`
+--
+-- Tahle funkce se od M6 vrací se sedmi sloupci počasí navíc: definuje ji
+-- `20260801090000_weather.sql`, ne `20260731090000_granularity.sql`. Vzít
+-- starší verzi znamená `cannot change return type of existing function`
+-- (past č. 8 v registru) — což je přesně to, na čem první pokus o tuhle
+-- migraci spadl. Tělo níž je proto z migrace počasí, doplněné o jeden filtr.
+--
+-- Signatura se nemění, takže `create or replace` stačí a granty zůstávají.
 --
 -- Apply with: supabase db push
 -- ============================================================================
@@ -133,9 +135,6 @@ create or replace function trip_candidates(p_trip uuid, p_limit int default 20)
 returns table (
   starts_at      timestamptz,
   ends_at        timestamptz,
-  -- End of the contiguous free window the candidate sits in. Equals ends_at
-  -- in day mode; in slot mode it is how much room there actually is, which is
-  -- what tells a group they could start later if they wanted.
   window_ends_at timestamptz,
   free_count     int,
   total_count    int,
@@ -148,7 +147,14 @@ returns table (
   maybe_count    int,
   no_count       int,
   my_vote        text,
-  is_locked      boolean
+  is_locked      boolean,
+  weather_score  int,
+  weather_code   int,
+  temp_max       numeric,
+  precip_prob    int,
+  wind_gust_kmh  numeric,
+  sunrise        timestamptz,
+  sunset         timestamptz
 )
 language plpgsql
 security definer
@@ -156,10 +162,10 @@ set search_path = public
 stable
 as $$
 #variable_conflict use_column
--- ^ RETURNS TABLE turns every output column into a plpgsql variable, and five
--- of them (free_count, is_weekend, score, …) are also column names in the
--- CTEs below. Everything here is alias-qualified, but this makes the
--- resolution rule explicit rather than relying on that discipline holding.
+-- ^ RETURNS TABLE turns every output column into a plpgsql variable, and
+-- several of them are also column names in the CTEs below. Everything here is
+-- alias-qualified, but this makes the resolution rule explicit rather than
+-- relying on that discipline holding.
 declare
   t          trips%rowtype;
   v_slot     interval;
@@ -167,6 +173,9 @@ declare
   v_duration int;
   v_last_day date;
   v_locked   timestamptz;
+  v_profile  text;
+  v_lat      numeric;
+  v_lon      numeric;
 begin
   select * into t from trips where id = p_trip;
   if not found or not is_trip_member(p_trip) then
@@ -178,6 +187,9 @@ begin
   v_step     := make_interval(mins => t.slot_step_minutes);
   v_last_day := upper(t.date_window)::date;
   v_locked   := lower(t.locked_range);
+  v_profile  := _activity_profile(t.activity_tags);
+
+  select p.lat, p.lon into v_lat, v_lon from _trip_weather_point(p_trip) p;
 
   if t.granularity = 'day' then
     return query
@@ -213,27 +225,48 @@ begin
                (where not (p.is_free and p.days_covered = v_duration)), '{}') as busy_ids
       from per_user p
       group by p.start_day
+    ),
+    scored as (
+      select
+        (b.start_day::timestamp) at time zone t.timezone as starts_at,
+        ((b.start_day + v_duration)::timestamp) at time zone t.timezone as ends_at,
+        b.free_count, b.total_count, b.free_ids, b.busy_ids,
+        f.is_weekend, f.is_holiday,
+        _weather_score(
+          v_profile, w.temp_max, w.apparent_max, w.precip_mm, w.precip_prob,
+          w.wind_gust_kmh, w.snowfall_cm, w.weather_code,
+          w.sunshine_seconds, w.daylight_seconds
+        ) as wx,
+        _daylight_factor(w.sunrise, w.sunset,
+                         null::timestamptz, null::timestamptz, false) as light,
+        w.weather_code, w.temp_max, w.precip_prob, w.wind_gust_kmh,
+        w.sunrise, w.sunset
+      from blocks b
+      join free_days f on f.day = b.start_day
+      -- The forecast for the FIRST day of the block. A three-day trip is
+      -- decided on the day you leave; scoring the average would hide a
+      -- washed-out Saturday behind two fine days.
+      left join weather_daily w
+        on w.lat = v_lat and w.lon = v_lon and w.day = b.start_day
     )
     select
-      (b.start_day::timestamp) at time zone t.timezone,
-      ((b.start_day + v_duration)::timestamp) at time zone t.timezone,
-      ((b.start_day + v_duration)::timestamp) at time zone t.timezone,
-      b.free_count, b.total_count, b.free_ids, b.busy_ids,
-      f.is_weekend, f.is_holiday,
-      _candidate_score(b.free_count, b.total_count, f.is_weekend, f.is_holiday),
+      s.starts_at, s.ends_at, s.ends_at,
+      s.free_count, s.total_count, s.free_ids, s.busy_ids,
+      s.is_weekend, s.is_holiday,
+      _candidate_score(s.free_count, s.total_count, s.is_weekend, s.is_holiday,
+                       s.wx, s.light),
       coalesce(v.yes_count, 0), coalesce(v.maybe_count, 0),
       coalesce(v.no_count, 0), v.my_vote,
-      v_locked is not null
-        and v_locked = (b.start_day::timestamp) at time zone t.timezone
-    from blocks b
-    join free_days f on f.day = b.start_day
-    left join _vote_tally(p_trip) v
-      on v.slot_start = (b.start_day::timestamp) at time zone t.timezone
+      v_locked is not null and v_locked = s.starts_at,
+      s.wx, s.weather_code, s.temp_max, s.precip_prob, s.wind_gust_kmh,
+      s.sunrise, s.sunset
+    from scored s
+    left join _vote_tally(p_trip) v on v.slot_start = s.starts_at
     order by
-      (v_locked is not null
-        and v_locked = (b.start_day::timestamp) at time zone t.timezone) desc,
-      _candidate_score(b.free_count, b.total_count, f.is_weekend, f.is_holiday) desc,
-      b.start_day
+      (v_locked is not null and v_locked = s.starts_at) desc,
+      _candidate_score(s.free_count, s.total_count, s.is_weekend, s.is_holiday,
+                       s.wx, s.light) desc,
+      s.starts_at
     limit p_limit;
 
   else
@@ -268,9 +301,6 @@ begin
       cross join lateral generate_series(
         dw.win_start, dw.win_end - v_slot, v_step
       ) s
-      -- A slot that starts before the window opens or ends after it closes is
-      -- not a proposal, it is noise.
-      where dw.win_end - v_slot >= dw.win_start
     ),
     slot_state as (
       select sl.day, sl.s,
@@ -320,34 +350,46 @@ begin
              min(r.busy_ids) as busy_ids
       from runs r
       group by r.day, r.run_id
+    ),
+    scored as (
+      select
+        m.day, m.starts_at, m.starts_at + v_slot as ends_at, m.window_ends_at,
+        m.free_count, m.total_count, m.free_ids, m.busy_ids,
+        extract(isodow from m.day) >= 6 as is_weekend,
+        exists (select 1 from holidays h
+                 where h.date = m.day and h.country = 'CZ') as is_holiday,
+        _weather_score(
+          v_profile, w.temp_max, w.apparent_max, w.precip_mm, w.precip_prob,
+          w.wind_gust_kmh, w.snowfall_cm, w.weather_code,
+          w.sunshine_seconds, w.daylight_seconds
+        ) as wx,
+        _daylight_factor(
+          w.sunrise, w.sunset, m.starts_at, m.starts_at + v_slot, true
+        ) as light,
+        w.weather_code, w.temp_max, w.precip_prob, w.wind_gust_kmh,
+        w.sunrise, w.sunset
+      from merged m
+      left join weather_daily w
+        on w.lat = v_lat and w.lon = v_lon and w.day = m.day
     )
     select
-      m.starts_at,
-      m.starts_at + v_slot,
-      m.window_ends_at,
-      m.free_count, m.total_count, m.free_ids, m.busy_ids,
-      extract(isodow from m.day) >= 6,
-      exists (select 1 from holidays h where h.date = m.day and h.country = 'CZ'),
-      _candidate_score(
-        m.free_count, m.total_count,
-        extract(isodow from m.day) >= 6,
-        exists (select 1 from holidays h
-                 where h.date = m.day and h.country = 'CZ')
-      ),
+      s.starts_at, s.ends_at, s.window_ends_at,
+      s.free_count, s.total_count, s.free_ids, s.busy_ids,
+      s.is_weekend, s.is_holiday,
+      _candidate_score(s.free_count, s.total_count, s.is_weekend, s.is_holiday,
+                       s.wx, s.light),
       coalesce(v.yes_count, 0), coalesce(v.maybe_count, 0),
       coalesce(v.no_count, 0), v.my_vote,
-      v_locked is not null and v_locked = m.starts_at
-    from merged m
-    left join _vote_tally(p_trip) v on v.slot_start = m.starts_at
+      v_locked is not null and v_locked = s.starts_at,
+      s.wx, s.weather_code, s.temp_max, s.precip_prob, s.wind_gust_kmh,
+      s.sunrise, s.sunset
+    from scored s
+    left join _vote_tally(p_trip) v on v.slot_start = s.starts_at
     order by
-      (v_locked is not null and v_locked = m.starts_at) desc,
-      _candidate_score(
-        m.free_count, m.total_count,
-        extract(isodow from m.day) >= 6,
-        exists (select 1 from holidays h
-                 where h.date = m.day and h.country = 'CZ')
-      ) desc,
-      m.starts_at
+      (v_locked is not null and v_locked = s.starts_at) desc,
+      _candidate_score(s.free_count, s.total_count, s.is_weekend, s.is_holiday,
+                       s.wx, s.light) desc,
+      s.starts_at
     limit p_limit;
   end if;
 end;
