@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/format/cs_format.dart';
 import '../domain/journey.dart';
@@ -88,10 +89,33 @@ String? planItemSubtitle(PlanItem item) {
     case PlanItemKind.custom:
       {
         final String? note = p['note'];
-        final String length = formatLength(item.duration.inMinutes);
+        final String length = formatSpan(item.duration.inMinutes);
         return note == null || note.isEmpty ? length : '$length · $note';
       }
   }
+}
+
+/// Délka, která umí i dny.
+///
+/// [formatLength] končí u hodin — vzniklo pro délku spoje. Pobyt na
+/// dvoudenním výletě je ale „1 den 8 h", ne „32 h"; nikdo si to jinak
+/// nepřečte.
+String formatSpan(int minutes) =>
+    minutes >= 1440 ? formatDuration(minutes) : formatLength(minutes);
+
+/// `9:42`, nebo `ne 9:42`, když ten čas není v první den výletu.
+///
+/// U jednodenního výletu je den navíc šum. U vícedenního je to ta jediná
+/// informace, která odlišuje „vyrážíme v šest večer" od „vyrážíme v šest
+/// večer, ale zítra".
+String clockWithDay(DateTime local, DateTime? firstDay) {
+  final String clock = formatClock(local);
+  if (firstDay == null) return clock;
+  final bool sameDay = local.year == firstDay.year &&
+      local.month == firstDay.month &&
+      local.day == firstDay.day;
+  if (sameDay) return clock;
+  return '${DateFormat('E', 'cs').format(local)} $clock';
 }
 
 String _kindLabel(PlanItemKind k) => switch (k) {

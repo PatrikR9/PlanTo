@@ -251,14 +251,14 @@ class Replanner {
           p = p.copyWith(items: const <PlanItem>[], planDate: ctx.planDate);
           needOut = SegmentNeed(_outboundQuery(p, ctx), SegmentIntent.explicit);
           needHome =
-              SegmentNeed(_homewardByDeadline(p, ctx), SegmentIntent.explicit);
+              SegmentNeed(_homewardQuery(p, ctx), SegmentIntent.explicit);
         }
 
       case RefreshSegment(segment: final PlanSegment refreshed):
         {
           if (refreshed == PlanSegment.homeward) {
             needHome = SegmentNeed(
-              _homewardByDeadline(p, ctx),
+              _homewardQuery(p, ctx),
               SegmentIntent.explicit,
             );
           } else {
@@ -294,9 +294,26 @@ class Replanner {
 
       case SetHomeBy(localTime: final DateTime homeLocal):
         {
-          p = p.copyWith(homeBy: ctx.instant(homeLocal));
+          // „Být doma do osmi" a „vyrazit v pět" jsou dvě odpovědi na tutéž
+          // otázku. Nechat obojí znamená, že jedna z nich se tiše ignoruje.
+          p = p.copyWith(
+            homeBy: ctx.instant(homeLocal),
+            clearLeaveAt: true,
+          );
           needHome = SegmentNeed(
             _homewardByDeadline(p, ctx),
+            SegmentIntent.constraint,
+          );
+        }
+
+      case SetLeaveAt(localTime: final DateTime leaveLocal):
+        {
+          p = p.copyWith(
+            leaveAt: ctx.instant(leaveLocal),
+            clearHomeBy: true,
+          );
+          needHome = SegmentNeed(
+            _homewardQuery(p, ctx),
             SegmentIntent.constraint,
           );
         }
@@ -305,20 +322,22 @@ class Replanner {
           departAfter: final bool clearDepart,
           arriveBy: final bool clearArrive,
           homeBy: final bool clearHome,
+          leaveAt: final bool clearLeave,
         ):
         {
           p = p.copyWith(
             clearDepartAfter: clearDepart,
             clearArriveBy: clearArrive,
             clearHomeBy: clearHome,
+            clearLeaveAt: clearLeave,
           );
           if (clearDepart || clearArrive) {
             needOut =
                 SegmentNeed(_outboundQuery(p, ctx), SegmentIntent.constraint);
           }
-          if (clearHome) {
+          if (clearHome || clearLeave) {
             needHome = SegmentNeed(
-              _homewardByDeadline(p, ctx),
+              _homewardQuery(p, ctx),
               SegmentIntent.constraint,
             );
           }
@@ -484,6 +503,23 @@ class Replanner {
       when: arriveBy ?? p.departAfter ?? ctx.defaultDepartAfter,
       arriveBy: arriveBy != null,
       direction: PlanSegment.outbound,
+    );
+  }
+
+  /// Cesta zpět podle toho, co je zadané.
+  ///
+  /// „Vyrazíme v pět" je dotaz na odjezd, „být doma do osmi" na příjezd. Jsou
+  /// to dvě různá hledání a nedají se navzájem odvodit: spoj, který vyjíždí
+  /// nejdřív po páté, není spoj, který dojede nejpozději v osm.
+  JourneyQuery _homewardQuery(TripPlan p, PlanContext ctx) {
+    final DateTime? leaveAt = p.leaveAt;
+    if (leaveAt == null) return _homewardByDeadline(p, ctx);
+    return JourneyQuery(
+      origin: ctx.destination,
+      destination: ctx.origin,
+      when: leaveAt,
+      arriveBy: false,
+      direction: PlanSegment.homeward,
     );
   }
 

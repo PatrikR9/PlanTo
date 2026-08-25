@@ -293,7 +293,7 @@ class _GapRow extends StatelessWidget {
         children: <Widget>[
           const SizedBox(width: 28),
           Text(
-            '${formatLength(length.inMinutes)} volno',
+            '${formatSpan(length.inMinutes)} volno',
             style: context.texts.labelSmall?.copyWith(
               color: context.colors.onSurfaceVariant,
             ),

@@ -191,12 +191,17 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
     final TripPlan? plan = state.valueOrNull?.plan;
     if (ctx == null) return const JourneySearch.empty();
 
+    // „Vyrazíme v pět" přebíjí odjezd, který zrovna v plánu je: je to
+    // zadání, kdežto ten odjezd je jeho výsledek.
+    final DateTime? leaveAt = plan?.leaveAt;
+    final DateTime? departure = leaveAt ?? plan?.departureHome;
+
     final JourneyQuery query = segment == PlanSegment.homeward
         ? JourneyQuery(
             origin: ctx.destination,
             destination: ctx.origin,
-            when: plan?.departureHome ?? ctx.defaultHomeBy,
-            arriveBy: plan?.departureHome == null,
+            when: departure ?? ctx.defaultHomeBy,
+            arriveBy: departure == null,
             direction: PlanSegment.homeward,
           )
         : JourneyQuery(

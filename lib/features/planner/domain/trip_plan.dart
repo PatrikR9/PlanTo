@@ -23,6 +23,7 @@ class TripPlan {
     this.departAfter,
     this.arriveBy,
     this.homeBy,
+    this.leaveAt,
     this.provider,
     this.hasTimetable = false,
     this.revision = 0,
@@ -46,6 +47,15 @@ class TripPlan {
 
   /// Být doma nejpozději v… Okamžik.
   final DateTime? homeBy;
+
+  /// Vyrazit zpátky nejdřív v… Okamžik.
+  ///
+  /// Druhý konec téhož rozhodnutí než [homeBy]: „chceme být na místě do
+  /// šesti" místo „chceme být doma do osmi". Skupina obvykle ví to první —
+  /// kolik času chce strávit v cíli — a čas návratu z toho teprve plyne.
+  /// Nastavené je vždycky jen jedno z nich; druhé se ruší, protože dvě
+  /// odpovědi na tutéž otázku znamenají, že se jedna tiše ignoruje.
+  final DateTime? leaveAt;
 
   final String? provider;
 
@@ -96,6 +106,15 @@ class TripPlan {
   /// Kdy je skupina doma.
   DateTime? get arrivalHome => lastHomeward?.endsAt;
 
+  /// Jak dlouho je skupina v cíli. Od příjezdu po odjezd zpátky, ne po
+  /// návrat domů — cesta se nepočítá jako čas na místě.
+  Duration? get stayLength {
+    final DateTime? a = arrivalAtDestination;
+    final DateTime? d = departureHome;
+    if (a == null || d == null || !d.isAfter(a)) return null;
+    return d.difference(a);
+  }
+
   DateTime? get startsAt => items.firstOrNull?.startsAt;
   DateTime? get endsAt => items.lastOrNull?.endsAt;
 
@@ -118,6 +137,7 @@ class TripPlan {
     DateTime? departAfter,
     DateTime? arriveBy,
     DateTime? homeBy,
+    DateTime? leaveAt,
     String? provider,
     bool? hasTimetable,
     int? revision,
@@ -127,6 +147,7 @@ class TripPlan {
     bool clearDepartAfter = false,
     bool clearArriveBy = false,
     bool clearHomeBy = false,
+    bool clearLeaveAt = false,
   }) =>
       TripPlan(
         id: id ?? this.id,
@@ -137,6 +158,7 @@ class TripPlan {
             clearDepartAfter ? null : (departAfter ?? this.departAfter),
         arriveBy: clearArriveBy ? null : (arriveBy ?? this.arriveBy),
         homeBy: clearHomeBy ? null : (homeBy ?? this.homeBy),
+        leaveAt: clearLeaveAt ? null : (leaveAt ?? this.leaveAt),
         provider: provider ?? this.provider,
         hasTimetable: hasTimetable ?? this.hasTimetable,
         revision: revision ?? this.revision,
@@ -173,6 +195,7 @@ class TripPlan {
       departAfter: _instant(r['depart_after'] as String?),
       arriveBy: _instant(r['arrive_by'] as String?),
       homeBy: _instant(r['home_by'] as String?),
+      leaveAt: _instant(r['leave_at'] as String?),
       provider: r['provider'] as String?,
       hasTimetable: (r['has_timetable'] as bool?) ?? false,
       revision: (r['revision'] as num?)?.toInt() ?? 0,
@@ -196,6 +219,7 @@ class TripPlan {
         'depart_after': departAfter?.toUtc().toIso8601String(),
         'arrive_by': arriveBy?.toUtc().toIso8601String(),
         'home_by': homeBy?.toUtc().toIso8601String(),
+        'leave_at': leaveAt?.toUtc().toIso8601String(),
         'provider': provider,
         'has_timetable': hasTimetable,
         'generated_by': 'engine-1',

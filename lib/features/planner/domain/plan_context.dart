@@ -106,12 +106,13 @@ class PlanContext {
     required this.planDate,
     required this.dayStartLocal,
     required this.dayEndLocal,
+    DateTime? returnDate,
     this.groupSize = 1,
     this.transferBuffer = const Duration(minutes: 5),
     this.homeWalk = const Duration(minutes: 10),
     this.settleAfterArrival = const Duration(minutes: 15),
     this.readyBeforeDeparture = const Duration(minutes: 10),
-  });
+  }) : returnDate = returnDate ?? planDate;
 
   final String tripId;
   final String timezone;
@@ -124,14 +125,30 @@ class PlanContext {
   final PlanPlace origin;
   final PlanPlace destination;
 
-  /// Naivní datum výletu v zóně výletu.
+  /// Naivní datum prvního dne výletu v zóně výletu.
   final DateTime planDate;
+
+  /// Poslední den termínu — den, na který se hledá cesta zpět.
+  ///
+  /// U jednodenního výletu je to týž den jako [planDate]. U vícedenního ne, a
+  /// tohle je celý rozdíl mezi „jedeme na dva dny" a plánem, který posadí
+  /// skupinu na večerní spoj domů hned první den.
+  final DateTime returnDate;
 
   /// Použitelná část dne — naivní časy v zóně výletu. Bere se z výletu
   /// (`trips.day_start` / `day_end`), protože výšlap za východem slunce a
   /// deskovky do jedenácti nemají stejné okno.
+  ///
+  /// [dayStartLocal] je na [planDate], [dayEndLocal] na [returnDate]. U
+  /// jednodenního výletu je to totéž; u vícedenního je to ta jediná věc,
+  /// která drží cestu zpět na správném dni.
   final DateTime dayStartLocal;
   final DateTime dayEndLocal;
+
+  /// Kolik dní výlet trvá včetně prvního a posledního.
+  int get days => returnDate.difference(planDate).inDays + 1;
+
+  bool get isMultiDay => days > 1;
 
   final int groupSize;
 
@@ -163,6 +180,9 @@ class PlanContext {
 
     final Duration offset =
         Duration(minutes: (r['zone_offset_minutes'] as num?)?.toInt() ?? 0);
+    // Starší server `return_date` neposílá. Jeden den je bezpečný fallback:
+    // je to přesně to, co plán dělal předtím.
+    final DateTime last = _date(r['return_date'] as String?) ?? date;
     return PlanContext(
       tripId: r['trip_id'] as String,
       timezone: (r['timezone'] as String?) ?? 'Europe/Prague',
@@ -171,8 +191,13 @@ class PlanContext {
           const PlanPlace(name: 'Odkud', lat: 0, lon: 0),
       destination: _place(dest)!,
       planDate: date,
+      returnDate: last.isBefore(date) ? date : last,
       dayStartLocal: _at(date, r['day_start'] as String?, 7),
-      dayEndLocal: _at(date, r['day_end'] as String?, 21),
+      dayEndLocal: _at(
+        last.isBefore(date) ? date : last,
+        r['day_end'] as String?,
+        21,
+      ),
       groupSize: (r['group_size'] as num?)?.toInt() ?? 1,
       transferBuffer:
           Duration(minutes: (r['transfer_buffer_min'] as num?)?.toInt() ?? 5),

@@ -494,3 +494,59 @@ Zamikání bylo slovo z implementace: v databázi se opravdu zapisuje
 rozhodnutí — „jedeme tehdy". Přejmenovaly se texty a ikony (visací zámek →
 fajfka), datový model ani RPC ne.
 
+
+---
+
+## 16. Vícedenní výlet a čas na místě jako zadání
+
+Na skutečném dvoudenním výletu (Praha → Rokycany) vyšla cesta zpět 477 minut
+po příjezdu, tedy ještě týž večer. Nebyla to chyba ve vyhledávání spojů —
+plán prostě celý výlet stavěl na první den termínu.
+
+### 16.1 Den návratu
+
+`trip_plan_context` vracel jen `plan_date`, spočtené z `lower(locked_range)`.
+Od M15b vrací i `return_date`: poslední den uvnitř termínu. Počítá se jako
+`upper(locked_range) - 1 mikrosekunda`, protože rozsah je polouzavřený —
+u dvoudenního výletu ukazuje horní mez na půlnoc třetího dne. Odečtení
+mikrosekundy dá poslední okamžik uvnitř a funguje i v hodinovém režimu, kde
+rozsah končí třeba v 17:00.
+
+V `PlanContext` z toho plyne jediná, ale zásadní změna: `dayStartLocal` je na
+prvním dni, `dayEndLocal` na posledním. Výchozí „být doma do" tím spadne na
+večer posledního dne a cesta zpět se hledá tam. Starší server `return_date`
+neposílá — fallback je `plan_date`, tedy přesně to, co plán dělal dřív.
+
+### 16.2 `leave_at` — kolik času chce skupina strávit v cíli
+
+Délka pobytu byla do M15b jenom odvozené číslo: příjezd až odjezd, obojí
+výsledek hledání. Nedalo se říct „chceme tam být do neděle šesti" a nechat
+spoj domů, ať se najde k tomu.
+
+Přibylo proto zadání `itineraries.leave_at` vedle `depart_after`, `arrive_by`
+a `home_by`. Stojí mezi nimi schválně: je to věta, kterou uživatel řekl, ne
+výsledek přepočtu, a musí přežít i přepočet, který ji nesplnil.
+
+Engine podle něj hledá jinak:
+
+* `leave_at` není → cesta zpět se hledá **na příjezd** („být doma do osmi").
+* `leave_at` je → cesta zpět se hledá **na odjezd** („vyrazíme v pět").
+
+Nejsou to dvě formulace téhož. Spoj, který vyjíždí nejdřív po páté, není spoj,
+který dojede nejpozději v osm, a odvodit jeden z druhého nejde. Proto se
+`leave_at` a `home_by` navzájem ruší — stejně jako se od začátku ruší
+`depart_after` a `arrive_by`. Dvě odpovědi na tutéž otázku znamenají, že se
+jedna z nich tiše ignoruje.
+
+### 16.3 Na obrazovce
+
+Prostřední část plánu dostala nadpis s číslem: **Na místě · 1 den 8 h**, pod
+ním okno `so 9:42 – ne 18:10` a u něj šipky po půl hodině a přesné zadání.
+Změna posune odjezd zpátky a přepočítá se cesta zpět — o cestu tam se to
+neopírá a nesahá na ni.
+
+U vícedenního výletu se u každého času píše den (`ne 18:10`). Bez toho vypadá
+plán pořád jako jednodenní a `18:10` u cesty zpět je informace, podle které
+někdo přijde na nádraží o den dřív. `formatSpan` doplňuje `formatLength` tam,
+kde délka může přesáhnout den: „1 den 8 h" místo „32 h".
+

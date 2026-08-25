@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/design_system/components/components.dart';
-import '../../../../core/format/cs_format.dart';
 import '../../domain/plan_item.dart';
 import '../../domain/travel_outline.dart';
 import '../plan_strings.dart';
@@ -16,6 +15,7 @@ class TravelCard extends StatelessWidget {
     required this.segment,
     required this.outline,
     required this.onTap,
+    this.firstDay,
     this.isChanged = false,
     super.key,
   });
@@ -23,6 +23,10 @@ class TravelCard extends StatelessWidget {
   final PlanSegment segment;
   final TravelOutline outline;
   final VoidCallback onTap;
+
+  /// První den výletu. Když se cesta koná jindy — a u vícedenního výletu se
+  /// cesta zpět koná jindy vždycky — připíše se ke každému času den.
+  final DateTime? firstDay;
 
   /// Poslední přepočet s touhle cestou hnul. Tichá výměna spoje je přesně to,
   /// co se tady dít nesmí.
@@ -70,13 +74,14 @@ class TravelCard extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: <Widget>[
                 Text(
-                  '${formatClock(from)} → ${formatClock(to)}',
+                  '${clockWithDay(from, firstDay)} → '
+                  '${clockWithDay(to, firstDay)}',
                   style: context.texts.headlineSmall,
                 ),
                 const Spacer(),
                 if (outline.duration case final Duration d)
                   Text(
-                    formatLength(d.inMinutes),
+                    formatSpan(d.inMinutes),
                     style: context.texts.bodyMedium
                         ?.copyWith(color: context.colors.onSurfaceVariant),
                   ),

@@ -49,6 +49,17 @@ final class SetHomeBy extends PlanChange {
   final DateTime localTime;
 }
 
+/// „Vyrazíme zpátky v…" — druhý konec téhož rozhodnutí než [SetHomeBy].
+///
+/// Skupina obvykle ví, kolik času chce strávit v cíli; čas návratu domů z
+/// toho teprve plyne. Proto to je vlastní zadání, ne dopočet — a proto ruší
+/// [SetHomeBy], aby se cesta zpět nehledala podle dvou různých čísel.
+@immutable
+final class SetLeaveAt extends PlanChange {
+  const SetLeaveAt(this.localTime);
+  final DateTime localTime;
+}
+
 /// Zruš zadaný požadavek. Nastavit ho zpátky na výchozí čas není totéž jako
 /// ho zrušit: první je rozhodnutí, druhé je jeho absence.
 @immutable
@@ -57,11 +68,13 @@ final class ClearConstraints extends PlanChange {
     this.departAfter = false,
     this.arriveBy = false,
     this.homeBy = false,
+    this.leaveAt = false,
   });
 
   final bool departAfter;
   final bool arriveBy;
   final bool homeBy;
+  final bool leaveAt;
 }
 
 /// Posuň položku na jiný čas při zachované délce.

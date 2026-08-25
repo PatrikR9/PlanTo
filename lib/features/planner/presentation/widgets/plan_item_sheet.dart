@@ -161,8 +161,7 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
                 variant: PtButtonVariant.text,
                 icon: Icons.delete_outline,
                 expand: true,
-                onPressed: () =>
-                    Navigator.of(context).pop(RemoveItem(item.id)),
+                onPressed: () => Navigator.of(context).pop(RemoveItem(item.id)),
               ),
             ],
           ],

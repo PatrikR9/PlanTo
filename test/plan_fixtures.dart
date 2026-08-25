@@ -267,7 +267,8 @@ Journey lateHomewardJourney() => Journey.fromWire(lateHomewardWire());
 Journey earlyHomewardJourney() => Journey.fromWire(earlyHomewardWire());
 
 /// Výlet z Prahy do Českého Krumlova na 12. 9. 2026, den 7:00–21:00.
-PlanContext testContext() => PlanContext(
+PlanContext testContext({DateTime? returnDate, DateTime? dayEndLocal}) =>
+    PlanContext(
       tripId: 'trip-1',
       timezone: 'Europe/Prague',
       zoneOffset: kTestOffset,
@@ -282,7 +283,8 @@ PlanContext testContext() => PlanContext(
         lon: 14.3175,
       ),
       planDate: DateTime(2026, 9, 12),
+      returnDate: returnDate,
       dayStartLocal: wall(7, 0),
-      dayEndLocal: wall(21, 0),
+      dayEndLocal: dayEndLocal ?? wall(21, 0),
       groupSize: 4,
     );

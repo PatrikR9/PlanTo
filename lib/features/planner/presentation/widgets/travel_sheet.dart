@@ -86,7 +86,10 @@ class _TravelSheet extends ConsumerWidget {
                 style: context.texts.titleMedium,
               ),
             ),
-            if (plan.planDate case final DateTime d)
+            // Datum toho úseku, ne prvního dne výletu: u dvoudenního výletu
+            // se cesta zpět koná jindy a napsat sem první den by byl omyl,
+            // podle kterého by někdo přišel na nádraží o den dřív.
+            if ((outline.localStart ?? plan.planDate) case final DateTime d)
               Text(
                 DateFormat('EEEE d. M.', 'cs').format(d),
                 style: context.texts.labelSmall
@@ -103,12 +106,13 @@ class _TravelSheet extends ConsumerWidget {
             children: <Widget>[
               Text(
                 '${formatClock(outline.localStart!)} → '
-                '${formatClock(outline.localEnd!)}',
+                '${clockWithDay(outline.localEnd!, outline.localStart)}',
                 style: context.texts.headlineSmall,
               ),
               const Spacer(),
               if (outline.duration case final Duration d)
-                Text(formatLength(d.inMinutes), style: context.texts.bodyMedium),
+                Text(formatSpan(d.inMinutes),
+                    style: context.texts.bodyMedium),
             ],
           ),
 
@@ -120,10 +124,12 @@ class _TravelSheet extends ConsumerWidget {
 
         // --- zadání, podle kterého se hledá --------------------------------
         _Stepper(
-          label: _homeward ? 'Být doma do' : 'Vyrazit po',
+          label: _homeward
+              ? (plan.leaveAt == null ? 'Být doma do' : 'Vyrazit zpátky po')
+              : 'Vyrazit po',
           value: _primaryValue(plan, outline, off),
           enabled: !busy,
-          onChanged: (DateTime local) => _setPrimary(ref, local),
+          onChanged: (DateTime local) => _setPrimary(ref, plan, local),
         ),
         if (!_homeward) ...<Widget>[
           const SizedBox(height: Sp.xs),
@@ -188,15 +194,16 @@ class _TravelSheet extends ConsumerWidget {
             icon: Icons.train,
           )
         else
-          for (final TravelRow r in outline.rows) _row(context, r),
+          for (final TravelRow r in outline.rows)
+            _row(context, r, outline.localStart),
 
         if (!plan.hasTimetable) ...<Widget>[
           const SizedBox(height: Sp.sm),
           Text(
             'Bez jízdního řádu — časy jsou odhad ze vzdálenosti, ne konkrétní '
             'spoj.',
-            style: context.texts.labelSmall
-                ?.copyWith(color: context.colors.error),
+            style:
+                context.texts.labelSmall?.copyWith(color: context.colors.error),
           ),
         ],
         if (state.attribution case final String a) ...<Widget>[
@@ -211,8 +218,9 @@ class _TravelSheet extends ConsumerWidget {
     );
   }
 
-  Widget _row(BuildContext context, TravelRow r) => switch (r) {
-        StopRow() => _StopLine(stop: r),
+  Widget _row(BuildContext context, TravelRow r, DateTime? firstDay) =>
+      switch (r) {
+        StopRow() => _StopLine(stop: r, firstDay: firstDay),
         RideRow() => _RideLine(item: r.item),
         LinkRow() => _LinkLine(text: r.text),
       };
@@ -221,6 +229,11 @@ class _TravelSheet extends ConsumerWidget {
   /// který z plánu vyšel — prázdné pole by nutilo hádat, co se stane.
   DateTime? _primaryValue(TripPlan plan, TravelOutline o, Duration off) {
     if (_homeward) {
+      // Dvě různá zadání, jeden ovladač: „vyrazíme v pět" se ukazuje jako
+      // odjezd, „být doma do osmi" jako příjezd. Míchat je do jednoho čísla
+      // by znamenalo tvrdit něco, co si uživatel nenastavil.
+      final DateTime? leaveAt = plan.leaveAt;
+      if (leaveAt != null) return PlanItem.wallClockOf(leaveAt, off);
       return plan.homeBy == null
           ? o.localEnd
           : PlanItem.wallClockOf(plan.homeBy!, off);
@@ -230,9 +243,13 @@ class _TravelSheet extends ConsumerWidget {
         : PlanItem.wallClockOf(plan.departAfter!, off);
   }
 
-  void _setPrimary(WidgetRef ref, DateTime local) {
+  void _setPrimary(WidgetRef ref, TripPlan plan, DateTime local) {
+    if (!_homeward) {
+      _controller(ref).apply(SetDepartAfter(local));
+      return;
+    }
     _controller(ref).apply(
-      _homeward ? SetHomeBy(local) : SetDepartAfter(local),
+      plan.leaveAt == null ? SetHomeBy(local) : SetLeaveAt(local),
     );
   }
 
@@ -321,7 +338,8 @@ class _Stepper extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.chevron_right),
           tooltip: 'O půl hodiny později',
-          onPressed: enabled && v != null ? () => onChanged(v.add(_step)) : null,
+          onPressed:
+              enabled && v != null ? () => onChanged(v.add(_step)) : null,
         ),
       ],
     );
@@ -329,9 +347,13 @@ class _Stepper extends StatelessWidget {
 }
 
 class _StopLine extends StatelessWidget {
-  const _StopLine({required this.stop});
+  const _StopLine({required this.stop, this.firstDay});
 
   final StopRow stop;
+
+  /// Začátek úseku. Noční spoj překročí půlnoc a „0:42" bez dne vypadá jako
+  /// chyba v datech.
+  final DateTime? firstDay;
 
   @override
   Widget build(BuildContext context) {
@@ -346,12 +368,15 @@ class _StopLine extends StatelessWidget {
               children: <Widget>[
                 if (stop.arrival case final DateTime a)
                   Text(
-                    formatClock(a),
+                    clockWithDay(a, firstDay),
                     style: context.texts.labelSmall
                         ?.copyWith(color: context.colors.onSurfaceVariant),
                   ),
                 if (stop.departure case final DateTime d)
-                  Text(formatClock(d), style: context.texts.labelLarge),
+                  Text(
+                    clockWithDay(d, firstDay),
+                    style: context.texts.labelLarge,
+                  ),
               ],
             ),
           ),

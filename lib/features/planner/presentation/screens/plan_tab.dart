@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
-import '../../../../core/format/cs_format.dart';
 import '../../../transport/presentation/widgets/destination_card.dart';
 import '../../../trips/domain/trip.dart';
 import '../../domain/plan_change.dart';
@@ -165,10 +164,10 @@ class _Body extends ConsumerWidget {
             _Problems(problems: plan.warnings),
             const SizedBox(height: Sp.sm),
           ],
-
           TravelCard(
             segment: PlanSegment.outbound,
             outline: outlineFor(plan.segment(PlanSegment.outbound)),
+            firstDay: plan.planDate,
             isChanged: _segmentChanged(plan, PlanSegment.outbound),
             onTap: () => showTravelSheet(
               context,
@@ -176,9 +175,14 @@ class _Body extends ConsumerWidget {
               segment: PlanSegment.outbound,
             ),
           ),
-
           const SizedBox(height: Sp.md),
-          _StayHeader(plan: plan),
+          _StayControl(
+            plan: plan,
+            lastDay: ctx?.returnDate,
+            enabled: !state.isReplanning,
+            onLeaveAt: (DateTime local) =>
+                _controller(ref).apply(SetLeaveAt(local)),
+          ),
           const SizedBox(height: Sp.xs),
           _StayBody(
             plan: plan,
@@ -188,10 +192,10 @@ class _Body extends ConsumerWidget {
                 _addItem(context, ref, plan, start, length),
           ),
           const SizedBox(height: Sp.md),
-
           TravelCard(
             segment: PlanSegment.homeward,
             outline: outlineFor(plan.segment(PlanSegment.homeward)),
+            firstDay: plan.planDate,
             isChanged: _segmentChanged(plan, PlanSegment.homeward),
             onTap: () => showTravelSheet(
               context,
@@ -199,7 +203,6 @@ class _Body extends ConsumerWidget {
               segment: PlanSegment.homeward,
             ),
           ),
-
           const SizedBox(height: Sp.md),
           _Summary(plan: plan, providerError: state.providerError),
           const SizedBox(height: Sp.sm),
@@ -289,22 +292,126 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// Nadpis prostřední části: co se dá stihnout mezi příjezdem a odjezdem.
-class _StayHeader extends StatelessWidget {
-  const _StayHeader({required this.plan});
+/// Kolik času skupina stráví v cíli — a možnost to změnit.
+///
+/// Tohle je to hlavní číslo prostřední části. Odjezd zpátky z něj plyne, ne
+/// naopak: skupina ví, že chce na místě strávit den a půl, a spoj domů se má
+/// hledat podle toho. Proto se tu nastavuje délka pobytu a nikoli „být doma
+/// do…" — to je až důsledek, který si člověk musí dopočítat.
+class _StayControl extends StatelessWidget {
+  const _StayControl({
+    required this.plan,
+    required this.lastDay,
+    required this.enabled,
+    required this.onLeaveAt,
+  });
 
   final TripPlan plan;
 
+  /// Poslední den termínu. Rozhoduje o tom, jestli se u odjezdu vybírá i den:
+  /// u jednodenního výletu je datum navíc otázka, na kterou je jen jedna
+  /// odpověď.
+  final DateTime? lastDay;
+
+  final bool enabled;
+
+  /// Naivní místní čas odjezdu zpátky.
+  final ValueChanged<DateTime> onLeaveAt;
+
+  static const Duration _step = Duration(minutes: 30);
+
   @override
   Widget build(BuildContext context) {
-    final DateTime? from = plan.lastOutbound?.localEnd;
-    final DateTime? to = plan.firstHomeward?.localStart;
-    final String window = from == null || to == null
-        ? ''
-        : ' · ${formatClock(from)} – ${formatClock(to)} '
-            '(${formatLength(to.difference(from).inMinutes)})';
+    final Duration off = plan.zoneOffset;
+    final DateTime? arrival = plan.lastOutbound?.localEnd;
+    final DateTime? leave = plan.leaveAt == null
+        ? plan.firstHomeward?.localStart
+        : PlanItem.wallClockOf(plan.leaveAt!, off);
 
-    return Text('Na místě$window', style: context.texts.labelLarge);
+    final Duration? span =
+        arrival == null || leave == null || !leave.isAfter(arrival)
+            ? null
+            : leave.difference(arrival);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(child: Text('Na místě', style: context.texts.labelLarge)),
+            if (span != null)
+              Text(
+                formatSpan(span.inMinutes),
+                style: context.texts.labelLarge
+                    ?.copyWith(color: context.colors.primary),
+              ),
+          ],
+        ),
+        if (arrival != null && leave != null)
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  '${clockWithDay(arrival, plan.planDate)} – '
+                  '${clockWithDay(leave, plan.planDate)}',
+                  style: context.texts.bodyMedium,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                tooltip: 'Vyrazit zpátky o půl hodiny dřív',
+                onPressed: enabled && leave.subtract(_step).isAfter(arrival)
+                    ? () => onLeaveAt(leave.subtract(_step))
+                    : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: 'Zůstat o půl hodiny déle',
+                onPressed: enabled ? () => onLeaveAt(leave.add(_step)) : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_calendar_outlined),
+                tooltip: 'Zadat čas odjezdu zpátky',
+                onPressed: enabled ? () => _pick(context, leave) : null,
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  /// Přesný čas odjezdu. U vícedenního výletu se nejdřív vybírá den —
+  /// „v 17:00" bez dne je u dvoudenního výletu dvojznačné a hádat, který
+  /// z nich člověk myslel, je horší než se zeptat.
+  Future<void> _pick(BuildContext context, DateTime seed) async {
+    DateTime day = DateTime(seed.year, seed.month, seed.day);
+    final DateTime? first = plan.planDate;
+    final DateTime? last = lastDay;
+
+    if (first != null && last != null && !_sameDay(first, last)) {
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        // Sevřít do rozsahu, ne spolehnout se na data: showDatePicker na
+        // initialDate mimo rozsah spadne na assertu, a je to přesně ten
+        // případ, který nastane po přesunutí termínu.
+        initialDate: day.isBefore(first)
+            ? first
+            : (day.isAfter(last) ? last : day),
+        firstDate: first,
+        lastDate: last,
+        helpText: 'Který den vyrazíte zpátky?',
+      );
+      if (picked == null || !context.mounted) return;
+      day = DateTime(picked.year, picked.month, picked.day);
+    }
+
+    final TimeOfDay? time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: seed.hour, minute: seed.minute),
+      helpText: 'V kolik vyrazíte zpátky?',
+    );
+    if (time == null) return;
+    onLeaveAt(DateTime(day.year, day.month, day.day, time.hour, time.minute));
   }
 }
 
@@ -341,7 +448,7 @@ class _StayBody extends StatelessWidget {
               child: Text(
                 from == null
                     ? 'Zatím tu nic není.'
-                    : 'Volno ${formatLength(free.inMinutes)}. Co se bude dít?',
+                    : 'Volno ${formatSpan(free.inMinutes)}. Co se bude dít?',
                 style: context.texts.bodyMedium,
               ),
             ),
@@ -541,8 +648,9 @@ class _Summary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            'Celkem ${formatClock(start)} – ${formatClock(end)} · '
-            '${formatLength(end.difference(start).inMinutes)}',
+            'Celkem ${clockWithDay(start, plan.planDate)} – '
+            '${clockWithDay(end, plan.planDate)} · '
+            '${formatSpan(end.difference(start).inMinutes)}',
             style: context.texts.bodyMedium,
           ),
           if (cost != null)
