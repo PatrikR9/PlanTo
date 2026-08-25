@@ -17,13 +17,31 @@ import 'trips_controller.dart';
 /// Záměrně sahá do datové vrstvy cizích features: providery jsou jejich
 /// veřejné rozhraní a alternativa — nechat invalidaci na widgetech — by ji
 /// rozdrobila přesně tak, jak tenhle soubor má zabránit.
-void invalidateTripDerived(Ref ref, String tripId) {
-  ref
-    ..invalidate(tripProvider(tripId))
-    ..invalidate(myTripsProvider)
-    ..invalidate(dateCandidatesProvider(tripId))
-    ..invalidate(transportOptionsProvider(tripId))
-    ..invalidate(costEstimateProvider(tripId))
-    ..invalidate(packingControllerProvider(tripId))
-    ..invalidate(planControllerProvider(tripId));
+///
+/// DVĚ VSTUPNÍ FUNKCE, JEDEN SEZNAM
+///
+/// Riverpod má dva nesouvisející typy s toutéž metodou: `Ref` uvnitř
+/// providerů a `WidgetRef` ve widgetech. Nemají společného předka, takže
+/// jedna funkce je obsloužit nemůže. Předává se proto jenom `invalidate`
+/// jako funkce — seznam providerů zůstává jeden, což je celý smysl tohohle
+/// souboru.
+void invalidateTripDerived(Ref ref, String tripId) =>
+    _invalidateAll(ref.invalidate, tripId);
+
+/// Totéž z widgetu — po akci, která změnila výlet na serveru (přijetí
+/// pozvánky, zamčení termínu).
+void invalidateTripDerivedFromWidget(WidgetRef ref, String tripId) =>
+    _invalidateAll(ref.invalidate, tripId);
+
+void _invalidateAll(
+  void Function(ProviderOrFamily provider) invalidate,
+  String tripId,
+) {
+  invalidate(tripProvider(tripId));
+  invalidate(myTripsProvider);
+  invalidate(dateCandidatesProvider(tripId));
+  invalidate(transportOptionsProvider(tripId));
+  invalidate(costEstimateProvider(tripId));
+  invalidate(packingControllerProvider(tripId));
+  invalidate(planControllerProvider(tripId));
 }

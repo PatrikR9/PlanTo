@@ -47,7 +47,7 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
       // člověk je pro appku pořád nečlen. Server je v pořádku, jenom se ho
       // nikdo znovu nezeptal — a „za pět minut a po synchronizaci" to
       // nespraví, protože žádný z těch providerů nevyprší sám.
-      invalidateTripDerived(ref, tripId);
+      invalidateTripDerivedFromWidget(ref, tripId);
 
       if (!mounted) return;
 
