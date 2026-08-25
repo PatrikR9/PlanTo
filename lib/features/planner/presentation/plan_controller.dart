@@ -25,6 +25,7 @@ class PlanState {
     this.isReplanning = false,
     this.changedIds = const <String>{},
     this.attribution,
+    this.providerError,
   });
 
   final TripPlan? plan;
@@ -41,6 +42,13 @@ class PlanState {
   /// Povinná atribuce zdrojů dat, když je poskytovatel vyžaduje.
   final String? attribution;
 
+  /// Proč vyhledávač spojení neodpověděl, když neodpověděl.
+  ///
+  /// „Časy jsou odhad" a „časy jsou odhad, protože vyhledávač spadl" jsou dvě
+  /// různé věty. Ta druhá se dá vyřešit; ta první vypadá jako vlastnost
+  /// produktu. Server ten důvod posílá — obrazovka ho musí ukázat.
+  final String? providerError;
+
   bool get canPlan => context != null;
   bool get isBuilt => (plan?.items.isNotEmpty ?? false);
 
@@ -51,6 +59,8 @@ class PlanState {
     bool? isReplanning,
     Set<String>? changedIds,
     String? attribution,
+    String? providerError,
+    bool clearProviderError = false,
   }) =>
       PlanState(
         plan: plan ?? this.plan,
@@ -59,6 +69,9 @@ class PlanState {
         isReplanning: isReplanning ?? this.isReplanning,
         changedIds: changedIds ?? this.changedIds,
         attribution: attribution ?? this.attribution,
+        providerError: clearProviderError
+            ? null
+            : (providerError ?? this.providerError),
       );
 }
 
@@ -72,6 +85,7 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
   static const Replanner _engine = Replanner();
 
   String? _attribution;
+  String? _providerError;
 
   @override
   Future<PlanState> build(String tripId) async {
@@ -83,6 +97,7 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
       context: ctx.context,
       gap: ctx.gap,
       attribution: _attribution,
+      providerError: _providerError,
     );
   }
 
@@ -150,6 +165,8 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
           plan: saved,
           isReplanning: false,
           attribution: _attribution,
+          providerError: _providerError,
+          clearProviderError: _providerError == null,
           changedIds: <String>{
             for (final int i in changedIndexes)
               if (i < saved.items.length) saved.items[i].id,
@@ -206,6 +223,7 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
         .read(journeyRepositoryProvider)
         .search(arg, need.query, groupSize: ctx.groupSize);
     _attribution = search.attribution ?? _attribution;
+    _providerError = search.providerError;
 
     final Journey? chosen;
     final Journey? miss;

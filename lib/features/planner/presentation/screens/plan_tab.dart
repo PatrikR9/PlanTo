@@ -110,6 +110,12 @@ class _Body extends ConsumerWidget {
     // potichu by znamenalo zahodit všechno, co si člověk nastavil, kvůli
     // rozhodnutí, které udělal někdo jiný na jiné záložce — a nechat ho tam
     // beze slova by byl plán na den, na který se nejede.
+    // Termín, který už proběhl. Jízdní řády do minulosti nesahají, takže
+    // vyhledávač takový dotaz odmítne — a odmítnout ho tady je lepší než ho
+    // poslat a přeložit chybu zpátky. Porovnává se den v zóně zařízení; na
+    // přesnost stačí, autoritou je stejně server.
+    final bool datePassed = ctx != null && _isPast(ctx.planDate);
+
     final bool staleDate = plan != null &&
         plan.planDate != null &&
         ctx != null &&
@@ -123,7 +129,21 @@ class _Body extends ConsumerWidget {
 
         if (state.isReplanning) const _ReplanningBar(),
 
-        if (plan == null || plan.items.isEmpty)
+        if (datePassed && (plan == null || plan.items.isEmpty))
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: Sp.xxl),
+            child: PtEmptyState(
+              title: 'Termín už proběhl',
+              message: 'Plán se staví na konkrétní den a ten je za námi. '
+                  'Jízdní řády do minulosti nesahají — vyberte nový termín '
+                  'a plán sestavíme na něj.',
+              icon: Icons.history,
+              actionLabel: 'Vybrat termín',
+              onAction: () =>
+                  context.go(Routes.tripDetail(trip.id, tab: 'dates')),
+            ),
+          )
+        else if (plan == null || plan.items.isEmpty)
           _NotBuiltYet(
             isReplanning: state.isReplanning,
             onBuild: () => _controller(ref).rebuild(),
@@ -160,14 +180,15 @@ class _Body extends ConsumerWidget {
                 _controller(ref).apply(RefreshSegment(s)),
           ),
           const SizedBox(height: Sp.md),
-          _Summary(plan: plan),
+          _Summary(plan: plan, providerError: state.providerError),
           const SizedBox(height: Sp.sm),
           PtButton(
             label: 'Sestavit plán znovu',
             variant: PtButtonVariant.text,
             icon: Icons.refresh,
-            onPressed:
-                state.isReplanning ? null : () => _controller(ref).rebuild(),
+            onPressed: state.isReplanning || datePassed
+                ? null
+                : () => _controller(ref).rebuild(),
           ),
         ],
 
@@ -264,6 +285,14 @@ class _Body extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Je ten den za námi? Půlnoc dneška je hranice — výlet, který se koná
+/// dnes, se plánovat dá i odpoledne.
+bool _isPast(DateTime day) {
+  final DateTime now = DateTime.now();
+  return DateTime(day.year, day.month, day.day)
+      .isBefore(DateTime(now.year, now.month, now.day));
 }
 
 bool _sameDay(DateTime a, DateTime b) =>
@@ -493,9 +522,10 @@ class _Problems extends StatelessWidget {
 }
 
 class _Summary extends StatelessWidget {
-  const _Summary({required this.plan});
+  const _Summary({required this.plan, this.providerError});
 
   final TripPlan plan;
+  final String? providerError;
 
   @override
   Widget build(BuildContext context) {
@@ -525,13 +555,25 @@ class _Summary extends StatelessWidget {
               style: context.texts.labelSmall
                   ?.copyWith(color: context.colors.onSurfaceVariant),
             ),
-          if (!plan.hasTimetable)
+          if (!plan.hasTimetable) ...<Widget>[
             Text(
               'Bez jízdního řádu — časy jsou odhad ze vzdálenosti. '
               'Konkrétní spoj najdete v IDOS.',
               style: context.texts.labelSmall
                   ?.copyWith(color: context.colors.error),
             ),
+            // Rozdíl mezi „poskytovatel není zapnutý" a „poskytovatel
+            // neodpověděl". První je nastavení, druhé je porucha, a bez téhle
+            // věty vypadají na obrazovce stejně.
+            Text(
+              providerError == null
+                  ? 'Vyhledávač jízdních řádů není zapnutý '
+                      '(app_config.transport_provider = estimate).'
+                  : 'Vyhledávač neodpověděl: $providerError',
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.colors.onSurfaceVariant),
+            ),
+          ],
         ],
       ),
     );

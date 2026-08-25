@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/error/error_mapper.dart';
+import '../../../core/error/failure.dart';
 import '../../../core/network/supabase_providers.dart';
 import '../domain/journey.dart';
 import '../domain/plan_context.dart';
@@ -45,19 +46,54 @@ class SupabaseJourneyRepository implements JourneyRepository {
         // by za tři další dorazila.
         timeout: kSlowRequestTimeout,
         () async {
-          // invoke() hodí FunctionException na 4xx a error_mapper z ní vytáhne
-          // větu, kterou funkce napsala — „odjezd je v minulosti" a „cíl
-          // neznáme" si zaslouží různé reakce.
-          final FunctionResponse res = await _client.functions.invoke(
-            'transport-search',
-            body: query.toWire(tripId, groupSize: groupSize),
-          );
-          final Object? data = res.data;
-          if (data is! Map) return const JourneySearch.empty();
-          return JourneySearch.fromWire(Map<String, dynamic>.from(data));
+          try {
+            final FunctionResponse res = await _client.functions.invoke(
+              'transport-search',
+              body: query.toWire(tripId, groupSize: groupSize),
+            );
+            final Object? data = res.data;
+            if (data is! Map) return const JourneySearch.empty();
+            return JourneySearch.fromWire(Map<String, dynamic>.from(data));
+          } on FunctionException catch (e) {
+            // Kód, ne věta serveru (architektura §12.3). `error_mapper` by
+            // z toho vytáhl `departure is in the past` — pravdu, se kterou
+            // uživatel nic neudělá.
+            throw ValidationFailure(
+              message: _sentenceFor(_codeOf(e.details)),
+              field: 'transport',
+              cause: e,
+            );
+          }
         },
       );
 }
+
+/// Stabilní kód z obálky `{ "error": { "code": … } }`.
+String? _codeOf(Object? details) {
+  final Object? error = details is Map ? details['error'] : null;
+  final Object? code = error is Map ? error['code'] : null;
+  return code?.toString();
+}
+
+/// Česká věta ke kódu. Každá z nich musí uživateli říct, co udělat dál —
+/// „nepovedlo se to" je hláška, po které zbývá jenom zavřít aplikaci.
+String _sentenceFor(String? code) => switch (code) {
+      'DEPARTURE_IN_THE_PAST' =>
+        'Termín výletu už proběhl, takže pro něj žádné spoje nenajdeme — '
+            'jízdní řády do minulosti nesahají. Vyberte v Termínech nové datum.',
+      'DEPARTURE_TOO_FAR' =>
+        'Na tak vzdálený termín jízdní řády ještě nevyšly. Spoje se dají '
+            'hledat zhruba dva měsíce dopředu; zkuste to blíž k výletu.',
+      'INVALID_ORIGIN' =>
+        'Výlet nemá odkud vyjet. Doplňte výchozí zastávku v úpravách výletu.',
+      'INVALID_DESTINATION' =>
+        'Cíl výletu nemá polohu, ke které by šlo hledat spojení. Vyberte ho '
+            'znovu ze seznamu zastávek.',
+      'INVALID_DATETIME' =>
+        'Čas odjezdu se nepodařilo přečíst. Zkuste plán sestavit znovu.',
+      'UNAUTHORIZED' => 'Přihlaste se prosím znovu.',
+      _ => 'Spojení se nepodařilo vyhledat. Zkuste to prosím za chvíli.',
+    };
 
 /// Bez backendu se nehledá nic — a je to prázdný výsledek, ne výjimka.
 ///

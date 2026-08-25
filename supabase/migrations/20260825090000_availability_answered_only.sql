@@ -17,6 +17,18 @@
 -- nezadal, není v žádném čísle — ani jako volný, ani jako chybějící.
 -- Skóre dělí `nullif(p_total, 0)`, takže nula odpovědí dá NULL, ne pád.
 --
+-- MINULÉ TERMÍNY SE NENABÍZEJÍ
+--
+-- Den, který už byl, není návrh — a nabízet ho znamená nechat skupinu zamknout
+-- termín, na který se nedá jet, a teprve vyhledávač spojení pak řekne
+-- `DEPARTURE_IN_THE_PAST`.
+--
+-- Vedlejší účinek, se kterým je potřeba počítat: solver tím přestává být
+-- nezávislý na čase. Fixtury v `supabase/tests/*.sql` míří na září 2026, takže
+-- po 1. říjnu 2026 začnou `dates_test`, `availability_test` a `flexible_test`
+-- padat na prázdný výsledek. Až se to stane, není to regrese — jsou to data
+-- v testu, která zestárla, a patří posunout dopředu.
+--
 -- POZOR NA TVAR `trip_candidates`
 --
 -- Tahle funkce se od M6 vrací se sedmi sloupci počasí navíc: definuje ji
@@ -100,6 +112,10 @@ as $$
              '[)'
            ) as win
     from days
+    -- Den, který už byl, není nabídka. Porovnává se v zóně výletu, ne
+    -- v zóně serveru — ten běží v UTC a o půlnoci by v Praze zahodil den,
+    -- na který se ještě dá jet.
+    where days.day >= (now() at time zone days.timezone)::date
   ),
   -- One multirange per participant, built once. Everything after this is
   -- in-memory range algebra; this CTE is the only table access per user.
@@ -294,6 +310,7 @@ begin
              upper(t.date_window)::date,
              interval '1 day'
            ) d
+      where d::date >= (now() at time zone t.timezone)::date
     ),
     slots as (
       select dw.day, s
@@ -301,6 +318,9 @@ begin
       cross join lateral generate_series(
         dw.win_start, dw.win_end - v_slot, v_step
       ) s
+      -- Slot, který už odjel, taky není návrh. V denním režimu stačí zahodit
+      -- celý den, v časovém je potřeba i dnešní dopoledne, když je odpoledne.
+      where s >= now()
     ),
     slot_state as (
       select sl.day, sl.s,

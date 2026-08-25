@@ -10,6 +10,7 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/format/cs_format.dart';
 import '../../../../core/network/supabase_providers.dart';
 import '../../../auth/data/auth_repository_impl.dart';
+import '../../../trips/presentation/controllers/trip_invalidation.dart';
 import '../../data/invite_repository_impl.dart';
 import '../../domain/invite.dart';
 
@@ -40,6 +41,14 @@ class _InvitePreviewScreenState extends ConsumerState<InvitePreviewScreen> {
       }
       final String tripId =
           await ref.read(inviteRepositoryProvider).redeem(widget.token);
+
+      // Bez tohohle zůstane aplikace u své kopie výletu z doby PŘED
+      // přidáním: seznam výletů ten nový nemá, `my_role` je prázdná a
+      // člověk je pro appku pořád nečlen. Server je v pořádku, jenom se ho
+      // nikdo znovu nezeptal — a „za pět minut a po synchronizaci" to
+      // nespraví, protože žádný z těch providerů nevyprší sám.
+      invalidateTripDerived(ref, tripId);
+
       if (!mounted) return;
 
       // Straight to availability, not to the trip overview.
