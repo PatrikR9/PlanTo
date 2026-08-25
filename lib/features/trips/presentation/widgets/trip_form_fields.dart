@@ -25,6 +25,7 @@ class TripFormFields extends StatelessWidget {
     required this.onChanged,
     required this.titleController,
     required this.budgetController,
+    this.destinationField,
     super.key,
   });
 
@@ -32,6 +33,10 @@ class TripFormFields extends StatelessWidget {
   final VoidCallback onChanged;
   final TextEditingController titleController;
   final TextEditingController budgetController;
+
+  /// Pole s cílem výletu. Zakládání ho nemá — cíl se ukládá vlastním RPC až
+  /// nad existujícím výletem, takže by se při zakládání nemělo kam uložit.
+  final Widget? destinationField;
 
   bool get _meeting => draft.isMeeting;
 
@@ -106,6 +111,11 @@ class TripFormFields extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Sp.lg),
+          if (destinationField case final Widget field) ...<Widget>[
+            const _Label('Kam jedete'),
+            field,
+            const SizedBox(height: Sp.lg),
+          ],
         ],
 
         const _Label('Kdy by se to hodilo'),

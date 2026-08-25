@@ -207,7 +207,7 @@ String planProblemText(PlanProblem p) {
     case PlanProblemCode.overlap:
       return 'Dva body plánu se překrývají.';
     case PlanProblemCode.noDate:
-      return 'Plán potřebuje zamčený termín.';
+      return 'Plán potřebuje vybraný termín.';
     case PlanProblemCode.noDestination:
       return 'Plán potřebuje cíl, ke kterému se dá dojet.';
     case PlanProblemCode.noTimetable:

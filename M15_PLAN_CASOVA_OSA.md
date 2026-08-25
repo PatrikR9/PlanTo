@@ -426,3 +426,71 @@ totéž co aplikace — to je rozhodnutí, ne oprava.
 Neopravilo to nic (kolize byla uvnitř souborů) a testy si `begin`/`rollback`
 i `set local role` řídí samy — vnořený `begin` Postgres ignoruje. Vrstva,
 která nic nepřináší a může mást, je horší než žádná.
+
+---
+
+## 15. Přestavba obrazovky: tři kusy místo jedné dlouhé osy
+
+První verze záložky Plán byla jedna svislá osa od odchodu z domova po návrat.
+Doménově je to správně — každý řádek je řádek v `itinerary_items` — ale na
+telefonu to znamenalo dvacet položek, ve kterých se první otázka („v kolik
+vyrážím?") hledala scrollováním. Pěší přechody a přestupy zabíraly víc řádků
+než program samotný.
+
+Obrazovka se proto rozpadla na tři kusy:
+
+1. **Cesta tam** — karta se základními časy: odjezd, příjezd, délka, počet
+   přestupů, odhad jízdného.
+2. **Na místě** — časová osa programu. To jediné, co se opravdu plánuje.
+3. **Cesta zpět** — stejná karta.
+
+Celý průběh cesty je za klepnutím na kartu, ne pod ním.
+
+### 15.1 Skládání cesty (`domain/travel_outline.dart`)
+
+Překlad z položek plánu na řádky, které vypadají jako vyhledaný spoj. Je to
+čistá funkce v doméně, ne kód ve widgetu — jinak by nešlo otestovat, že
+přestup na stejné zastávce nevyrobí dva řádky.
+
+Pravidla:
+
+* **Přestup se nepíše, naznačuje se.** Přestup na téže zastávce je jeden
+  řádek se dvěma časy (příjezd 9:02, odjezd 9:08). Řádek „Přestup — Trutnov"
+  by pod tím říkal totéž podruhé.
+* **Pěší přechod není bod, je poznámka.** Mezi dvěma různými zastávkami se
+  vypíše jako text u čáry („pěšky 4 min"), ne jako položka osy.
+* **Krajní pěší úseky mají zastávku.** „Odchod z domova" a „Doma" jsou první
+  a poslední řádek cesty — bez nich by cesta začínala uprostřed.
+
+Položka plánu se přitom nemaže ani neslučuje. Osa i databáze zůstávají, jak
+byly; mění se jenom to, co se z nich vykreslí.
+
+### 15.2 Detail cesty (`widgets/travel_sheet.dart`)
+
+Vzorem je vyhledávač jízdních řádů, ne itinerář. Nahoře čas, podle kterého se
+hledá, se šipkami po půl hodině a klepnutím na přesnou hodnotu; pod ním spoj
+tak, jak pojede. „Vybrat spoj" otevře seznam variant — vybraný spoj se pak
+označí jako uživatelova volba a přepočet ho nesmí vyměnit potichu.
+
+U cesty tam se nastavuje **Vyrazit po** (a volitelně **Dorazit do**), u cesty
+zpět **Být doma do**. Jsou to táž zadání jako dřív; jenom se přestěhovala z
+hlavičky záložky do toho směru, kterého se týkají.
+
+### 15.3 Cíl výletu se zadává v nastavení
+
+Karta s cílem stála nad časovou osou a překážela: je to rozhodnutí, které se
+udělá jednou na začátku, a osu člověk otvírá pokaždé. Přesunula se do
+nastavení výletu, hned pod „Odkud jedete". Ukládá se dál vlastním RPC
+(`set_trip_destination_stop`), takže se uloží hned při výběru a tlačítka
+„Uložit" se netýká — proto ji formulář dostává jako hotový widget a ne jako
+pole draftu.
+
+Prázdný stav v Plánu zůstal, ale místo výběru cíle vede do nastavení.
+
+### 15.4 „Zamknout termín" → „Vybrat termín"
+
+Zamikání bylo slovo z implementace: v databázi se opravdu zapisuje
+`locked_range`. Pro toho, kdo výlet plánuje, to ale není zámek, je to
+rozhodnutí — „jedeme tehdy". Přejmenovaly se texty a ikony (visací zámek →
+fajfka), datový model ani RPC ne.
+

@@ -121,8 +121,9 @@ class DateCandidateCard extends StatelessWidget {
               ),
               if (c.isLocked)
                 Semantics(
-                  label: 'Zamknutý termín',
-                  child: Icon(Icons.lock_outline, color: accent, size: 20),
+                  label: 'Vybraný termín',
+                  child:
+                      Icon(Icons.check_circle_outline, color: accent, size: 20),
                 )
               else if (isBest)
                 Semantics(
@@ -213,15 +214,15 @@ class DateCandidateCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: c.isLocked
                   ? PtButton(
-                      label: 'Odemknout',
+                      label: 'Zrušit výběr',
                       variant: PtButtonVariant.text,
-                      icon: Icons.lock_open_outlined,
+                      icon: Icons.undo,
                       onPressed: busy ? null : onUnlock,
                     )
                   : PtButton(
-                      label: 'Zamknout tenhle termín',
+                      label: 'Vybrat tenhle termín',
                       variant: PtButtonVariant.text,
-                      icon: Icons.lock_outline,
+                      icon: Icons.check_circle_outline,
                       onPressed: busy ? null : onLock,
                     ),
             ),

@@ -91,10 +91,10 @@ class _List extends ConsumerWidget {
               // Said before it happens, not after. A list that quietly loses
               // four items when the group re-votes reads as a bug.
               trip.isDateLocked
-                  ? 'Část seznamu vychází z předpovědi na zamčený termín. '
+                  ? 'Část seznamu vychází z předpovědi na vybraný termín. '
                       'Když se předpověď změní, změní se i seznam.'
-                  : 'Termín ještě není zamčený, takže počasí je z nejlepšího '
-                      'návrhu. Po zamčení se seznam přepočítá.',
+                  : 'Termín ještě není vybraný, takže počasí je z nejlepšího '
+                      'návrhu. Po výběru se seznam přepočítá.',
               style: context.texts.labelSmall,
             ),
           ),

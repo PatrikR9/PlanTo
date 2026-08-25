@@ -29,7 +29,7 @@ void invalidateTripDerived(Ref ref, String tripId) =>
     _invalidateAll(ref.invalidate, tripId);
 
 /// Totéž z widgetu — po akci, která změnila výlet na serveru (přijetí
-/// pozvánky, zamčení termínu).
+/// pozvánky, výběr termínu).
 void invalidateTripDerivedFromWidget(WidgetRef ref, String tripId) =>
     _invalidateAll(ref.invalidate, tripId);
 

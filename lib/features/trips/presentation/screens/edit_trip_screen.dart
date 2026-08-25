@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
+import '../../../transport/presentation/widgets/destination_card.dart';
 import '../../domain/trip.dart';
 import '../../domain/trip_draft.dart';
 import '../controllers/trips_controller.dart';
@@ -143,6 +144,10 @@ class _EditFormState extends ConsumerState<_EditForm> {
             onChanged: () => setState(() {}),
             titleController: _title,
             budgetController: _budget,
+            // Cíl se neukládá s formulářem — má vlastní RPC, protože to není
+            // volný text, ale konkrétní zastávka. Proto se uloží hned při
+            // výběru a tlačítko „Uložit" se ho netýká.
+            destinationField: DestinationCard(trip: widget.trip),
           ),
           const SizedBox(height: Sp.xxl),
           ValueListenableBuilder<TextEditingValue>(

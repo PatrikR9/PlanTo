@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/router/routes.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
 import '../../../../core/error/failure.dart';
-import '../../../costs/data/cost_repository.dart';
 import '../../../trips/domain/trip.dart';
-import '../../../trips/presentation/controllers/trips_controller.dart';
+import '../../../trips/presentation/controllers/trip_invalidation.dart';
 import '../../data/transport_repository.dart';
 import '../../domain/transit_stop.dart';
 import '../../domain/transport_option.dart';
 import 'stop_picker_sheet.dart';
 
-/// Cíl výletu a odhad cesty k němu.
+/// Cíl výletu jako pole nastavení.
 ///
-/// Přesunuto sem z původní záložky Plán, když se z ní stala časová osa.
-/// Výběr cíle ani srovnání „vlakem versus autem" tím nezmizely — jenom
-/// přestaly být tím jediným, co na té záložce je.
+/// Od M15 bydlí v nastavení výletu, ne v plánu. Na plánu překážel: je to
+/// rozhodnutí, které se udělá jednou na začátku, a stálo nad časovou osou,
+/// kterou člověk otvírá pokaždé.
 class DestinationCard extends ConsumerWidget {
   const DestinationCard({required this.trip, super.key});
 
@@ -25,34 +26,26 @@ class DestinationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final String? where = trip.destinationFree;
+    final bool canEdit = trip.isOrganiser;
+
     return PtCard(
+      onTap: canEdit
+          ? () => pickDestination(context, ref, trip.id, near: originOf(trip))
+          : null,
       child: Row(
         children: <Widget>[
-          Icon(Icons.place_outlined, color: context.planto.availabilityFull),
+          const Icon(Icons.place_outlined),
           const SizedBox(width: Sp.sm),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  '${trip.originLabel} → ${trip.destinationFree}',
-                  style: context.texts.titleMedium,
-                ),
-                Text(
-                  'Cíl výletu',
-                  style: context.texts.labelSmall
-                      ?.copyWith(color: context.colors.onSurfaceVariant),
-                ),
-              ],
+            child: Text(
+              where == null || where.isEmpty
+                  ? 'Vyberte zastávku nebo místo'
+                  : where,
+              style: context.texts.bodyLarge,
             ),
           ),
-          if (trip.isOrganiser)
-            PtButton(
-              label: 'Změnit',
-              variant: PtButtonVariant.text,
-              onPressed: () =>
-                  pickDestination(context, ref, trip.id, near: originOf(trip)),
-            ),
+          if (canEdit) const Icon(Icons.chevron_right),
         ],
       ),
     );
@@ -70,13 +63,14 @@ class NoDestinationView extends ConsumerWidget {
     return PtEmptyState(
       title: 'Kam pojedete?',
       message: trip.isOrganiser
-          ? 'Vyberte cíl a sestavíme plán cesty i s časy spojů.'
+          ? 'Cíl se zadává v nastavení výletu. Jakmile tam bude, sestavíme '
+              'plán cesty i s časy spojů.'
           : 'Organizátor zatím nevybral cíl. Až ho vybere, uvidíte tady '
               'celý plán výletu.',
       icon: Icons.place_outlined,
-      actionLabel: trip.isOrganiser ? 'Vybrat cíl' : null,
+      actionLabel: trip.isOrganiser ? 'Otevřít nastavení' : null,
       onAction: trip.isOrganiser
-          ? () => pickDestination(context, ref, trip.id, near: originOf(trip))
+          ? () => context.push(Routes.editTrip(trip.id))
           : null,
     );
   }
@@ -236,15 +230,10 @@ Future<void> pickDestination(
           tripId,
           picked.id,
         );
-    ref
-      ..invalidate(transportOptionsProvider(tripId))
-      // The cost estimate is built on top of the transport one, so it is
-      // wrong by the same amount and in the same instant.
-      ..invalidate(costEstimateProvider(tripId))
-      // The trip header shows the destination too, so it is stale the moment
-      // this succeeds.
-      ..invalidate(tripProvider(tripId))
-      ..invalidate(myTripsProvider);
+    // Na cíli visí odhad dopravy, odhad ceny, hlavička výletu i celý plán.
+    // Vyjmenovávat to tady znovu je způsob, jak na jedno z toho zapomenout —
+    // seznam odvozených providerů je na jednom místě schválně.
+    invalidateTripDerivedFromWidget(ref, tripId);
   } on Failure catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)

@@ -6,33 +6,16 @@ import '../../domain/plan_change.dart';
 import '../../domain/plan_item.dart';
 import '../plan_strings.dart';
 
-/// Co si uživatel v detailu položky vybral.
-sealed class PlanItemAction {
-  const PlanItemAction();
-}
-
-/// Rovnou proveditelná změna.
-final class PlanItemApply extends PlanItemAction {
-  const PlanItemApply(this.change);
-  final PlanChange change;
-}
-
-/// „Chci si vybrat jiný spoj" — otevře se seznam variant.
-final class PlanItemChooseJourney extends PlanItemAction {
-  const PlanItemChooseJourney(this.segment);
-  final PlanSegment segment;
-}
-
 /// Detail položky: čas, délka, zámek, smazání.
 ///
 /// Drag-and-drop tu není schválně. Na ose s minutovým rozlišením je tažení
 /// prstem hádání; „Začátek: 14:00" v dialogu je přesné a dá se použít jednou
 /// rukou v tramvaji. Priorita byla srozumitelná editace, ne efekt.
-Future<PlanItemAction?> showPlanItemSheet(
+Future<PlanChange?> showPlanItemSheet(
   BuildContext context,
   PlanItem item,
 ) {
-  return showModalBottomSheet<PlanItemAction>(
+  return showModalBottomSheet<PlanChange>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -112,8 +95,8 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
             // --- čas ---------------------------------------------------------
             if (_isTravel)
               const _Note(
-                'Čas jízdy určuje jízdní řád, ne plán. Když chcete jet jinak, '
-                'vyberte jiný spoj — přepočítá se pak i to, co na něm visí.',
+                'Čas jízdy určuje jízdní řád, ne plán. Jiný spoj se vybírá '
+                'v detailu cesty tam nebo zpět.',
               )
             else
               _Row(
@@ -161,23 +144,11 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
               title: const Text('Zamknout čas'),
               subtitle: const Text(
                 'Zamčeným bodem automatický přepočet nehne. Hodí se na '
-                'rezervace a na spoj, který chcete stihnout.',
+                'rezervaci nebo na cokoli, co má pevný čas.',
               ),
             ),
 
             const SizedBox(height: Sp.md),
-            if (item.kind == PlanItemKind.transport)
-              PtButton(
-                label: 'Vybrat jiný spoj',
-                variant: PtButtonVariant.tonal,
-                icon: Icons.alt_route,
-                expand: true,
-                onPressed: () => Navigator.of(context).pop(
-                  PlanItemChooseJourney(item.segment),
-                ),
-              ),
-
-            const SizedBox(height: Sp.xs),
             PtButton(
               label: 'Uložit',
               expand: true,
@@ -190,9 +161,8 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
                 variant: PtButtonVariant.text,
                 icon: Icons.delete_outline,
                 expand: true,
-                onPressed: () => Navigator.of(context).pop(
-                  PlanItemApply(RemoveItem(item.id)),
-                ),
+                onPressed: () =>
+                    Navigator.of(context).pop(RemoveItem(item.id)),
               ),
             ],
           ],
@@ -221,17 +191,15 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
   void _save() {
     final PlanItem item = widget.item;
     Navigator.of(context).pop(
-      PlanItemApply(
-        EditItem(
-          item.id,
-          // Doprava se neposouvá ručně — jinak by plán tvrdil, že vlak jede
-          // o půl hodiny později, než jede.
-          localStart: _isTravel ? null : _start,
-          duration: item.canResize ? _length : null,
-          title: _isTravel ? null : _title.text,
-          note: _isTravel ? null : _note.text,
-          locked: _locked,
-        ),
+      EditItem(
+        item.id,
+        // Doprava se neposouvá ručně — jinak by plán tvrdil, že vlak jede
+        // o půl hodiny později, než jede.
+        localStart: _isTravel ? null : _start,
+        duration: item.canResize ? _length : null,
+        title: _isTravel ? null : _title.text,
+        note: _isTravel ? null : _note.text,
+        locked: _locked,
       ),
     );
   }

@@ -184,7 +184,7 @@ class TripDraft {
       out.add('Jiný krok posune nabízené začátky, takže hlasování se smaže.');
     }
     if (before.isDateLocked && durationMinutes != before.durationMinutes) {
-      out.add('Zamčený termín začne stejně, ale potrvá nově '
+      out.add('Vybraný termín začne stejně, ale potrvá nově '
           '${formatDuration(durationMinutes)}.');
     }
     return out;

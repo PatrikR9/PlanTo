@@ -3,31 +3,31 @@ import 'package:flutter/material.dart';
 import '../../../../core/design_system/components/components.dart';
 import '../../../../core/format/cs_format.dart';
 import '../../domain/plan_item.dart';
-import '../../domain/trip_plan.dart';
 import '../plan_strings.dart';
 
-/// Svislá časová osa výletu.
+/// Svislá časová osa pobytu na místě.
 ///
-/// Hlavní pracovní plocha záložky Plán, ne výsledek. Každý řádek je položka
-/// doménového modelu — dá se otevřít, posunout, zamknout a smazat.
+/// Cesta tam a zpět na ní od M15 není — ty mají vlastní karty, protože
+/// nástupiště a přestupy jsou detail, který se čte jinak než program dne.
+/// Tady zůstalo to, co se opravdu plánuje: co se bude dělat a jak dlouho.
 ///
 /// Mezery mezi položkami se **nevykreslují jako položky**. Volno není věc,
 /// je to nepřítomnost věcí; kdyby mělo řádek v databázi, musel by ho engine
 /// při každém posunu přepočítávat a uživatel by mazal prázdno.
 class PlanTimeline extends StatelessWidget {
   const PlanTimeline({
-    required this.plan,
+    required this.items,
     required this.changedIds,
     required this.onTapItem,
     required this.onAddAt,
-    required this.onRefreshSegment,
     super.key,
   });
 
-  final TripPlan plan;
+  /// Položky jednoho úseku v chronologickém pořadí.
+  final List<PlanItem> items;
 
-  /// Co se posledním přepočtem pohnulo. Tichá změna spoje je přesně to, co
-  /// tenhle produkt dělat nesmí.
+  /// Co se posledním přepočtem pohnulo. Tichá změna je přesně to, co tenhle
+  /// produkt dělat nesmí.
   final Set<String> changedIds;
 
   final void Function(PlanItem item) onTapItem;
@@ -35,30 +35,14 @@ class PlanTimeline extends StatelessWidget {
   /// Přidání vlastního bodu do konkrétní mezery.
   final void Function(DateTime localStart, Duration length) onAddAt;
 
-  final void Function(PlanSegment segment) onRefreshSegment;
-
   @override
   Widget build(BuildContext context) {
-    final List<PlanItem> items = plan.items;
     if (items.isEmpty) return const SizedBox.shrink();
 
     final List<Widget> rows = <Widget>[];
-    PlanSegment? lastSegment;
 
     for (int i = 0; i < items.length; i++) {
       final PlanItem item = items[i];
-
-      if (item.segment != lastSegment) {
-        rows.add(
-          _SegmentHeader(
-            segment: item.segment,
-            onRefresh: item.segment == PlanSegment.stay
-                ? null
-                : () => onRefreshSegment(item.segment),
-          ),
-        );
-        lastSegment = item.segment;
-      }
 
       rows.add(
         _TimelineRow(
@@ -88,37 +72,6 @@ class PlanTimeline extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: rows,
-    );
-  }
-}
-
-class _SegmentHeader extends StatelessWidget {
-  const _SegmentHeader({required this.segment, this.onRefresh});
-
-  final PlanSegment segment;
-  final VoidCallback? onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: Sp.md, bottom: Sp.xs),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              planSegmentLabel(segment),
-              style: context.texts.labelLarge,
-            ),
-          ),
-          if (onRefresh != null)
-            PtButton(
-              label: 'Jiný spoj',
-              variant: PtButtonVariant.text,
-              icon: Icons.search,
-              onPressed: onRefresh,
-            ),
-        ],
-      ),
     );
   }
 }

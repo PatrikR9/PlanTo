@@ -10,26 +10,32 @@ import '../../../../core/error/error_text.dart';
 import '../../../../core/format/cs_format.dart';
 import '../../../transport/presentation/widgets/destination_card.dart';
 import '../../../trips/domain/trip.dart';
-import '../../domain/journey.dart';
 import '../../domain/plan_change.dart';
 import '../../domain/plan_context.dart';
 import '../../domain/plan_item.dart';
 import '../../domain/plan_problem.dart';
+import '../../domain/travel_outline.dart';
 import '../../domain/trip_plan.dart';
 import '../plan_controller.dart';
 import '../plan_strings.dart';
-import '../widgets/journey_options_sheet.dart';
 import '../widgets/plan_item_sheet.dart';
 import '../widgets/plan_timeline.dart';
+import '../widgets/travel_card.dart';
+import '../widgets/travel_sheet.dart';
 
-/// Záložka „Plán" — celý výlet chronologicky, a dá se do toho sáhnout.
+/// Záložka „Plán" — den výletu ve třech kusech: tam, na místě, zpět.
 ///
-/// Není to vygenerovaný itinerář ke čtení. Je to pracovní plocha: každý bod
-/// se dá posunout, prodloužit, zamknout nebo smazat, a systém na to reaguje
-/// přepočtem jenom té části, které se změna týká.
+/// Cesta tam a zpět jsou karty se základními časy. Celý průběh — nástupiště,
+/// přestupy, pěší přechody — je za klepnutím, ne pod ním: kdo otevře plán,
+/// řeší nejdřív „v kolik vyrážím a kdy jsem doma". Rozepsat mu rovnou dvacet
+/// řádků znamená, že tu první odpověď musí hledat.
 ///
-/// Doprava na ose je skutečná — jízdní řád z vyhledávače spojení, ne odhad
-/// ze vzdálenosti. Když vyhledávač není zapnutý nebo neodpoví, je to na
+/// Prostředek je pracovní plocha: každý bod programu se dá posunout,
+/// prodloužit, zamknout nebo smazat, a systém na to reaguje přepočtem jenom
+/// té části, které se změna týká.
+///
+/// Doprava je skutečná — jízdní řád z vyhledávače spojení, ne odhad ze
+/// vzdálenosti. Když vyhledávač není zapnutý nebo neodpoví, je to na
 /// obrazovce napsané; vymýšlet odjezd, který neexistuje, je jediné číslo,
 /// podle kterého by se někdo doopravdy zařídil.
 class PlanTab extends ConsumerWidget {
@@ -80,7 +86,7 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: Sp.xxl),
             PtEmptyState(
               title: 'Nejdřív termín',
-              message: 'Plán se staví na konkrétní den — bez zamčeného '
+              message: 'Plán se staví na konkrétní den — bez vybraného '
                   'termínu není na kdy hledat spoje.',
               icon: Icons.event_available_outlined,
               actionLabel: 'Vybrat termín',
@@ -104,18 +110,18 @@ class _Body extends ConsumerWidget {
     final TripPlan? plan = state.plan;
     final PlanContext? ctx = state.context;
 
-    // Plán uložený na jiný den, než na jaký je teď zamčený termín.
-    //
-    // Nastane, když se termín přesune až po sestavení plánu. Přepočítat ho
-    // potichu by znamenalo zahodit všechno, co si člověk nastavil, kvůli
-    // rozhodnutí, které udělal někdo jiný na jiné záložce — a nechat ho tam
-    // beze slova by byl plán na den, na který se nejede.
     // Termín, který už proběhl. Jízdní řády do minulosti nesahají, takže
     // vyhledávač takový dotaz odmítne — a odmítnout ho tady je lepší než ho
     // poslat a přeložit chybu zpátky. Porovnává se den v zóně zařízení; na
     // přesnost stačí, autoritou je stejně server.
     final bool datePassed = ctx != null && _isPast(ctx.planDate);
 
+    // Plán uložený na jiný den, než na jaký je teď vybraný termín.
+    //
+    // Nastane, když se termín přesune až po sestavení plánu. Přepočítat ho
+    // potichu by znamenalo zahodit všechno, co si člověk nastavil, kvůli
+    // rozhodnutí, které udělal někdo jiný na jiné záložce — a nechat ho tam
+    // beze slova by byl plán na den, na který se nejede.
     final bool staleDate = plan != null &&
         plan.planDate != null &&
         ctx != null &&
@@ -124,9 +130,6 @@ class _Body extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(Sp.md),
       children: <Widget>[
-        DestinationCard(trip: trip),
-        const SizedBox(height: Sp.sm),
-
         if (state.isReplanning) const _ReplanningBar(),
 
         if (datePassed && (plan == null || plan.items.isEmpty))
@@ -149,35 +152,54 @@ class _Body extends ConsumerWidget {
             onBuild: () => _controller(ref).rebuild(),
           )
         else ...<Widget>[
-          _Constraints(
-            plan: plan,
-            onArriveBy: (TimeOfDay t) =>
-                _setConstraint(ref, plan, t, home: false),
-            onHomeBy: (TimeOfDay t) => _setConstraint(ref, plan, t, home: true),
-          ),
           if (staleDate) ...<Widget>[
-            const SizedBox(height: Sp.sm),
             _StaleDate(
               planDate: plan.planDate!,
               lockedDate: ctx.planDate,
               onRebuild:
                   state.isReplanning ? null : () => _controller(ref).rebuild(),
             ),
+            const SizedBox(height: Sp.sm),
           ],
           if (plan.warnings.isNotEmpty) ...<Widget>[
-            const SizedBox(height: Sp.sm),
             _Problems(problems: plan.warnings),
+            const SizedBox(height: Sp.sm),
           ],
+
+          TravelCard(
+            segment: PlanSegment.outbound,
+            outline: outlineFor(plan.segment(PlanSegment.outbound)),
+            isChanged: _segmentChanged(plan, PlanSegment.outbound),
+            onTap: () => showTravelSheet(
+              context,
+              tripId: trip.id,
+              segment: PlanSegment.outbound,
+            ),
+          ),
+
+          const SizedBox(height: Sp.md),
+          _StayHeader(plan: plan),
           const SizedBox(height: Sp.xs),
-          PlanTimeline(
+          _StayBody(
             plan: plan,
             changedIds: state.changedIds,
             onTapItem: (PlanItem item) => _openItem(context, ref, item),
             onAddAt: (DateTime start, Duration length) =>
                 _addItem(context, ref, plan, start, length),
-            onRefreshSegment: (PlanSegment s) =>
-                _controller(ref).apply(RefreshSegment(s)),
           ),
+          const SizedBox(height: Sp.md),
+
+          TravelCard(
+            segment: PlanSegment.homeward,
+            outline: outlineFor(plan.segment(PlanSegment.homeward)),
+            isChanged: _segmentChanged(plan, PlanSegment.homeward),
+            onTap: () => showTravelSheet(
+              context,
+              tripId: trip.id,
+              segment: PlanSegment.homeward,
+            ),
+          ),
+
           const SizedBox(height: Sp.md),
           _Summary(plan: plan, providerError: state.providerError),
           const SizedBox(height: Sp.sm),
@@ -209,39 +231,20 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  void _setConstraint(
-    WidgetRef ref,
-    TripPlan plan,
-    TimeOfDay time, {
-    required bool home,
-  }) {
-    final DateTime day = plan.planDate ?? DateTime.now();
-    final DateTime local =
-        DateTime(day.year, day.month, day.day, time.hour, time.minute);
-    _controller(ref).apply(home ? SetHomeBy(local) : SetArriveBy(local));
-  }
+  /// Hnul přepočet s tímhle úsekem cesty? Karta to musí říct, i když je
+  /// detail zavřený — jinak by se spoj vyměnil a nikdo by se to nedozvěděl.
+  bool _segmentChanged(TripPlan plan, PlanSegment segment) => plan
+      .segment(segment)
+      .any((PlanItem i) => state.changedIds.contains(i.id));
 
   Future<void> _openItem(
     BuildContext context,
     WidgetRef ref,
     PlanItem item,
   ) async {
-    final PlanItemAction? action = await showPlanItemSheet(context, item);
-    if (action == null || !context.mounted) return;
-
-    switch (action) {
-      case PlanItemApply(:final PlanChange change):
-        await _controller(ref).apply(change);
-      case PlanItemChooseJourney(:final PlanSegment segment):
-        final Journey? picked = await showJourneySheet(
-          context,
-          title:
-              segment == PlanSegment.homeward ? 'Spoje domů' : 'Spoje do cíle',
-          search: _controller(ref).alternatives(segment),
-        );
-        if (picked == null) return;
-        await _controller(ref).apply(ChooseJourney(segment, picked));
-    }
+    final PlanChange? change = await showPlanItemSheet(context, item);
+    if (change == null || !context.mounted) return;
+    await _controller(ref).apply(change);
   }
 
   Future<void> _addItem(
@@ -282,6 +285,82 @@ class _Body extends ConsumerWidget {
           confidence: PlanConfidence.exact,
         ),
       ),
+    );
+  }
+}
+
+/// Nadpis prostřední části: co se dá stihnout mezi příjezdem a odjezdem.
+class _StayHeader extends StatelessWidget {
+  const _StayHeader({required this.plan});
+
+  final TripPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime? from = plan.lastOutbound?.localEnd;
+    final DateTime? to = plan.firstHomeward?.localStart;
+    final String window = from == null || to == null
+        ? ''
+        : ' · ${formatClock(from)} – ${formatClock(to)} '
+            '(${formatLength(to.difference(from).inMinutes)})';
+
+    return Text('Na místě$window', style: context.texts.labelLarge);
+  }
+}
+
+/// Program mezi příjezdem a odjezdem. Když v něm nic není, je to nabídka,
+/// ne prázdný blok — čas na místě je to jediné, co se na výletě opravdu
+/// plánuje.
+class _StayBody extends StatelessWidget {
+  const _StayBody({
+    required this.plan,
+    required this.changedIds,
+    required this.onTapItem,
+    required this.onAddAt,
+  });
+
+  final TripPlan plan;
+  final Set<String> changedIds;
+  final void Function(PlanItem item) onTapItem;
+  final void Function(DateTime localStart, Duration length) onAddAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<PlanItem> items = plan.segment(PlanSegment.stay);
+    final DateTime? from = plan.lastOutbound?.localEnd;
+    final DateTime? to = plan.firstHomeward?.localStart;
+
+    if (items.isEmpty) {
+      final Duration free = from == null || to == null
+          ? const Duration(hours: 1)
+          : to.difference(from);
+      return PtCard(
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                from == null
+                    ? 'Zatím tu nic není.'
+                    : 'Volno ${formatLength(free.inMinutes)}. Co se bude dít?',
+                style: context.texts.bodyMedium,
+              ),
+            ),
+            PtButton(
+              label: 'Přidat bod',
+              variant: PtButtonVariant.text,
+              icon: Icons.add,
+              onPressed: from == null ? null : () => onAddAt(from, free),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return PlanTimeline(
+      items: items,
+      changedIds: changedIds,
+      onTapItem: onTapItem,
+      onAddAt: onAddAt,
     );
   }
 }
@@ -381,87 +460,6 @@ class _NotBuiltYet extends StatelessWidget {
         actionLabel: isReplanning ? null : 'Sestavit plán',
         onAction: isReplanning ? null : onBuild,
       ),
-    );
-  }
-}
-
-/// Zadání, podle kterého se hledá. Ne výsledek — proto stojí nad osou.
-class _Constraints extends StatelessWidget {
-  const _Constraints({
-    required this.plan,
-    required this.onArriveBy,
-    required this.onHomeBy,
-  });
-
-  final TripPlan plan;
-  final ValueChanged<TimeOfDay> onArriveBy;
-  final ValueChanged<TimeOfDay> onHomeBy;
-
-  @override
-  Widget build(BuildContext context) {
-    final DateTime? arrival = plan.arrivalAtDestination;
-    final DateTime? home = plan.arrivalHome;
-    final Duration off = plan.zoneOffset;
-
-    return Wrap(
-      spacing: Sp.xs,
-      runSpacing: Sp.xs,
-      children: <Widget>[
-        _Chip(
-          icon: Icons.flag_outlined,
-          label: plan.arriveBy == null
-              ? 'Dorazit do…'
-              : 'Dorazit do '
-                  '${formatClock(PlanItem.wallClockOf(plan.arriveBy!, off))}',
-          onTap: () => _pick(
-            context,
-            plan.arriveBy ?? arrival,
-            off,
-            onArriveBy,
-          ),
-        ),
-        _Chip(
-          icon: Icons.home_outlined,
-          label: plan.homeBy == null
-              ? 'Být doma do…'
-              : 'Doma do '
-                  '${formatClock(PlanItem.wallClockOf(plan.homeBy!, off))}',
-          onTap: () => _pick(context, plan.homeBy ?? home, off, onHomeBy),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _pick(
-    BuildContext context,
-    DateTime? initial,
-    Duration offset,
-    ValueChanged<TimeOfDay> onPicked,
-  ) async {
-    final DateTime seed = initial == null
-        ? DateTime.now()
-        : PlanItem.wallClockOf(initial, offset);
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: seed.hour, minute: seed.minute),
-    );
-    if (picked != null) onPicked(picked);
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-      onPressed: onTap,
     );
   }
 }
