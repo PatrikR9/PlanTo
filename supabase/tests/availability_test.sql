@@ -42,10 +42,13 @@ values (
   tstzrange('2026-09-11 00:00+02', '2026-09-15 00:00+02'), 1
 );
 
-insert into trip_participants (trip_id, user_id, role) values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'organiser'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'member'),
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'member');
+-- `calendar_shared` je od M15 podmínka pro započítání do dostupnosti:
+-- kdo ji nezadal, není ve free_count ani v total_count. Fixtura to
+-- proto musí říct nahlas — dřív stačilo vložit busy_intervals.
+insert into trip_participants (trip_id, user_id, role, calendar_shared) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'organiser', true),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'member', true),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'member', true);
 
 -- Bohus works all day Saturday 12 Sep
 insert into busy_intervals (trip_id, user_id, period) values

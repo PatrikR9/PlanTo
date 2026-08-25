@@ -51,15 +51,18 @@ values (
   'Europe/Prague', 'time', 90, 30, '09:00', '17:00'
 );
 
-insert into trip_participants (trip_id, user_id, role) values
+-- Organizátor má příznak rovnou, Člen ne: o kus níž se ověřuje, že mu ho
+-- nastaví teprve `set_manual_busy`. Předvyplnit ho tady by z té kontroly
+-- udělalo tvrzení, které platí vždycky.
+insert into trip_participants (trip_id, user_id, role, calendar_shared) values
   ('dddd4444-4444-4444-4444-444444444444',
-   'aaaa1111-1111-1111-1111-111111111111', 'organiser'),
+   'aaaa1111-1111-1111-1111-111111111111', 'organiser', true),
   ('dddd4444-4444-4444-4444-444444444444',
-   'bbbb2222-2222-2222-2222-222222222222', 'member'),
+   'bbbb2222-2222-2222-2222-222222222222', 'member', false),
   ('eeee5555-5555-5555-5555-555555555555',
-   'aaaa1111-1111-1111-1111-111111111111', 'organiser'),
+   'aaaa1111-1111-1111-1111-111111111111', 'organiser', true),
   ('eeee5555-5555-5555-5555-555555555555',
-   'bbbb2222-2222-2222-2222-222222222222', 'member');
+   'bbbb2222-2222-2222-2222-222222222222', 'member', false);
 
 -- ---------------------------------------------------------------------------
 -- Manual availability

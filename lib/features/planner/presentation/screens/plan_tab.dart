@@ -159,10 +159,9 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: Sp.sm),
             _StaleDate(
               planDate: plan.planDate!,
-              lockedDate: ctx!.planDate,
-              onRebuild: state.isReplanning
-                  ? null
-                  : () => _controller(ref).rebuild(),
+              lockedDate: ctx.planDate,
+              onRebuild:
+                  state.isReplanning ? null : () => _controller(ref).rebuild(),
             ),
           ],
           if (plan.warnings.isNotEmpty) ...<Widget>[

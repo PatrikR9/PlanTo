@@ -181,9 +181,12 @@ values (
   1, 'Europe/Prague', 'day', array['city']
 );
 
-insert into trip_participants (trip_id, user_id, role)
+-- `calendar_shared` je od M15 podmínka pro započítání do dostupnosti:
+-- kdo ji nezadal, není ve free_count ani v total_count. Fixtura to
+-- proto musí říct nahlas — dřív stačilo vložit busy_intervals.
+insert into trip_participants (trip_id, user_id, role, calendar_shared)
 values ('b0b0b0b0-0000-0000-0000-000000000001',
-        'a0a0a0a0-0000-0000-0000-000000000001', 'organiser');
+        'a0a0a0a0-0000-0000-0000-000000000001', 'organiser', true);
 
 -- The 16th is glorious; the 17th is a washout.
 insert into weather_daily (lat, lon, day, weather_code, temp_max, apparent_max,

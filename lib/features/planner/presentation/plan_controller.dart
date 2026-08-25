@@ -69,9 +69,8 @@ class PlanState {
         isReplanning: isReplanning ?? this.isReplanning,
         changedIds: changedIds ?? this.changedIds,
         attribution: attribution ?? this.attribution,
-        providerError: clearProviderError
-            ? null
-            : (providerError ?? this.providerError),
+        providerError:
+            clearProviderError ? null : (providerError ?? this.providerError),
       );
 }
 

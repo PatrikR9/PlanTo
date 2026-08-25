@@ -228,11 +228,14 @@ values (
   'Europe/Prague', 800
 );
 
-insert into trip_participants (trip_id, user_id, role) values
+-- `calendar_shared` je od M15 podmínka pro započítání do dostupnosti:
+-- kdo ji nezadal, není ve free_count ani v total_count. Fixtura to
+-- proto musí říct nahlas — dřív stačilo vložit busy_intervals.
+insert into trip_participants (trip_id, user_id, role, calendar_shared) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-   '11111111-1111-1111-1111-111111111111', 'organiser'),
+   '11111111-1111-1111-1111-111111111111', 'organiser', true),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-   '22222222-2222-2222-2222-222222222222', 'member');
+   '22222222-2222-2222-2222-222222222222', 'member', true);
 
 insert into date_votes (trip_id, slot_start, user_id, vote) values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-09-05 00:00+02',
@@ -337,9 +340,9 @@ values (
   tstzrange('2026-09-01 00:00+02', '2026-10-01 00:00+02'), 1440,
   tstzrange('2026-09-05 00:00+02', '2026-09-06 00:00+02'), 'date_locked'
 );
-insert into trip_participants (trip_id, user_id, role) values
+insert into trip_participants (trip_id, user_id, role, calendar_shared) values
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-   '11111111-1111-1111-1111-111111111111', 'organiser');
+   '11111111-1111-1111-1111-111111111111', 'organiser', true);
 
 set local role authenticated;
 
