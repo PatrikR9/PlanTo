@@ -9,7 +9,6 @@ import '../../../../core/design_system/components/components.dart';
 import '../../../../core/error/error_text.dart';
 import '../../../transport/presentation/widgets/destination_card.dart';
 import '../../../trips/domain/trip.dart';
-import '../../domain/plan_change.dart';
 import '../../domain/plan_context.dart';
 import '../../domain/plan_item.dart';
 import '../../domain/plan_problem.dart';
@@ -17,8 +16,6 @@ import '../../domain/travel_outline.dart';
 import '../../domain/trip_plan.dart';
 import '../plan_controller.dart';
 import '../plan_strings.dart';
-import '../widgets/plan_item_sheet.dart';
-import '../widgets/plan_timeline.dart';
 import '../widgets/travel_card.dart';
 import '../widgets/travel_sheet.dart';
 
@@ -176,20 +173,10 @@ class _Body extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: Sp.md),
-          _StayControl(
+          _StaySummary(
             plan: plan,
-            lastDay: ctx?.returnDate,
-            enabled: !state.isReplanning,
-            onLeaveAt: (DateTime local) =>
-                _controller(ref).apply(SetLeaveAt(local)),
-          ),
-          const SizedBox(height: Sp.xs),
-          _StayBody(
-            plan: plan,
-            changedIds: state.changedIds,
-            onTapItem: (PlanItem item) => _openItem(context, ref, item),
-            onAddAt: (DateTime start, Duration length) =>
-                _addItem(context, ref, plan, start, length),
+            onOpen: () =>
+                context.go(Routes.tripDetail(trip.id, tab: 'program')),
           ),
           const SizedBox(height: Sp.md),
           TravelCard(
@@ -240,195 +227,18 @@ class _Body extends ConsumerWidget {
       .segment(segment)
       .any((PlanItem i) => state.changedIds.contains(i.id));
 
-  Future<void> _openItem(
-    BuildContext context,
-    WidgetRef ref,
-    PlanItem item,
-  ) async {
-    final PlanChange? change = await showPlanItemSheet(context, item);
-    if (change == null || !context.mounted) return;
-    await _controller(ref).apply(change);
-  }
-
-  Future<void> _addItem(
-    BuildContext context,
-    WidgetRef ref,
-    TripPlan plan,
-    DateTime localStart,
-    Duration length,
-  ) async {
-    final _NewItem? created = await showModalBottomSheet<_NewItem>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(borderRadius: Radii.sheetTop),
-      builder: (BuildContext context) => const _AddItemSheet(),
-    );
-    if (created == null || !context.mounted) return;
-
-    final Duration span = length < const Duration(minutes: 30)
-        ? length
-        : const Duration(hours: 1);
-
-    await _controller(ref).apply(
-      AddItem(
-        PlanItem.atLocal(
-          id: newPlanItemId(),
-          kind: created.kind,
-          // Vlastní bod je vždycky součástí pobytu. Do cesty tam ani zpět ho
-          // nepustíme: ta se skládá z toho, co jede, ne z toho, co si někdo
-          // dopsal.
-          segment: PlanSegment.stay,
-          localStart: localStart,
-          localEnd: localStart.add(span),
-          zoneOffset: plan.zoneOffset,
-          titleKey: kNamedItemKey,
-          titleParams: <String, String>{'title': created.title},
-          source: PlanItemSource.userCreated,
-          confidence: PlanConfidence.exact,
-        ),
-      ),
-    );
-  }
 }
 
-/// Kolik času skupina stráví v cíli — a možnost to změnit.
+/// Co se bude na místě dít — jenom souhrn.
 ///
-/// Tohle je to hlavní číslo prostřední části. Odjezd zpátky z něj plyne, ne
-/// naopak: skupina ví, že chce na místě strávit den a půl, a spoj domů se má
-/// hledat podle toho. Proto se tu nastavuje délka pobytu a nikoli „být doma
-/// do…" — to je až důsledek, který si člověk musí dopočítat.
-class _StayControl extends StatelessWidget {
-  const _StayControl({
-    required this.plan,
-    required this.lastDay,
-    required this.enabled,
-    required this.onLeaveAt,
-  });
+/// Editace je na záložce Program. Plán má odpovědět na „v kolik vyrážím a kdy
+/// jsem doma" jedním pohledem; kdyby se na něm zároveň skládal program, jedno
+/// by tomu druhému překáželo.
+class _StaySummary extends StatelessWidget {
+  const _StaySummary({required this.plan, required this.onOpen});
 
   final TripPlan plan;
-
-  /// Poslední den termínu. Rozhoduje o tom, jestli se u odjezdu vybírá i den:
-  /// u jednodenního výletu je datum navíc otázka, na kterou je jen jedna
-  /// odpověď.
-  final DateTime? lastDay;
-
-  final bool enabled;
-
-  /// Naivní místní čas odjezdu zpátky.
-  final ValueChanged<DateTime> onLeaveAt;
-
-  static const Duration _step = Duration(minutes: 30);
-
-  @override
-  Widget build(BuildContext context) {
-    final Duration off = plan.zoneOffset;
-    final DateTime? arrival = plan.lastOutbound?.localEnd;
-    final DateTime? leave = plan.leaveAt == null
-        ? plan.firstHomeward?.localStart
-        : PlanItem.wallClockOf(plan.leaveAt!, off);
-
-    final Duration? span =
-        arrival == null || leave == null || !leave.isAfter(arrival)
-            ? null
-            : leave.difference(arrival);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(child: Text('Na místě', style: context.texts.labelLarge)),
-            if (span != null)
-              Text(
-                formatSpan(span.inMinutes),
-                style: context.texts.labelLarge
-                    ?.copyWith(color: context.colors.primary),
-              ),
-          ],
-        ),
-        if (arrival != null && leave != null)
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  '${clockWithDay(arrival, plan.planDate)} – '
-                  '${clockWithDay(leave, plan.planDate)}',
-                  style: context.texts.bodyMedium,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline),
-                tooltip: 'Vyrazit zpátky o půl hodiny dřív',
-                onPressed: enabled && leave.subtract(_step).isAfter(arrival)
-                    ? () => onLeaveAt(leave.subtract(_step))
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                tooltip: 'Zůstat o půl hodiny déle',
-                onPressed: enabled ? () => onLeaveAt(leave.add(_step)) : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit_calendar_outlined),
-                tooltip: 'Zadat čas odjezdu zpátky',
-                onPressed: enabled ? () => _pick(context, leave) : null,
-              ),
-            ],
-          ),
-      ],
-    );
-  }
-
-  /// Přesný čas odjezdu. U vícedenního výletu se nejdřív vybírá den —
-  /// „v 17:00" bez dne je u dvoudenního výletu dvojznačné a hádat, který
-  /// z nich člověk myslel, je horší než se zeptat.
-  Future<void> _pick(BuildContext context, DateTime seed) async {
-    DateTime day = DateTime(seed.year, seed.month, seed.day);
-    final DateTime? first = plan.planDate;
-    final DateTime? last = lastDay;
-
-    if (first != null && last != null && !_sameDay(first, last)) {
-      final DateTime? picked = await showDatePicker(
-        context: context,
-        // Sevřít do rozsahu, ne spolehnout se na data: showDatePicker na
-        // initialDate mimo rozsah spadne na assertu, a je to přesně ten
-        // případ, který nastane po přesunutí termínu.
-        initialDate:
-            day.isBefore(first) ? first : (day.isAfter(last) ? last : day),
-        firstDate: first,
-        lastDate: last,
-        helpText: 'Který den vyrazíte zpátky?',
-      );
-      if (picked == null || !context.mounted) return;
-      day = DateTime(picked.year, picked.month, picked.day);
-    }
-
-    final TimeOfDay? time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: seed.hour, minute: seed.minute),
-      helpText: 'V kolik vyrazíte zpátky?',
-    );
-    if (time == null) return;
-    onLeaveAt(DateTime(day.year, day.month, day.day, time.hour, time.minute));
-  }
-}
-
-/// Program mezi příjezdem a odjezdem. Když v něm nic není, je to nabídka,
-/// ne prázdný blok — čas na místě je to jediné, co se na výletě opravdu
-/// plánuje.
-class _StayBody extends StatelessWidget {
-  const _StayBody({
-    required this.plan,
-    required this.changedIds,
-    required this.onTapItem,
-    required this.onAddAt,
-  });
-
-  final TripPlan plan;
-  final Set<String> changedIds;
-  final void Function(PlanItem item) onTapItem;
-  final void Function(DateTime localStart, Duration length) onAddAt;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -436,38 +246,62 @@ class _StayBody extends StatelessWidget {
     final DateTime? from = plan.lastOutbound?.localEnd;
     final DateTime? to = plan.firstHomeward?.localStart;
 
-    if (items.isEmpty) {
-      final Duration free = from == null || to == null
-          ? const Duration(hours: 1)
-          : to.difference(from);
-      return PtCard(
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                from == null
-                    ? 'Zatím tu nic není.'
-                    : 'Volno ${formatSpan(free.inMinutes)}. Co se bude dít?',
-                style: context.texts.bodyMedium,
+    return PtCard(
+      onTap: onOpen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.event_note_outlined,
+                size: 18,
+                color: context.colors.primary,
               ),
-            ),
-            PtButton(
-              label: 'Přidat bod',
-              variant: PtButtonVariant.text,
-              icon: Icons.add,
-              onPressed: from == null ? null : () => onAddAt(from, free),
+              const SizedBox(width: Sp.xs),
+              Expanded(
+                child: Text('Na místě', style: context.texts.labelLarge),
+              ),
+              if (from != null && to != null && to.isAfter(from))
+                Text(
+                  formatSpan(to.difference(from).inMinutes),
+                  style: context.texts.labelLarge
+                      ?.copyWith(color: context.colors.primary),
+                ),
+              const SizedBox(width: Sp.xs),
+              const Icon(Icons.chevron_right, size: 20),
+            ],
+          ),
+          if (from != null && to != null) ...<Widget>[
+            const SizedBox(height: Sp.xxs),
+            Text(
+              '${clockWithDay(from, plan.planDate)} – '
+              '${clockWithDay(to, plan.planDate)}',
+              style: context.texts.bodyMedium,
             ),
           ],
-        ),
-      );
-    }
-
-    return PlanTimeline(
-      items: items,
-      changedIds: changedIds,
-      onTapItem: onTapItem,
-      onAddAt: onAddAt,
+          const SizedBox(height: Sp.xxs),
+          Text(
+            _what(items),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: context.texts.labelSmall
+                ?.copyWith(color: context.colors.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// Vyjmenovat, ne spočítat. „3 body programu" je číslo, které nikomu nic
+  /// neřekne; „Turistika · Oběd · Vyhlídka" je odpověď na otázku, kvůli které
+  /// se člověk na plán dívá.
+  static String _what(List<PlanItem> items) {
+    if (items.isEmpty) return 'Zatím prázdno — klepnutím vyplníte program.';
+    final List<String> names =
+        items.take(4).map(planItemTitle).toList(growable: false);
+    final String more = items.length > 4 ? ' + ${items.length - 4} další' : '';
+    return names.join(' · ') + more;
   }
 }
 
@@ -680,85 +514,6 @@ class _Summary extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Nový bod
-// ---------------------------------------------------------------------------
-
-class _NewItem {
-  const _NewItem(this.kind, this.title);
-  final PlanItemKind kind;
-  final String title;
-}
-
-class _AddItemSheet extends StatefulWidget {
-  const _AddItemSheet();
-
-  @override
-  State<_AddItemSheet> createState() => _AddItemSheetState();
-}
-
-class _AddItemSheetState extends State<_AddItemSheet> {
-  PlanItemKind _kind = PlanItemKind.activity;
-  final TextEditingController _title = TextEditingController();
-
-  @override
-  void dispose() {
-    _title.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: Sp.lg,
-        right: Sp.lg,
-        top: Sp.xs,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + Sp.xl,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Nový bod plánu', style: context.texts.titleMedium),
-          const SizedBox(height: Sp.md),
-          Wrap(
-            spacing: Sp.xs,
-            children: <Widget>[
-              for (final PlanItemKind k in kUserAddableKinds)
-                ChoiceChip(
-                  label: Text(planKindLabel(k)),
-                  selected: _kind == k,
-                  onSelected: (bool _) => setState(() => _kind = k),
-                ),
-            ],
-          ),
-          const SizedBox(height: Sp.md),
-          TextField(
-            controller: _title,
-            autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Název',
-              hintText: 'Prohlídka hradu',
-            ),
-            onSubmitted: (String _) => _done(),
-          ),
-          const SizedBox(height: Sp.md),
-          PtButton(label: 'Přidat', expand: true, onPressed: _done),
-        ],
-      ),
-    );
-  }
-
-  void _done() {
-    final String title = _title.text.trim();
-    Navigator.of(context).pop(
-      _NewItem(_kind, title.isEmpty ? planKindLabel(_kind) : title),
     );
   }
 }

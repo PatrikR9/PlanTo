@@ -550,3 +550,59 @@ plán pořád jako jednodenní a `18:10` u cesty zpět je informace, podle kter�
 někdo přijde na nádraží o den dřív. `formatSpan` doplňuje `formatLength` tam,
 kde délka může přesáhnout den: „1 den 8 h" místo „32 h".
 
+
+---
+
+## 17. Program má vlastní záložku
+
+Plán odpovídá na „v kolik vyrážím a kdy jsem doma". Otevírá se pořád a má se
+dát přečíst jedním pohledem. Skládání programu je opak: přidávání bodů,
+posouvání délek, poznámky, zámky. Na jedné obrazovce si ty dvě věci
+překážely — a překážely tím víc, čím byl program delší.
+
+Program je proto samostatná záložka, mezi Plánem a Náklady.
+
+**Data zůstala jedna.** Program není druhý plán, je to druhý pohled na týž:
+položky se segmentem `stay` v tomtéž `itineraries`. Nic se nekopíruje a nic
+se nesynchronizuje — co se přidá v Programu, je hned v Plánu, protože je to
+tatáž řádka v databázi.
+
+Rozdělení odpovědností:
+
+* **Plán** — karta *Na místě*: okno, délka a výčet toho, co se bude dít
+  (`Turistika · Oběd · Vyhlídka`). Klepnutím se přejde na Program. Nic se tu
+  needituje.
+* **Program** — okno pobytu i s nastavením odjezdu (`StayWindow`, přestěhované
+  z Plánu), časová osa programu, nabídka bloků a vlastní bod.
+
+Vyjmenovat je záměr: „3 body programu" je číslo, které nikomu nic neřekne.
+
+### 17.1 Nabídka bloků
+
+Katalog `destinations` v databázi je od M0, ale **nikdy se nic neplní** —
+žádný seed, žádný importér. Nabízet z něj by znamenalo ukázat prázdný seznam,
+nebo si místa vymyslet. Vymyšlený hrad, který v okolí není, je přesně ta
+chyba, kterou tenhle produkt dělat nesmí.
+
+Nabídka proto stojí výhradně na tom, co skupina sama zadala: na štítcích
+aktivit výletu. Jediné, co k nim přidáváme, je typická délka — „Turistika"
+bez délky se do dne nedá zasadit a odhadovat ji pokaždé ručně je otrava.
+Délka je výchozí hodnota k přetažení, ne tvrzení, a `confidence` přidaného
+bodu je proto `rough`.
+
+Odhad je po sekcích (venku 3 h, kultura 1,5 h, jídlo 1 h…) s ruční výjimkou
+tam, kde se to výrazně liší (vyhlídka 45 min, lyže 5 h, zábavní park 5 h).
+Sedmdesát tři ručně nastavených čísel by nikdo neudržoval a polovina by byla
+stejně vycucaná z prstu.
+
+Na konec se přidávají dva bloky, které sedí i výletu bez jediného štítku:
+**Oběd** a **Volno**.
+
+### 17.2 Přepnutí záložky odkazem
+
+Záložka je query param, takže při přechodu z Plánu na Program se mění jenom
+widget, ne stav — a `initialIndex` se do už založeného `TabController` vrátit
+nedá. `TripDetailScreen.didUpdateWidget` proto na změnu `tab` reaguje
+`animateTo`. Bez toho by odkaz změnil adresu a nechal obrazovku stát tam,
+kde byla.
+

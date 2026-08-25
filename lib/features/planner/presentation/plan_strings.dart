@@ -147,6 +147,19 @@ String planSegmentLabel(PlanSegment s) => switch (s) {
       PlanSegment.homeward => 'Cesta zpět',
     };
 
+/// Ikona podle druhu, bez položky. Nabídka programu ještě žádnou položku
+/// nemá — teprve z ní vznikne.
+IconData planKindIcon(PlanItemKind k) => switch (k) {
+      PlanItemKind.transport => Icons.directions_transit,
+      PlanItemKind.walk => Icons.directions_walk,
+      PlanItemKind.transfer => Icons.swap_horiz,
+      PlanItemKind.activity => Icons.hiking,
+      PlanItemKind.free => Icons.schedule,
+      PlanItemKind.meal => Icons.restaurant,
+      PlanItemKind.accommodation => Icons.hotel,
+      PlanItemKind.custom => Icons.event_note,
+    };
+
 IconData planItemIcon(PlanItem item) {
   switch (item.kind) {
     case PlanItemKind.transport:

@@ -11,6 +11,7 @@ import '../../../dates/presentation/screens/dates_tab.dart';
 import '../../../invites/presentation/screens/share_invite_sheet.dart';
 import '../../../packing/presentation/screens/packing_tab.dart';
 import '../../../planner/presentation/screens/plan_tab.dart';
+import '../../../planner/presentation/screens/program_tab.dart';
 import '../../domain/trip.dart';
 import '../../domain/trip_member.dart';
 import '../controllers/trips_controller.dart';
@@ -38,6 +39,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
     (key: 'overview', label: 'Přehled'),
     (key: 'dates', label: 'Termíny'),
     (key: 'plan', label: 'Plán'),
+    (key: 'program', label: 'Program'),
     (key: 'costs', label: 'Náklady'),
     (key: 'packing', label: 'Sbalit'),
     (key: 'chat', label: 'Chat'),
@@ -72,6 +74,21 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
           .indexWhere((({String key, String label}) t) => t.key == widget.tab)
           .clamp(0, _tabs.length - 1),
     );
+  }
+
+  /// Přepnutí záložky zvenčí — z odkazu „Upravit program" nebo z notifikace.
+  ///
+  /// Záložka je query param, takže se při přechodu mění jenom widget, ne stav:
+  /// `initialIndex` se do už založeného [TabController] nedá vrátit. Bez
+  /// tohohle by odkaz změnil adresu a nechal obrazovku stát tam, kde byla.
+  @override
+  void didUpdateWidget(covariant TripDetailScreen old) {
+    super.didUpdateWidget(old);
+    if (old.tab == widget.tab || _controller == null) return;
+    final int i = _tabs.indexWhere(
+      (({String key, String label}) t) => t.key == widget.tab,
+    );
+    if (i >= 0 && i != _controller!.index) _controller!.animateTo(i);
   }
 
   @override
@@ -126,12 +143,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen>
             DatesTab(trip: trip),
             if (!trip.isMeeting) ...<Widget>[
               PlanTab(trip: trip),
+              ProgramTab(trip: trip),
               CostsTab(trip: trip),
               PackingTab(trip: trip),
             ],
             // Chat je M10. Zbytek seznamu, ne pevná čísla — přidání záložky
             // je pak jeden řádek nahoře a nic tady.
-            for (int i = trip.isMeeting ? 2 : 5; i < _tabs.length; i++)
+            for (int i = trip.isMeeting ? 2 : 6; i < _tabs.length; i++)
               Center(child: Text('${_tabs[i].label} — brzy')),
           ],
         ),
