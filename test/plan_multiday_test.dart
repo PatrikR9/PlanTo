@@ -164,6 +164,74 @@ void main() {
       expect(back.leaveAt, p.leaveAt);
     });
 
+    test('posun odjezdu se sám nevrátí — ustoupí program, ne spoj', () {
+      // Automaticky vyplněný program sahá od příjezdu po odjezd. Když se
+      // odjezd posune dopředu, program ho v témže přepočtu přeroste — a
+      // druhé kolo by se vydalo hledat spoj až po konci programu, tedy
+      // zhruba tam, odkud se odjezd zrovna posouval. Zvenčí to vypadalo, že
+      // se s časem odjezdu nedá hnout.
+      final TripPlan built = engine
+          .apply(
+            emptyPlan(ctx),
+            const BuildPlan(),
+            ctx,
+            outbound: found(outboundJourney()),
+            homeward: found(homewardJourney()),
+          )
+          .plan;
+      expect(
+        built.segment(PlanSegment.stay),
+        isNotEmpty,
+        reason: 'engine vyplní pobyt jedním blokem programu',
+      );
+
+      final ReplanOutcome moved = engine.apply(
+        built,
+        SetLeaveAt(wall(15, 30)),
+        ctx,
+        homeward: found(earlyHomewardJourney()),
+      );
+
+      expect(
+        moved.followUp.homeward,
+        isNull,
+        reason: 'zadaný odjezd se nesmí přehledat zpátky na pozdější spoj',
+      );
+      expect(moved.plan.departureHome, ctx.instant(wall(15, 30)));
+
+      final PlanItem program = moved.plan.segment(PlanSegment.stay).last;
+      expect(
+        program.localEnd.isBefore(wall(15, 30)),
+        isTrue,
+        reason: 'zkrátit program je menší změna než přehodit spoj',
+      );
+    });
+
+    test('bez zadání smí program odjezd naopak odsunout', () {
+      final TripPlan built = engine
+          .apply(
+            emptyPlan(ctx),
+            const BuildPlan(),
+            ctx,
+            outbound: found(outboundJourney()),
+            homeward: found(homewardJourney()),
+          )
+          .plan;
+
+      final PlanItem program = built.segment(PlanSegment.stay).single;
+      final ReplanOutcome stretched = engine.apply(
+        built,
+        ResizeItem(program.id, const Duration(hours: 9)),
+        ctx,
+      );
+
+      expect(
+        stretched.followUp.homeward,
+        isNotNull,
+        reason: 'spoj, který vybral engine, se kvůli programu vyměnit smí',
+      );
+    });
+
     test('délka pobytu je od příjezdu po odjezd, ne po návrat domů', () {
       final TripPlan p = engine
           .apply(

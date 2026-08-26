@@ -105,6 +105,7 @@ final class ResizeItem extends PlanChange {
 final class EditItem extends PlanChange {
   const EditItem(
     this.itemId, {
+    this.kind,
     this.localStart,
     this.duration,
     this.title,
@@ -113,6 +114,11 @@ final class EditItem extends PlanChange {
   });
 
   final String itemId;
+
+  /// Přeznačení bodu — z „Program" na „Jídlo". Jen u toho, co si člověk
+  /// založil sám; u úseku cesty to engine ignoruje.
+  final PlanItemKind? kind;
+
   final DateTime? localStart;
   final Duration? duration;
   final String? title;

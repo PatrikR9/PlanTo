@@ -606,3 +606,66 @@ nedá. `TripDetailScreen.didUpdateWidget` proto na změnu `tab` reaguje
 `animateTo`. Bez toho by odkaz změnil adresu a nechal obrazovku stát tam,
 kde byla.
 
+
+---
+
+## 18. Proč se s časem odjezdu nedalo hnout
+
+Posunutí odjezdu se samo vracelo zpátky. Nebylo to v UI — byla to smyčka
+v enginu, a stálo za ni přesně to, co má `_reflow` dělat dobře.
+
+Automaticky vyplněný program sahá od příjezdu po odjezd. Když uživatel posune
+odjezd dopředu, program ho v témže přepočtu přeroste. `_reflow` na to reaguje
+správně: „program nestíhá spoj domů, najdi jiný" — a druhé kolo se vydá hledat
+spoj **po konci programu**, tedy zhruba tam, odkud se odjezd zrovna posouval.
+Zvenčí to vypadá, že tlačítko nefunguje.
+
+Podmínka `homewardFixed` proto od M15c bere v úvahu i zadání uživatele:
+
+```dart
+final bool homewardFixed = p.leaveAt != null ||
+    p.homeBy != null ||
+    p.segment(PlanSegment.homeward).any((i) => i.isLocked || i.userSelected);
+```
+
+Pravidlo je: **co uživatel řekl, drží; ustoupit má to, co vyplnil engine.**
+Když je odjezd zadaný, zkrátí se program. Když zadaný není, program smí odjezd
+odsunout — spoj vybral engine a smí ho vyměnit. Obojí hlídá test.
+
+## 19. Editace časů
+
+Pole v detailu cesty ukazují **skutečné** časy nalezeného spoje, ne zadání.
+Posun je pak to, co člověk čeká: „odjezd v 9:15, chci později" → šipka → hledá
+se spoj po 9:30. Kdyby pole ukazovala zadání, první stisk by nikam neposunul,
+protože zadání a skutečnost se skoro nikdy neshodnou.
+
+Rozdíl mezi přáním a skutečností se píše pod pole (`zadáno: po 9:15`). Bez toho
+vypadá obrazovka, jako by zadání ignorovala — spoj v 9:23 je na „po 9:15"
+správná odpověď, ale bez vysvětlení působí jako chyba. „Zrušit zadání" vrátí
+úsek do automatického režimu.
+
+Oba směry mají obě pole:
+
+| | Odjezd | Příjezd |
+|---|---|---|
+| Cesta tam | `depart_after` | `arrive_by` |
+| Cesta zpět | `leave_at` | `home_by` |
+
+Nastavení jednoho ruší druhé — dvě odpovědi na tutéž otázku znamenají, že se
+jedna tiše ignoruje. Krok šipek je čtvrthodina: půlhodina přeskočí spoj, minuta
+by z posunu udělala třicet klepnutí.
+
+### 19.1 Bod programu
+
+Detail bodu má nově **začátek i konec** jako samostatná pole. Dřív tam byl
+začátek a délka, což znamenalo, že „posuň konec na šest" se muselo v hlavě
+přepočítat — a při každé změně začátku se konec potichu posunul s ním. Teď
+posun začátku bere konec s sebou (posouvá se celý bod), kdežto konec se hýbe
+samostatně.
+
+Přibyly rychlé délky (30 min – 4 h), přepnutí druhu bodu (`EditItem.kind` —
+u úseku cesty ho engine ignoruje, přeznačit jízdu vlakem na oběd by z osy
+udělalo fikci) a název předvyplněný tím, co je na ose. Prázdné pole u bodu,
+který se jmenuje „Program v Krumlově", vypadalo jako chyba, a přepsat název
+znamená ho nejdřív vidět.
+

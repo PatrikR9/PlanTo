@@ -12,12 +12,21 @@ import '../../domain/trip_plan.dart';
 import '../plan_controller.dart';
 import '../plan_strings.dart';
 import 'journey_options_sheet.dart';
+import 'time_picking.dart';
 
 /// Celý průběh cesty jedním směrem — a místo, kde se s ní dá hýbat.
 ///
-/// Vzorem je vyhledávač jízdních řádů, ne itinerář: nahoře čas, podle kterého
-/// se hledá, pod ním spoj tak, jak pojede. Posunout odjezd o půl hodiny je
-/// jedno klepnutí, protože přesně to člověk u plánu dělá nejčastěji.
+/// Vzorem je vyhledávač jízdních řádů, ne itinerář. Nahoře odjezd a příjezd,
+/// se kterými jde posouvat; pod nimi spoj tak, jak pojede.
+///
+/// Pole ukazují **skutečné** časy nalezeného spoje, ne zadání. Posun je pak
+/// to, co člověk čeká: „odjezd v 9:15, chci později" → šipka → hledá se spoj
+/// po 9:30. Kdyby pole ukazovala zadání, první stisk by nikam neposunul,
+/// protože zadání a skutečnost se skoro nikdy neshodnou.
+///
+/// Rozdíl mezi přáním a skutečností se proto píše pod pole. Bez toho vypadá
+/// obrazovka, jako by zadání ignorovala — spoj, který jede v 9:23, když jste
+/// chtěli po 9:15, je správná odpověď, ale bez vysvětlení vypadá jako chyba.
 Future<void> showTravelSheet(
   BuildContext context, {
   required String tripId,
@@ -74,6 +83,18 @@ class _TravelSheet extends ConsumerWidget {
     final Duration off = plan.zoneOffset;
     final bool busy = state.isReplanning;
 
+    // Zadání pro tenhle směr. Cesta tam se řídí „vyrazit po" a „dorazit do",
+    // cesta zpět „vyrazit zpátky v" a „být doma do".
+    final DateTime? wantedDeparture = _wall(
+      _homeward ? plan.leaveAt : plan.departAfter,
+      off,
+    );
+    final DateTime? wantedArrival = _wall(
+      _homeward ? plan.homeBy : plan.arriveBy,
+      off,
+    );
+    final bool anyWanted = wantedDeparture != null || wantedArrival != null;
+
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(Sp.lg, 0, Sp.lg, Sp.xl),
@@ -97,72 +118,75 @@ class _TravelSheet extends ConsumerWidget {
               ),
           ],
         ),
-        const SizedBox(height: Sp.xs),
-
-        if (outline.localStart != null && outline.localEnd != null)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: <Widget>[
-              Text(
-                '${formatClock(outline.localStart!)} → '
-                '${clockWithDay(outline.localEnd!, outline.localStart)}',
-                style: context.texts.headlineSmall,
-              ),
-              const Spacer(),
-              if (outline.duration case final Duration d)
-                Text(
-                  formatSpan(d.inMinutes),
-                  style: context.texts.bodyMedium,
-                ),
-            ],
-          ),
-
         const SizedBox(height: Sp.sm),
+
         if (busy) ...<Widget>[
           const LinearProgressIndicator(minHeight: 2),
           const SizedBox(height: Sp.sm),
         ],
 
-        // --- zadání, podle kterého se hledá --------------------------------
-        _Stepper(
-          label: _homeward
-              ? (plan.leaveAt == null ? 'Být doma do' : 'Vyrazit zpátky po')
-              : 'Vyrazit po',
-          value: _primaryValue(plan, outline, off),
+        // --- odjezd a příjezd ----------------------------------------------
+        _TimeField(
+          label: _homeward ? 'Odjezd zpátky' : 'Odjezd',
+          actual: outline.localStart,
+          wanted: wantedDeparture,
+          wantedPrefix: 'po',
           enabled: !busy,
-          onChanged: (DateTime local) => _setPrimary(ref, plan, local),
+          onSet: (DateTime t) => _controller(ref)
+              .apply(_homeward ? SetLeaveAt(t) : SetDepartAfter(t)),
         ),
-        if (!_homeward) ...<Widget>[
+        const SizedBox(height: Sp.xs),
+        _TimeField(
+          label: _homeward ? 'Doma' : 'Příjezd',
+          actual: outline.localEnd,
+          wanted: wantedArrival,
+          wantedPrefix: 'do',
+          enabled: !busy,
+          onSet: (DateTime t) => _controller(ref)
+              .apply(_homeward ? SetHomeBy(t) : SetArriveBy(t)),
+        ),
+
+        if (outline.duration case final Duration d) ...<Widget>[
           const SizedBox(height: Sp.xs),
+          Text(
+            <String>[
+              formatSpan(d.inMinutes),
+              if (outline.rides > 0)
+                outline.transfers == 0
+                    ? 'bez přestupu'
+                    : '${outline.transfers} × přestup',
+            ].join(' · '),
+            style: context.texts.labelSmall
+                ?.copyWith(color: context.colors.onSurfaceVariant),
+          ),
+        ],
+
+        if (anyWanted) ...<Widget>[
+          const SizedBox(height: Sp.xxs),
           Align(
             alignment: Alignment.centerLeft,
-            child: ActionChip(
-              avatar: const Icon(Icons.flag_outlined, size: 18),
-              label: Text(
-                plan.arriveBy == null
-                    ? 'Dorazit do…'
-                    : 'Dorazit do '
-                        '${formatClock(PlanItem.wallClockOf(plan.arriveBy!, off))}',
-              ),
+            child: PtButton(
+              label: 'Zrušit zadání',
+              variant: PtButtonVariant.text,
+              icon: Icons.undo,
               onPressed: busy
                   ? null
-                  : () async {
-                      final DateTime? picked = await _pickTime(
-                        context,
-                        plan.arriveBy == null
-                            ? outline.localEnd
-                            : PlanItem.wallClockOf(plan.arriveBy!, off),
-                      );
-                      if (picked != null) {
-                        await _controller(ref).apply(SetArriveBy(picked));
-                      }
-                    },
+                  : () => _controller(ref).apply(
+                        _homeward
+                            ? const ClearConstraints(
+                                homeBy: true,
+                                leaveAt: true,
+                              )
+                            : const ClearConstraints(
+                                departAfter: true,
+                                arriveBy: true,
+                              ),
+                      ),
             ),
           ),
         ],
 
-        const SizedBox(height: Sp.md),
+        const SizedBox(height: Sp.sm),
         Row(
           children: <Widget>[
             Expanded(
@@ -227,33 +251,8 @@ class _TravelSheet extends ConsumerWidget {
         LinkRow() => _LinkLine(text: r.text),
       };
 
-  /// Čas, podle kterého se hledá. Když si ho nikdo nenastavil, ukáže se ten,
-  /// který z plánu vyšel — prázdné pole by nutilo hádat, co se stane.
-  DateTime? _primaryValue(TripPlan plan, TravelOutline o, Duration off) {
-    if (_homeward) {
-      // Dvě různá zadání, jeden ovladač: „vyrazíme v pět" se ukazuje jako
-      // odjezd, „být doma do osmi" jako příjezd. Míchat je do jednoho čísla
-      // by znamenalo tvrdit něco, co si uživatel nenastavil.
-      final DateTime? leaveAt = plan.leaveAt;
-      if (leaveAt != null) return PlanItem.wallClockOf(leaveAt, off);
-      return plan.homeBy == null
-          ? o.localEnd
-          : PlanItem.wallClockOf(plan.homeBy!, off);
-    }
-    return plan.departAfter == null
-        ? o.localStart
-        : PlanItem.wallClockOf(plan.departAfter!, off);
-  }
-
-  void _setPrimary(WidgetRef ref, TripPlan plan, DateTime local) {
-    if (!_homeward) {
-      _controller(ref).apply(SetDepartAfter(local));
-      return;
-    }
-    _controller(ref).apply(
-      plan.leaveAt == null ? SetHomeBy(local) : SetLeaveAt(local),
-    );
-  }
+  static DateTime? _wall(DateTime? instant, Duration off) =>
+      instant == null ? null : PlanItem.wallClockOf(instant, off);
 
   Future<void> _choose(BuildContext context, WidgetRef ref) async {
     final Journey? picked = await showJourneySheet(
@@ -266,84 +265,96 @@ class _TravelSheet extends ConsumerWidget {
   }
 }
 
-Future<DateTime?> _pickTime(BuildContext context, DateTime? seed) async {
-  final DateTime base = seed ?? DateTime.now();
-  final TimeOfDay? picked = await showTimePicker(
-    context: context,
-    initialTime: TimeOfDay(hour: base.hour, minute: base.minute),
-  );
-  if (picked == null) return null;
-  return DateTime(
-    base.year,
-    base.month,
-    base.day,
-    picked.hour,
-    picked.minute,
-  );
-}
-
-/// Čas se šipkami. Půlhodinový krok je kompromis, který se dá zmáčknout
-/// palcem a přitom se s ním dá dojet — na minutu se klepne na hodnotu.
-class _Stepper extends StatelessWidget {
-  const _Stepper({
+/// Jeden čas, se kterým jde hýbat.
+///
+/// Šipky posouvají po čtvrthodině, klepnutí na hodnotu otevře přesný výběr.
+/// Čtvrthodina je kompromis: půlhodina přeskočí spoj, minuta by z posunu
+/// udělala třicet klepnutí.
+class _TimeField extends StatelessWidget {
+  const _TimeField({
     required this.label,
-    required this.value,
+    required this.actual,
+    required this.wanted,
+    required this.wantedPrefix,
     required this.enabled,
-    required this.onChanged,
+    required this.onSet,
   });
 
   final String label;
-  final DateTime? value;
-  final bool enabled;
-  final ValueChanged<DateTime> onChanged;
 
-  static const Duration _step = Duration(minutes: 30);
+  /// Čas nalezeného spoje. To, co člověk čte.
+  final DateTime? actual;
+
+  /// Čas, který si člověk zadal. Null, dokud nic nezadal.
+  final DateTime? wanted;
+
+  /// „po" u odjezdu, „do" u příjezdu.
+  final String wantedPrefix;
+
+  final bool enabled;
+  final ValueChanged<DateTime> onSet;
+
+  static const Duration _step = Duration(minutes: 15);
 
   @override
   Widget build(BuildContext context) {
-    final DateTime? v = value;
-    return Row(
-      children: <Widget>[
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          tooltip: 'O půl hodiny dřív',
-          onPressed:
-              enabled && v != null ? () => onChanged(v.subtract(_step)) : null,
-        ),
-        Expanded(
-          child: InkWell(
-            borderRadius: Radii.inputAll,
-            onTap: enabled
-                ? () async {
-                    final DateTime? picked = await _pickTime(context, v);
-                    if (picked != null) onChanged(picked);
-                  }
-                : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: Sp.xs),
-              child: Column(
-                children: <Widget>[
+    // Posouvá se od skutečného času; když spoj není, od zadání.
+    final DateTime? base = actual ?? wanted;
+    final bool differs = wanted != null &&
+        actual != null &&
+        wanted!.difference(actual!).inMinutes != 0;
+
+    return PtCard(
+      padding: const EdgeInsets.symmetric(horizontal: Sp.xs, vertical: Sp.xxs),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: context.texts.labelSmall
+                      ?.copyWith(color: context.colors.onSurfaceVariant),
+                ),
+                Text(
+                  base == null ? '—:—' : formatClock(base),
+                  style: context.texts.titleLarge,
+                ),
+                if (differs)
                   Text(
-                    label,
+                    'zadáno: $wantedPrefix ${formatClock(wanted!)}',
                     style: context.texts.labelSmall
-                        ?.copyWith(color: context.colors.onSurfaceVariant),
+                        ?.copyWith(color: context.colors.primary),
                   ),
-                  Text(
-                    v == null ? '—:—' : formatClock(v),
-                    style: context.texts.titleLarge,
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          tooltip: 'O půl hodiny později',
-          onPressed:
-              enabled && v != null ? () => onChanged(v.add(_step)) : null,
-        ),
-      ],
+          IconButton(
+            icon: const Icon(Icons.remove),
+            tooltip: 'O čtvrt hodiny dřív',
+            onPressed: enabled && base != null
+                ? () => onSet(base.subtract(_step))
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'O čtvrt hodiny později',
+            onPressed:
+                enabled && base != null ? () => onSet(base.add(_step)) : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.schedule),
+            tooltip: 'Zadat přesný čas',
+            onPressed: enabled
+                ? () async {
+                    final DateTime? picked = await pickLocalTime(context, base);
+                    if (picked != null) onSet(picked);
+                  }
+                : null,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -364,7 +375,7 @@ class _StopLine extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 46,
+            width: 52,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
@@ -423,7 +434,7 @@ class _RideLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const SizedBox(width: 46),
+          const SizedBox(width: 52),
           _Bar(color: context.colors.primary),
           Expanded(
             child: Padding(
@@ -470,7 +481,7 @@ class _LinkLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const SizedBox(width: 46),
+          const SizedBox(width: 52),
           _Bar(color: context.planto.hairline),
           Expanded(
             child: Padding(

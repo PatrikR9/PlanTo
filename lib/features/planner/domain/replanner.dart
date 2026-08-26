@@ -368,6 +368,7 @@ class Replanner {
 
       case EditItem(
           itemId: final String editId,
+          kind: final PlanItemKind? newKind,
           localStart: final DateTime? newStart,
           duration: final Duration? newLength,
           title: final String? newTitle,
@@ -379,6 +380,12 @@ class Replanner {
           if (target == null) break;
           PlanItem it = target;
           bool edited = false;
+          // Druh se mění jen u toho, co si člověk založil sám. Přeznačit
+          // jízdu vlakem na oběd by z osy udělala fikci.
+          if (newKind != null && !it.kind.isTravel && newKind != it.kind) {
+            it = it.copyWith(kind: newKind);
+            edited = true;
+          }
           if (newStart != null && newStart != it.localStart) {
             it = it.movedToLocal(newStart);
             edited = true;
@@ -868,7 +875,20 @@ class Replanner {
     }
 
     // --- program přerostl odjezd domů ---------------------------------------
-    final bool homewardFixed = p.segment(PlanSegment.homeward).any(
+    //
+    // `leaveAt` a `homeBy` sem patří vedle zámku a ručního výběru, a je to ta
+    // nejdůležitější podmínka z celého souboru. Automaticky vyplněný program
+    // sahá od příjezdu po odjezd; jakmile uživatel odjezd posune dopředu,
+    // program ho přeroste hned v témže přepočtu. Bez téhle podmínky by se
+    // druhé kolo vydalo hledat spoj *po konci programu* — tedy zhruba tam,
+    // odkud se odjezd zrovna posouval — a posun by se sám vrátil zpátky.
+    // Zvenčí to vypadá, že se s časem odjezdu nedá hnout.
+    //
+    // Pravidlo je: co uživatel řekl, drží. Ustoupit má program, který
+    // vyplnil engine.
+    final bool homewardFixed = p.leaveAt != null ||
+        p.homeBy != null ||
+        p.segment(PlanSegment.homeward).any(
           (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
         );
 
