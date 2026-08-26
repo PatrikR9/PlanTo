@@ -85,37 +85,91 @@ class _JourneySearchSheet extends StatefulWidget {
 class _JourneySearchSheetState extends State<_JourneySearchSheet> {
   late DateTime _when = widget.initialWhen;
   late bool _arriveBy = widget.initialArriveBy;
-  late Future<JourneySearch> _future = _run();
 
-  Future<JourneySearch> _run() =>
-      widget.lookup(_when, arriveBy: _arriveBy);
+  /// Všechno, co se zatím našlo, seřazené podle odjezdu.
+  List<Journey> _found = const <Journey>[];
 
-  void _search() => setState(() => _future = _run());
+  /// Začíná se načítáním: první hledání se pouští hned po prvním snímku a
+  /// „Žádný spoj" na jednu obrátku vypadá jako odpověď, kterou to není.
+  bool _loading = true;
+  bool _exhausted = false;
+  Object? _error;
+  String? _attribution;
+  bool _hasTimetable = true;
 
-  /// Pozdější spoje se dají stránkovat přesně: zeptáme se na odjezdy po
-  /// posledním, který jsme ukázali.
-  void _later(JourneySearch r) {
-    final Journey? last = r.journeys.isEmpty ? null : r.journeys.last;
-    if (last == null) return;
-    setState(() {
-      _when = last.localDeparture.add(const Duration(minutes: 1));
-      _arriveBy = false;
-      _future = _run();
-    });
+  /// Kolikátý dotaz běží. Odpověď na starší dotaz se zahodí — jinak by
+  /// pomalejší hledání přepsalo výsledky toho, na co se člověk ptal potom.
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+    // Po prvním snímku, ne hned: `setState` v `initState` je chyba a první
+    // hledání jednou `setState` volá, protože zapíná načítání.
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) => _restart());
   }
 
-  /// Dřívější se stránkovat přesně nedají: vyhledávač umí „odjezdy po", ne
-  /// „odjezdy před". Posuneme proto okno o hodinu zpátky. Výsledky se můžou
-  /// s předchozí stránkou překrývat — což je lepší než přeskočit spoj, který
-  /// mezi nimi jede.
-  void _earlier(JourneySearch r) {
-    final Journey? first = r.journeys.isEmpty ? null : r.journeys.first;
-    final DateTime from = first?.localDeparture ?? _when;
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  /// Donačítání místo tlačítka „Pozdější". Práh je 600 px, ne úplný konec:
+  /// seznam se má natáhnout dřív, než na něj člověk dojede.
+  void _onScroll() {
+    if (_loading || _exhausted || _found.isEmpty) return;
+    if (!widget.controller.hasClients) return;
+    final ScrollPosition p = widget.controller.position;
+    if (p.pixels >= p.maxScrollExtent - 600) _loadMore();
+  }
+
+  Future<void> _restart() async {
     setState(() {
-      _when = from.subtract(const Duration(hours: 1));
-      _arriveBy = false;
-      _future = _run();
+      _found = const <Journey>[];
+      _exhausted = false;
+      _error = null;
     });
+    await _load(_when, arriveBy: _arriveBy);
+  }
+
+  Future<void> _loadMore() {
+    // Další stránka jsou odjezdy po tom posledním, který už je v seznamu.
+    final DateTime from =
+        _found.last.localDeparture.add(const Duration(minutes: 1));
+    return _load(from, arriveBy: false);
+  }
+
+  Future<void> _load(DateTime when, {required bool arriveBy}) async {
+    final int mine = ++_generation;
+    setState(() => _loading = true);
+    try {
+      final JourneySearch r = await widget.lookup(when, arriveBy: arriveBy);
+      if (!mounted || mine != _generation) return;
+      final List<Journey> merged = _merge(_found, r.journeys);
+      setState(() {
+        _loading = false;
+        _error = null;
+        _attribution = r.attribution ?? _attribution;
+        _hasTimetable = r.hasTimetable;
+        // Nic nového = dál už nic není. Bez tohohle by donačítání jelo
+        // donekonečna a pořád se ptalo komunitní služby na totéž.
+        _exhausted = merged.length == _found.length;
+        _found = merged;
+      });
+    } on Object catch (e) {
+      if (!mounted || mine != _generation) return;
+      setState(() {
+        _loading = false;
+        _error = e;
+      });
+    }
+  }
+
+  void _search() {
+    setState(() => _exhausted = false);
+    _restart();
   }
 
   Future<void> _pickDate() async {
@@ -131,25 +185,21 @@ class _JourneySearchSheetState extends State<_JourneySearchSheet> {
       helpText: 'Který den?',
     );
     if (picked == null) return;
-    setState(() {
-      _when = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        _when.hour,
-        _when.minute,
-      );
-      _future = _run();
-    });
+    _when = DateTime(
+      picked.year,
+      picked.month,
+      picked.day,
+      _when.hour,
+      _when.minute,
+    );
+    await _restart();
   }
 
   Future<void> _pickTime() async {
     final DateTime? picked = await pickLocalTime(context, _when);
     if (picked == null) return;
-    setState(() {
-      _when = picked;
-      _future = _run();
-    });
+    _when = picked;
+    await _restart();
   }
 
   @override
@@ -175,10 +225,10 @@ class _JourneySearchSheetState extends State<_JourneySearchSheet> {
           ],
           selected: <bool>{_arriveBy},
           showSelectedIcon: false,
-          onSelectionChanged: (Set<bool> s) => setState(() {
+          onSelectionChanged: (Set<bool> s) {
             _arriveBy = s.first;
-            _future = _run();
-          }),
+            _restart();
+          },
         ),
         const SizedBox(height: Sp.xs),
         Row(
@@ -214,132 +264,143 @@ class _JourneySearchSheetState extends State<_JourneySearchSheet> {
         ),
         const SizedBox(height: Sp.md),
 
-        FutureBuilder<JourneySearch>(
-          future: _future,
-          builder: (BuildContext context, AsyncSnapshot<JourneySearch> snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  PtSkeleton(height: 84),
-                  SizedBox(height: Sp.xs),
-                  PtSkeleton(height: 84),
-                  SizedBox(height: Sp.xs),
-                  PtSkeleton(height: 84),
-                ],
-              );
-            }
-            if (snap.hasError) {
-              return PtErrorState(message: errorText(snap.error));
-            }
+        if (!_hasTimetable && _found.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Sp.xs),
+            child: Text(
+              'Bez jízdního řádu — časy jsou odhad ze vzdálenosti.',
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.colors.error),
+            ),
+          ),
 
-            final JourneySearch result = snap.data ?? const JourneySearch.empty();
-            if (result.isEmpty) {
-              return Column(
-                children: <Widget>[
-                  const PtEmptyState(
-                    title: 'Žádný spoj',
-                    // Nikdy nepředstírat, že trasa existuje. Prázdný výsledek
-                    // je odpověď, ne chyba k obejití.
-                    message: 'Pro tenhle čas vyhledávač nenašel žádné '
-                        'spojení. Zkuste jiný čas odjezdu.',
-                    icon: Icons.train,
-                  ),
-                  const SizedBox(height: Sp.sm),
-                  _Pager(
-                    onEarlier: () => _earlier(result),
-                    onLater: null,
-                  ),
-                ],
-              );
-            }
+        for (final Journey j in _found) ...<Widget>[
+          _JourneyCard(
+            journey: j,
+            onTap: () => Navigator.of(context).pop(j),
+          ),
+          const SizedBox(height: Sp.xs),
+        ],
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                if (!result.hasTimetable)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: Sp.xs),
-                    child: Text(
-                      'Bez jízdního řádu — časy jsou odhad ze vzdálenosti.',
-                      style: context.texts.labelSmall
-                          ?.copyWith(color: context.colors.error),
-                    ),
-                  ),
-                _Pager(
-                  onEarlier: () => _earlier(result),
-                  onLater: () => _later(result),
-                ),
-                const SizedBox(height: Sp.xs),
-                for (final Journey j in result.journeys) ...<Widget>[
-                  _JourneyCard(
-                    journey: j,
-                    isBest: j.id == result.bestId,
-                    onTap: () => Navigator.of(context).pop(j),
-                  ),
-                  const SizedBox(height: Sp.xs),
-                ],
-                _Pager(
-                  onEarlier: () => _earlier(result),
-                  onLater: () => _later(result),
-                ),
-                if (result.attribution case final String a)
-                  Padding(
-                    padding: const EdgeInsets.only(top: Sp.sm),
-                    child: Text(
-                      a,
-                      style: context.texts.labelSmall
-                          ?.copyWith(color: context.colors.onSurfaceVariant),
-                    ),
-                  ),
-              ],
-            );
-          },
+        _Footer(
+          loading: _loading,
+          error: _error,
+          empty: _found.isEmpty,
+          exhausted: _exhausted,
+          onRetry: _search,
         ),
+
+        if (_attribution case final String a)
+          Padding(
+            padding: const EdgeInsets.only(top: Sp.sm),
+            child: Text(
+              a,
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.colors.onSurfaceVariant),
+            ),
+          ),
       ],
     );
   }
 }
 
-/// Šipky na dřívější a pozdější spoje. V IDOS jsou nad seznamem i pod ním,
-/// protože po odscrollování na konec je cesta nahoru zbytečná.
-class _Pager extends StatelessWidget {
-  const _Pager({required this.onEarlier, required this.onLater});
+/// Sloučí novou stránku do toho, co už je na obrazovce.
+///
+/// Řadí se podle odjezdu a při shodném odjezdu zůstane ten rychlejší.
+/// Vyhledávač vrací i varianty, které vyjíždějí ve stejnou minutu a liší se
+/// jen tím, že jedna z nich někde přečká noc — a dvě karty se stejným časem,
+/// kde jedna dojede „po 16:52", vypadají jako chyba v datech.
+List<Journey> _merge(List<Journey> current, List<Journey> incoming) {
+  final Map<String, Journey> byId = <String, Journey>{
+    for (final Journey j in current) j.id: j,
+    for (final Journey j in incoming) j.id: j,
+  };
 
-  final VoidCallback? onEarlier;
-  final VoidCallback? onLater;
+  final Map<String, Journey> byDeparture = <String, Journey>{};
+  for (final Journey j in byId.values) {
+    final String key = j.localDeparture.toIso8601String();
+    final Journey? seen = byDeparture[key];
+    if (seen == null || j.durationMinutes < seen.durationMinutes) {
+      byDeparture[key] = j;
+    }
+  }
+
+  final List<Journey> out = byDeparture.values.toList()
+    ..sort((Journey a, Journey b) {
+      final int t = a.localDeparture.compareTo(b.localDeparture);
+      return t != 0 ? t : a.durationMinutes.compareTo(b.durationMinutes);
+    });
+  return out;
+}
+
+/// Patička seznamu: načítání, chyba, prázdno, konec.
+class _Footer extends StatelessWidget {
+  const _Footer({
+    required this.loading,
+    required this.error,
+    required this.empty,
+    required this.exhausted,
+    required this.onRetry,
+  });
+
+  final bool loading;
+  final Object? error;
+  final bool empty;
+  final bool exhausted;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: <Widget>[
-        PtButton(
-          label: 'Dřívější',
-          variant: PtButtonVariant.text,
-          icon: Icons.keyboard_arrow_up,
-          onPressed: onEarlier,
+    if (error case final Object e) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: Sp.md),
+        child: PtErrorState(message: errorText(e), onRetry: onRetry),
+      );
+    }
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: Sp.md),
+        child: Column(
+          children: <Widget>[
+            PtSkeleton(height: 84),
+            SizedBox(height: Sp.xs),
+            PtSkeleton(height: 84),
+          ],
         ),
-        PtButton(
-          label: 'Pozdější',
-          variant: PtButtonVariant.text,
-          icon: Icons.keyboard_arrow_down,
-          onPressed: onLater,
+      );
+    }
+    if (empty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: Sp.md),
+        child: PtEmptyState(
+          title: 'Žádný spoj',
+          // Nikdy nepředstírat, že trasa existuje. Prázdný výsledek je
+          // odpověď, ne chyba k obejití.
+          message: 'Pro tenhle čas vyhledávač nenašel žádné spojení. '
+              'Zkuste jiný čas odjezdu.',
+          icon: Icons.train,
         ),
-      ],
-    );
+      );
+    }
+    if (exhausted) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: Sp.md),
+        child: Text(
+          'To jsou všechny spoje, které vyhledávač nabídl.',
+          textAlign: TextAlign.center,
+          style: context.texts.labelSmall
+              ?.copyWith(color: context.colors.onSurfaceVariant),
+        ),
+      );
+    }
+    return const SizedBox(height: Sp.md);
   }
 }
 
 class _JourneyCard extends StatelessWidget {
-  const _JourneyCard({
-    required this.journey,
-    required this.isBest,
-    required this.onTap,
-  });
+  const _JourneyCard({required this.journey, required this.onTap});
 
   final Journey journey;
-  final bool isBest;
   final VoidCallback onTap;
 
   @override
@@ -372,8 +433,7 @@ class _JourneyCard extends StatelessWidget {
                   ? 'bez přestupu'
                   : '${journey.transfers} × přestup',
               if (journey.walkMinutes > 0) 'pěšky ${journey.walkMinutes} min',
-              for (final JourneyLeg l in journey.transitLegs)
-                if (l.lineName != null) l.lineName!,
+              ..._lines(journey),
             ].join(' · '),
             style: context.texts.labelSmall
                 ?.copyWith(color: context.colors.onSurfaceVariant),
@@ -390,16 +450,22 @@ class _JourneyCard extends StatelessWidget {
                   ?.copyWith(color: context.colors.onSurfaceVariant),
             ),
           ],
-          if (isBest) ...<Widget>[
-            const SizedBox(height: Sp.xxs),
-            Text(
-              'Doporučeno',
-              style: context.texts.labelSmall
-                  ?.copyWith(color: context.planto.availabilityFull),
-            ),
-          ],
         ],
       ),
     );
+  }
+
+  /// Linky, ale nejvýš tři. Odpověď poskytovatele u pěti přestupů vypadá
+  /// jako „Os 27813 · 000513 · 830800 · 846" — čtyři čísla, ze kterých si
+  /// nikdo nic neodvodí, a karta kvůli nim naroste o dva řádky.
+  static List<String> _lines(Journey j) {
+    final List<String> names = <String>[];
+    for (final JourneyLeg l in j.transitLegs) {
+      final String? n = l.lineName;
+      if (n == null || n.isEmpty || names.contains(n)) continue;
+      names.add(n);
+    }
+    if (names.length <= 3) return names;
+    return <String>[...names.take(3), '+${names.length - 3}'];
   }
 }

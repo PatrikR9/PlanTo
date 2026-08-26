@@ -710,3 +710,23 @@ vyměnit. Obrazovka to říká nahlas („Tenhle spoj jste vybrali sami") a nab�
 **Vybrat automaticky** — bez toho by „Přehledat" vypadalo jako tlačítko,
 které nic nedělá.
 
+
+### 20.3 Místo šipek scrollování
+
+Tlačítka „Dřívější / Pozdější" nahradilo donačítání. Seznam si drží všechno,
+co se zatím našlo; jakmile se doscrolluje na 600 px od konce, doptá se na
+odjezdy po posledním zobrazeném spoji a připojí je. Když nová stránka nepřinese
+nic nového, donačítání se zastaví — bez toho by se komunitní služby ptalo
+donekonečna na totéž.
+
+Odpověď na starší dotaz se zahodí (počítadlo `_generation`). Bez toho by
+pomalejší hledání přepsalo výsledky toho, na co se člověk ptal potom.
+
+Výsledky se řadí podle odjezdu a při shodném odjezdu zůstane ten rychlejší.
+Vyhledávač totiž vrací i varianty, které vyjíždějí ve stejnou minutu a liší se
+jen tím, že jedna z nich někde přečká noc — dvě karty s časem `11:18`, kde
+jedna dojede „po 16:52", vypadají jako chyba v datech.
+
+Ubyla i dvě drobnosti, které kazily čitelnost: `formatSpan` píše `6 h 36 min`
+místo `6,6 h`, a výčet linek se zkracuje na tři (`Os 27813 · 000513 · 830800 ·
+846` byl řádek, ze kterého si nikdo nic neodvodil).

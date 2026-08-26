@@ -95,13 +95,19 @@ String? planItemSubtitle(PlanItem item) {
   }
 }
 
-/// Délka, která umí i dny.
+/// Délka cesty nebo pobytu: `45 min`, `2 h 27 min`, `6 h`, `1 den 8 h`.
 ///
-/// [formatLength] končí u hodin — vzniklo pro délku spoje. Pobyt na
-/// dvoudenním výletě je ale „1 den 8 h", ne „32 h"; nikdo si to jinak
-/// nepřečte.
-String formatSpan(int minutes) =>
-    minutes >= 1440 ? formatDuration(minutes) : formatLength(minutes);
+/// [formatLength] dává „6,6 h", protože vzniklo pro krátké úseky, kde je
+/// „1,5 h" v pořádku. U šestihodinové cesty je to ale číslo, které si nikdo
+/// nepřevede — jízdní řády se čtou v hodinách a minutách.
+String formatSpan(int minutes) {
+  if (minutes < 0) return formatLength(minutes);
+  if (minutes >= 1440) return formatDuration(minutes);
+  if (minutes < 60) return '$minutes min';
+  final int h = minutes ~/ 60;
+  final int m = minutes % 60;
+  return m == 0 ? '$h h' : '$h h $m min';
+}
 
 /// `9:42`, nebo `ne 9:42`, když ten čas není v první den výletu.
 ///
