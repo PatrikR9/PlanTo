@@ -669,3 +669,44 @@ udělalo fikci) a název předvyplněný tím, co je na ose. Prázdné pole u bo
 který se jmenuje „Program v Krumlově", vypadalo jako chyba, a přepsat název
 znamená ho nejdřív vidět.
 
+
+---
+
+## 20. Vyhledávač spojení podle IDOS
+
+Předchozí verze měla v detailu cesty pole s časy, která se dala posouvat
+šipkami, a každé klepnutí rovnou přepočítalo plán. Nešlo z toho poznat, co je
+zadání a co výsledek — a když se výsledek neshodoval se zadáním (což je
+u jízdních řádů skoro pokaždé), vypadalo to jako chyba.
+
+Nahradil to tvar, který v Česku zná každý — [IDOS](https://idos.cz/napoveda/)
+a [PID](https://spojeni.dpp.cz/):
+
+* přepínač **Odjezd / Příjezd** (v IDOS „Zadaný čas se vztahuje k…"),
+* **datum** a **čas** jako dvě pole,
+* tlačítko **Hledat**,
+* seznam nalezených spojení,
+* šipky **Dřívější / Pozdější** nad seznamem i pod ním.
+
+Detail cesty má proto místo šipek jediné tlačítko **Vyhledat spojení**.
+Dokud se spoj nevybere, plán se nemění — a to je ten hlavní rozdíl: hledání
+je oddělené od rozhodnutí.
+
+### 20.1 Co jde stránkovat přesně a co ne
+
+**Pozdější** se stránkuje přesně: zeptáme se na odjezdy po posledním
+zobrazeném spoji.
+
+**Dřívější** ne. Vyhledávač umí „odjezdy po", ne „odjezdy před" — posune se
+proto okno o hodinu zpátky od prvního zobrazeného odjezdu. Výsledky se můžou
+s předchozí stránkou překrývat, což je lepší než přeskočit spoj, který mezi
+nimi jede. MOTIS má na tohle stránkovací kurzory; až je Edge Function bude
+propouštět, dá se to udělat přesně.
+
+### 20.2 Vybraný spoj
+
+Ruční výběr dělá z úseku `userSelected` a zamyká ho, takže ho přepočet nesmí
+vyměnit. Obrazovka to říká nahlas („Tenhle spoj jste vybrali sami") a nabízí
+**Vybrat automaticky** — bez toho by „Přehledat" vypadalo jako tlačítko,
+které nic nedělá.
+

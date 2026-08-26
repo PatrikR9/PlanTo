@@ -12,7 +12,6 @@ import '../../domain/trip_plan.dart';
 import '../plan_controller.dart';
 import '../plan_strings.dart';
 import 'journey_options_sheet.dart';
-import 'time_picking.dart';
 
 /// Celý průběh cesty jedním směrem — a místo, kde se s ní dá hýbat.
 ///
@@ -95,6 +94,14 @@ class _TravelSheet extends ConsumerWidget {
     );
     final bool anyWanted = wantedDeparture != null || wantedArrival != null;
 
+    // Spoj, o kterém rozhodl člověk. Přepočet ho nesmí vyměnit potichu, a
+    // obrazovka to musí říct — jinak vypadá „Přehledat" jako tlačítko, které
+    // nic nedělá.
+    final bool userPicked = plan.segment(segment).any(
+          (PlanItem i) =>
+              i.isLocked || i.source == PlanItemSource.userSelected,
+        );
+
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(Sp.lg, 0, Sp.lg, Sp.xl),
@@ -125,88 +132,87 @@ class _TravelSheet extends ConsumerWidget {
           const SizedBox(height: Sp.sm),
         ],
 
-        // --- odjezd a příjezd ----------------------------------------------
-        _TimeField(
-          label: _homeward ? 'Odjezd zpátky' : 'Odjezd',
-          actual: outline.localStart,
-          wanted: wantedDeparture,
-          wantedPrefix: 'po',
-          enabled: !busy,
-          onSet: (DateTime t) => _controller(ref)
-              .apply(_homeward ? SetLeaveAt(t) : SetDepartAfter(t)),
-        ),
-        const SizedBox(height: Sp.xs),
-        _TimeField(
-          label: _homeward ? 'Doma' : 'Příjezd',
-          actual: outline.localEnd,
-          wanted: wantedArrival,
-          wantedPrefix: 'do',
-          enabled: !busy,
-          onSet: (DateTime t) => _controller(ref)
-              .apply(_homeward ? SetHomeBy(t) : SetArriveBy(t)),
-        ),
-
-        if (outline.duration case final Duration d) ...<Widget>[
-          const SizedBox(height: Sp.xs),
+        // --- souhrn ---------------------------------------------------------
+        if (outline.localStart != null && outline.localEnd != null)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: <Widget>[
+              Text(
+                '${formatClock(outline.localStart!)} → '
+                '${clockWithDay(outline.localEnd!, outline.localStart)}',
+                style: context.texts.headlineSmall,
+              ),
+              const Spacer(),
+              if (outline.duration case final Duration d)
+                Text(formatSpan(d.inMinutes), style: context.texts.bodyMedium),
+            ],
+          ),
+        if (outline.rides > 0)
           Text(
-            <String>[
-              formatSpan(d.inMinutes),
-              if (outline.rides > 0)
-                outline.transfers == 0
-                    ? 'bez přestupu'
-                    : '${outline.transfers} × přestup',
-            ].join(' · '),
+            outline.transfers == 0
+                ? 'bez přestupu'
+                : '${outline.transfers} × přestup',
             style: context.texts.labelSmall
                 ?.copyWith(color: context.colors.onSurfaceVariant),
           ),
-        ],
-
-        if (anyWanted) ...<Widget>[
-          const SizedBox(height: Sp.xxs),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: PtButton(
-              label: 'Zrušit zadání',
-              variant: PtButtonVariant.text,
-              icon: Icons.undo,
-              onPressed: busy
-                  ? null
-                  : () => _controller(ref).apply(
-                        _homeward
-                            ? const ClearConstraints(
-                                homeBy: true,
-                                leaveAt: true,
-                              )
-                            : const ClearConstraints(
-                                departAfter: true,
-                                arriveBy: true,
-                              ),
-                      ),
+        if (userPicked)
+          Padding(
+            padding: const EdgeInsets.only(top: Sp.xxs),
+            child: Text(
+              'Tenhle spoj jste vybrali sami — přepočet ho nevymění.',
+              style: context.texts.labelSmall
+                  ?.copyWith(color: context.colors.primary),
             ),
           ),
-        ],
 
-        const SizedBox(height: Sp.sm),
+        const SizedBox(height: Sp.md),
+        PtButton(
+          label: 'Vyhledat spojení',
+          icon: Icons.search,
+          expand: true,
+          onPressed: busy ? null : () => _choose(context, ref, plan, state),
+        ),
+        const SizedBox(height: Sp.xs),
         Row(
           children: <Widget>[
-            Expanded(
-              child: PtButton(
-                label: 'Vybrat spoj',
-                variant: PtButtonVariant.tonal,
-                icon: Icons.alt_route,
-                expand: true,
-                onPressed: busy ? null : () => _choose(context, ref),
+            if (userPicked)
+              PtButton(
+                label: 'Vybrat automaticky',
+                variant: PtButtonVariant.text,
+                icon: Icons.auto_mode,
+                onPressed: busy
+                    ? null
+                    : () => _controller(ref).apply(RefreshSegment(segment)),
+              )
+            else
+              PtButton(
+                label: 'Přehledat',
+                variant: PtButtonVariant.text,
+                icon: Icons.refresh,
+                onPressed: busy
+                    ? null
+                    : () => _controller(ref).apply(RefreshSegment(segment)),
               ),
-            ),
-            const SizedBox(width: Sp.xs),
-            PtButton(
-              label: 'Přehledat',
-              variant: PtButtonVariant.text,
-              icon: Icons.refresh,
-              onPressed: busy
-                  ? null
-                  : () => _controller(ref).apply(RefreshSegment(segment)),
-            ),
+            if (anyWanted)
+              PtButton(
+                label: 'Zrušit zadání',
+                variant: PtButtonVariant.text,
+                icon: Icons.undo,
+                onPressed: busy
+                    ? null
+                    : () => _controller(ref).apply(
+                          _homeward
+                              ? const ClearConstraints(
+                                  homeBy: true,
+                                  leaveAt: true,
+                                )
+                              : const ClearConstraints(
+                                  departAfter: true,
+                                  arriveBy: true,
+                                ),
+                        ),
+              ),
           ],
         ),
 
@@ -254,108 +260,33 @@ class _TravelSheet extends ConsumerWidget {
   static DateTime? _wall(DateTime? instant, Duration off) =>
       instant == null ? null : PlanItem.wallClockOf(instant, off);
 
-  Future<void> _choose(BuildContext context, WidgetRef ref) async {
+  Future<void> _choose(
+    BuildContext context,
+    WidgetRef ref,
+    TripPlan plan,
+    PlanState state,
+  ) async {
+    final Duration off = plan.zoneOffset;
+    final TravelOutline outline = outlineFor(plan.segment(segment));
+
+    // Vyhledávač se otevře tam, kde plán zrovna je. Začínat pokaždé v sedm
+    // ráno by znamenalo, že první, co člověk udělá, je oprava data.
+    final DateTime when = outline.localStart ??
+        _wall(_homeward ? plan.leaveAt : plan.departAfter, off) ??
+        plan.planDate ??
+        DateTime.now();
+
     final Journey? picked = await showJourneySheet(
       context,
       title: _homeward ? 'Spoje domů' : 'Spoje do cíle',
-      search: _controller(ref).alternatives(segment),
+      initialWhen: when,
+      firstDay: plan.planDate,
+      lastDay: state.context?.returnDate ?? plan.planDate,
+      lookup: (DateTime whenLocal, {required bool arriveBy}) => _controller(ref)
+          .alternatives(segment, whenLocal: whenLocal, arriveBy: arriveBy),
     );
     if (picked == null) return;
     await _controller(ref).apply(ChooseJourney(segment, picked));
-  }
-}
-
-/// Jeden čas, se kterým jde hýbat.
-///
-/// Šipky posouvají po čtvrthodině, klepnutí na hodnotu otevře přesný výběr.
-/// Čtvrthodina je kompromis: půlhodina přeskočí spoj, minuta by z posunu
-/// udělala třicet klepnutí.
-class _TimeField extends StatelessWidget {
-  const _TimeField({
-    required this.label,
-    required this.actual,
-    required this.wanted,
-    required this.wantedPrefix,
-    required this.enabled,
-    required this.onSet,
-  });
-
-  final String label;
-
-  /// Čas nalezeného spoje. To, co člověk čte.
-  final DateTime? actual;
-
-  /// Čas, který si člověk zadal. Null, dokud nic nezadal.
-  final DateTime? wanted;
-
-  /// „po" u odjezdu, „do" u příjezdu.
-  final String wantedPrefix;
-
-  final bool enabled;
-  final ValueChanged<DateTime> onSet;
-
-  static const Duration _step = Duration(minutes: 15);
-
-  @override
-  Widget build(BuildContext context) {
-    // Posouvá se od skutečného času; když spoj není, od zadání.
-    final DateTime? base = actual ?? wanted;
-    final bool differs = wanted != null &&
-        actual != null &&
-        wanted!.difference(actual!).inMinutes != 0;
-
-    return PtCard(
-      padding: const EdgeInsets.symmetric(horizontal: Sp.xs, vertical: Sp.xxs),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  label,
-                  style: context.texts.labelSmall
-                      ?.copyWith(color: context.colors.onSurfaceVariant),
-                ),
-                Text(
-                  base == null ? '—:—' : formatClock(base),
-                  style: context.texts.titleLarge,
-                ),
-                if (differs)
-                  Text(
-                    'zadáno: $wantedPrefix ${formatClock(wanted!)}',
-                    style: context.texts.labelSmall
-                        ?.copyWith(color: context.colors.primary),
-                  ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.remove),
-            tooltip: 'O čtvrt hodiny dřív',
-            onPressed: enabled && base != null
-                ? () => onSet(base.subtract(_step))
-                : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'O čtvrt hodiny později',
-            onPressed:
-                enabled && base != null ? () => onSet(base.add(_step)) : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.schedule),
-            tooltip: 'Zadat přesný čas',
-            onPressed: enabled
-                ? () async {
-                    final DateTime? picked = await pickLocalTime(context, base);
-                    if (picked != null) onSet(picked);
-                  }
-                : null,
-          ),
-        ],
-      ),
-    );
   }
 }
 

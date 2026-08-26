@@ -186,31 +186,44 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
   }
 
   /// Spoje pro ruční výběr. Nemění plán — jenom nabídne, z čeho vybrat.
-  Future<JourneySearch> alternatives(PlanSegment segment) async {
+  ///
+  /// [whenLocal] jsou nástěnné hodiny v zóně výletu, jak je zadal uživatel ve
+  /// vyhledávači. Bez něj se hledá podle toho, co je v plánu — to je stav při
+  /// otevření obrazovky.
+  Future<JourneySearch> alternatives(
+    PlanSegment segment, {
+    DateTime? whenLocal,
+    bool arriveBy = false,
+  }) async {
     final PlanContext? ctx = state.valueOrNull?.context;
     final TripPlan? plan = state.valueOrNull?.plan;
     if (ctx == null) return const JourneySearch.empty();
 
-    // „Vyrazíme v pět" přebíjí odjezd, který zrovna v plánu je: je to
-    // zadání, kdežto ten odjezd je jeho výsledek.
-    final DateTime? leaveAt = plan?.leaveAt;
-    final DateTime? departure = leaveAt ?? plan?.departureHome;
+    final bool homeward = segment == PlanSegment.homeward;
 
-    final JourneyQuery query = segment == PlanSegment.homeward
-        ? JourneyQuery(
-            origin: ctx.destination,
-            destination: ctx.origin,
-            when: departure ?? ctx.defaultHomeBy,
-            arriveBy: departure == null,
-            direction: PlanSegment.homeward,
-          )
-        : JourneyQuery(
-            origin: ctx.origin,
-            destination: ctx.destination,
-            when: plan?.departAfter ?? ctx.defaultDepartAfter,
-            arriveBy: false,
-            direction: PlanSegment.outbound,
-          );
+    // Výchozí čas hledání, když se uživatel na nic neptal. „Vyrazíme v pět"
+    // přebíjí odjezd, který zrovna v plánu je: je to zadání, kdežto ten
+    // odjezd je jeho výsledek.
+    final DateTime? current = homeward
+        ? (plan?.leaveAt ?? plan?.departureHome)
+        : (plan?.departAfter ?? plan?.startsAt);
+
+    final DateTime when = whenLocal != null
+        ? ctx.instant(whenLocal)
+        : (current ??
+            (homeward ? ctx.defaultHomeBy : ctx.defaultDepartAfter));
+
+    final bool by = whenLocal != null
+        ? arriveBy
+        : (homeward && current == null);
+
+    final JourneyQuery query = JourneyQuery(
+      origin: homeward ? ctx.destination : ctx.origin,
+      destination: homeward ? ctx.origin : ctx.destination,
+      when: when,
+      arriveBy: by,
+      direction: segment,
+    );
 
     final JourneySearch search = await ref
         .read(journeyRepositoryProvider)
