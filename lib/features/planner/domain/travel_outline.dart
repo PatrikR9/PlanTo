@@ -170,8 +170,10 @@ TravelOutline outlineFor(List<PlanItem> items) {
       case PlanItemKind.transport:
         {
           final String? track = item.detail['platform'] as String?;
-          final String from = item.fromName ?? item.titleParams['from'] ?? '';
-          final String to = item.toName ?? item.titleParams['to'] ?? '';
+          final String from =
+              _realName(item.fromName ?? item.titleParams['from']) ?? '';
+          final String to =
+              _realName(item.toName ?? item.titleParams['to']) ?? '';
 
           // Přestup na téže zastávce: doplní se odjezd do řádku, který tam
           // už je. Dva časy v jednom řádku jsou celý ten „naznač" — psát pod
@@ -179,13 +181,17 @@ TravelOutline outlineFor(List<PlanItem> items) {
           final int? at = lastStopIndex;
           final StopRow? last = at == null ? null : rows[at] as StopRow;
 
+          // Chůze mezi nástupišti téže zastávky se nepočítá jako přechod
+          // jinam: „Chlumec nad Cidlinou" dvakrát pod sebou vypadá jako chyba
+          // v datech, i když to chyba není. Minuty zůstávají v součtu pěší
+          // chůze, jen se z nich nestává řádek.
           if (at != null &&
               last != null &&
-              pendingWalk == 0 &&
               last.name.isNotEmpty &&
               last.name == from) {
             rows[at] = last._withDeparture(item.localStart, track);
             pendingWait = 0;
+            pendingWalk = 0;
           } else {
             flushLink();
             rows.add(
@@ -260,13 +266,23 @@ TravelOutline outlineFor(List<PlanItem> items) {
 /// Odkud se jde. „Odchod z domova" nemá zastávku — je to výchozí bod, ne
 /// místo v jízdním řádu, a nechat tam prázdno by rozbilo první řádek cesty.
 String _walkFrom(PlanItem walk) {
-  final String? named = walk.fromName ?? walk.titleParams['from'];
-  if (named != null && named.isNotEmpty) return named;
+  final String? named = _realName(walk.fromName ?? walk.titleParams['from']);
+  if (named != null) return named;
   return walk.titleKey == 'plan.leave_home' ? 'Odchod z domova' : 'Start';
 }
 
 String _walkTo(PlanItem walk) {
   if (walk.titleKey == 'plan.walk_home') return 'Doma';
-  final String? named = walk.toName ?? walk.titleParams['to'];
-  return named == null || named.isEmpty ? 'Cíl' : named;
+  return _realName(walk.toName ?? walk.titleParams['to']) ?? 'Cíl';
+}
+
+/// Vyhledávač pojmenovává krajní body trasy `START` a `END`, protože to
+/// nejsou zastávky, ale souřadnice, které jsme mu poslali. Vypsat je na osu
+/// znamená ukázat člověku vnitřní název cizí služby místo místa, odkud jede.
+String? _realName(String? raw) {
+  final String name = (raw ?? '').trim();
+  if (name.isEmpty) return null;
+  final String upper = name.toUpperCase();
+  if (upper == 'START' || upper == 'END' || upper == 'VIA') return null;
+  return name;
 }

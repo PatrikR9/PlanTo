@@ -730,3 +730,47 @@ jedna dojede „po 16:52", vypadají jako chyba v datech.
 Ubyla i dvě drobnosti, které kazily čitelnost: `formatSpan` píše `6 h 36 min`
 místo `6,6 h`, a výčet linek se zkracuje na tři (`Os 27813 · 000513 · 830800 ·
 846` byl řádek, ze kterého si nikdo nic neodvodil).
+
+---
+
+## 21. Co ukázalo proklikání v prohlížeči
+
+Testovací výlet Praha → Špindlerův Mlýn, sobota–neděle. Vícedenní plán vyšel
+správně (cesta zpět v neděli, u časů se píše den), ale vylezlo osm věcí:
+
+**1. Přidání bodu posunulo návrat na pondělí.** Engine vyplňoval pobyt jedním
+blokem „Program" přes celý pobyt. Nový bod se proto zařadil až za něj, tedy na
+konec pobytu — a odjezd domů se posunul za něj. U sobotně-nedělního výletu
+vyšel návrat v pondělí ve 4:59.
+
+Ten blok zůstal, ale je to **zástupné místo**, ne plán: `isStayPlaceholder`
+ho pozná a první vlastní bod ho nahradí.
+
+**2. Návrat směl utéct z termínu.** I bez zástupného bloku by dost dlouhý
+program odjezd odsunul za poslední den. `_reflow` proto bere konec
+posledního dne jako mez: když ji program přeroste, ustoupí program.
+
+**3. `START` a `END` na ose.** Vyhledávač takhle pojmenovává krajní body
+trasy, protože to nejsou zastávky, ale souřadnice, které jsme mu poslali.
+`_realName` je vyhazuje.
+
+**4. Přestup na téže zastávce byl dvakrát.** „Chlumec nad Cidlinou" a pod tím
+znovu „Chlumec nad Cidlinou", protože mezi nástupišti byly 2 minuty chůze.
+Teď se slučuje podle jména bez ohledu na chůzi; minuty zůstávají v součtu.
+
+**5. `1,2 h`, `1 den 6,8 h`.** Desetinná čárka je v pořádku u délky výletu,
+kde se rozhoduje mezi dvěma a třemi dny. U jízdního řádu ne — `formatSpan`
+teď píše `1 h 14 min` a `1 den 6 h 48 min`.
+
+**6. Chybějící den na ose programu.** Bod v neděli měl u sebe jen `17:34`.
+
+**7. „Změněno přepočtem" hned po sestavení.** Při prvním sestavení je změněné
+všechno, takže to svítilo u každého řádku. Zvýraznění hlásí tichou změnu
+něčeho, co už tam bylo — na prázdném plánu není co hlásit.
+
+**8. Panel nešel na webu zavřít.** Na telefonu se stáhne dolů, myší ne.
+Přibyl křížek.
+
+Plus: „Program v Špindlerův Mlýn,aut.st." je špatně česky a jméno zastávky
+stejně není místo, kde se program odehrává — zůstalo jen „Program".
+

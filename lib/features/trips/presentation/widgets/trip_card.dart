@@ -71,7 +71,7 @@ class _NextAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int waiting = trip.awaitingCalendarCount;
+    final int shared = trip.calendarSharedCount;
     final bool decided = trip.status == TripStatus.dateLocked ||
         trip.status == TripStatus.confirmed;
 
@@ -87,9 +87,14 @@ class _NextAction extends StatelessWidget {
       icon = Icons.person_add_alt;
       label = 'Pozvěte ostatní';
       colour = context.colors.onSurfaceVariant;
-    } else if (waiting > 0) {
-      icon = Icons.hourglass_empty;
-      label = 'Čekáme na $waiting z ${trip.participantCount}';
+    } else if (!trip.canProposeDates) {
+      // „Čekáme na 2 z 5" tady bylo do M15. Od změny, kdy se do dostupnosti
+      // počítají jen lidé, kteří ji zadali, je to věta o nikom: na nikoho se
+      // nečeká, jen je zatím málo odpovědí na to, aby šlo něco navrhnout.
+      // Rozdíl není kosmetický — čekání vypadá jako překážka, o které
+      // rozhoduje někdo jiný.
+      icon = Icons.how_to_reg_outlined;
+      label = 'Dostupnost zadali $shared z ${trip.participantCount}';
       colour = context.planto.weatherFair;
     } else {
       icon = Icons.auto_awesome;

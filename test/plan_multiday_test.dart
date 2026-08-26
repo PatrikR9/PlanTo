@@ -232,6 +232,78 @@ void main() {
       );
     });
 
+    test('první vlastní bod nahradí zástupný blok programu', () {
+      final TripPlan built = engine
+          .apply(
+            emptyPlan(ctx),
+            const BuildPlan(),
+            ctx,
+            outbound: found(outboundJourney()),
+            homeward: found(homewardJourney()),
+          )
+          .plan;
+
+      final List<PlanItem> before = built.segment(PlanSegment.stay);
+      expect(before.length, 1);
+      expect(isStayPlaceholder(before.single), isTrue);
+
+      final PlanItem mine = PlanItem.atLocal(
+        id: newPlanItemId(),
+        kind: PlanItemKind.activity,
+        segment: PlanSegment.stay,
+        localStart: wall(12, 0),
+        localEnd: wall(15, 0),
+        zoneOffset: kTestOffset,
+        titleKey: 'plan.named',
+        titleParams: const <String, String>{'title': 'Turistika'},
+        source: PlanItemSource.userCreated,
+      );
+
+      final TripPlan after = engine.apply(built, AddItem(mine), ctx).plan;
+      final List<PlanItem> stay = after.segment(PlanSegment.stay);
+
+      expect(
+        stay.where(isStayPlaceholder),
+        isEmpty,
+        reason: 'zástupné místo zmizí, jakmile na něm něco je',
+      );
+      expect(stay.length, 1);
+      expect(
+        stay.single.localStart,
+        wall(12, 0),
+        reason: 'vlastní bod se nemá odsunout až za prázdné místo',
+      );
+    });
+
+    test('program nesmí posunout návrat za poslední den termínu', () {
+      final PlanContext two = testContext(
+        returnDate: DateTime(2026, 9, 13),
+        dayEndLocal: DateTime(2026, 9, 13, 21, 0),
+      );
+      final TripPlan built = engine
+          .apply(
+            emptyPlan(two),
+            const BuildPlan(),
+            two,
+            outbound: found(outboundJourney()),
+            homeward: found(homewardJourney()),
+          )
+          .plan;
+
+      final PlanItem placeholder = built.segment(PlanSegment.stay).single;
+      final ReplanOutcome huge = engine.apply(
+        built,
+        ResizeItem(placeholder.id, const Duration(days: 2)),
+        two,
+      );
+
+      expect(
+        huge.followUp.homeward,
+        isNull,
+        reason: 'návrat v pondělí u sobotního výletu není přepočet, ale chyba',
+      );
+    });
+
     test('délka pobytu je od příjezdu po odjezd, ne po návrat domů', () {
       final TripPlan p = engine
           .apply(

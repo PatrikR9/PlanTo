@@ -17,6 +17,7 @@ import '../plan_strings.dart';
 class PlanTimeline extends StatelessWidget {
   const PlanTimeline({
     required this.items,
+    required this.firstDay,
     required this.changedIds,
     required this.onTapItem,
     required this.onAddAt,
@@ -25,6 +26,11 @@ class PlanTimeline extends StatelessWidget {
 
   /// Položky jednoho úseku v chronologickém pořadí.
   final List<PlanItem> items;
+
+  /// První den výletu. U vícedenního pobytu se ke každému času připíše den —
+  /// „17:34" u bodu, který je až v neděli, je informace, podle které někdo
+  /// přijde o den dřív.
+  final DateTime? firstDay;
 
   /// Co se posledním přepočtem pohnulo. Tichá změna je přesně to, co tenhle
   /// produkt dělat nesmí.
@@ -47,6 +53,7 @@ class PlanTimeline extends StatelessWidget {
       rows.add(
         _TimelineRow(
           item: item,
+          firstDay: firstDay,
           isFirst: i == 0,
           isLast: i == items.length - 1,
           isChanged: changedIds.contains(item.id),
@@ -79,6 +86,7 @@ class PlanTimeline extends StatelessWidget {
 class _TimelineRow extends StatelessWidget {
   const _TimelineRow({
     required this.item,
+    required this.firstDay,
     required this.isFirst,
     required this.isLast,
     required this.isChanged,
@@ -86,6 +94,7 @@ class _TimelineRow extends StatelessWidget {
   });
 
   final PlanItem item;
+  final DateTime? firstDay;
   final bool isFirst;
   final bool isLast;
   final bool isChanged;
@@ -104,18 +113,18 @@ class _TimelineRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 46,
+            width: 56,
             child: Padding(
               padding: const EdgeInsets.only(top: Sp.sm),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
                   Text(
-                    formatClock(item.localStart),
+                    clockWithDay(item.localStart, firstDay),
                     style: context.texts.labelLarge,
                   ),
                   Text(
-                    formatClock(item.localEnd),
+                    clockWithDay(item.localEnd, firstDay),
                     style: context.texts.labelSmall?.copyWith(
                       color: context.colors.onSurfaceVariant,
                     ),
@@ -288,7 +297,7 @@ class _GapRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 46, bottom: Sp.xs),
+      padding: const EdgeInsets.only(left: 56, bottom: Sp.xs),
       child: Row(
         children: <Widget>[
           const SizedBox(width: 28),

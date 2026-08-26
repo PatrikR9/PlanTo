@@ -9,6 +9,7 @@ import '../../../trips/domain/trip.dart';
 import '../../domain/plan_change.dart';
 import '../../domain/plan_context.dart';
 import '../../domain/plan_item.dart';
+import '../../domain/replanner.dart' show isStayPlaceholder;
 import '../../domain/program_suggestion.dart';
 import '../../domain/trip_plan.dart';
 import '../plan_controller.dart';
@@ -124,6 +125,7 @@ class _Body extends ConsumerWidget {
         else
           PlanTimeline(
             items: items,
+            firstDay: plan.planDate,
             changedIds: state.changedIds,
             onTapItem: (PlanItem item) => _openItem(context, ref, item),
             onAddAt: (DateTime start, Duration length) =>
@@ -164,7 +166,12 @@ class _Body extends ConsumerWidget {
   /// uživatele by znamenalo hádat, kterou z nich myslel. Za poslední bod je
   /// jediné místo, které je pokaždé to očekávané.
   DateTime? _nextFreeStart(TripPlan plan) {
-    final List<PlanItem> items = plan.segment(PlanSegment.stay);
+    // Zástupný blok se nepočítá — je to prázdné místo, ne program. Kdyby se
+    // počítal, první přidaný bod by skončil až na konci pobytu.
+    final List<PlanItem> items = plan
+        .segment(PlanSegment.stay)
+        .where((PlanItem i) => !isStayPlaceholder(i))
+        .toList();
     if (items.isEmpty) return plan.lastOutbound?.localEnd;
     return items.last.localEnd;
   }

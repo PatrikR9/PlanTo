@@ -148,6 +148,11 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
         changed.addAll(outcome.changedIds);
       }
 
+      // Při prvním sestavení je „změněné" úplně všechno, takže by u každého
+      // řádku svítilo „Změněno přepočtem". Zvýraznění má hlásit tichou změnu
+      // něčeho, co už tam bylo — na prázdném plánu není co ohlásit.
+      if (before.items.isEmpty) changed.clear();
+
       // Nové položky ještě nemají ID — přiděluje je server. Zvýraznění se
       // proto přenese přes pořadí: `save_trip_plan` ukládá položky v tom
       // pořadí, v jakém přišly, a `trip_plan` je v něm vrací.

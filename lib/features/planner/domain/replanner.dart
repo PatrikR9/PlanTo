@@ -31,6 +31,15 @@ import 'plan_item.dart';
 import 'plan_problem.dart';
 import 'trip_plan.dart';
 
+/// Zástupný blok programu, který engine vyrobil sám, aby pobyt nebyl prázdný.
+///
+/// Není to plán skupiny — je to prázdné místo, které na plán čeká. Pozná se
+/// podle toho, že ho vyrobil engine a nese výchozí klíč titulku.
+bool isStayPlaceholder(PlanItem i) =>
+    i.segment == PlanSegment.stay &&
+    i.source == PlanItemSource.generated &&
+    i.titleKey == 'plan.activity_default';
+
 /// Proč se úsek hledá znovu. Rozhoduje, jestli se smí přepsat zámek.
 enum SegmentIntent {
   /// Uživatel řekl přímo o tomhle úseku „najdi jiný spoj". Přebíjí zámek
@@ -427,7 +436,13 @@ class Replanner {
 
       case AddItem(item: final PlanItem added):
         {
-          p = p.copyWith(items: <PlanItem>[...p.items, added]);
+          // První vlastní bod nahradí zástupný blok. Nechat oba znamená, že
+          // se program „Turistika" naplánuje až za prázdné místo, které na
+          // něj čekalo.
+          final List<PlanItem> kept = added.segment == PlanSegment.stay
+              ? p.items.where((PlanItem i) => !isStayPlaceholder(i)).toList()
+              : p.items;
+          p = p.copyWith(items: <PlanItem>[...kept, added]);
           changed.add(added.id);
         }
 
@@ -786,6 +801,13 @@ class Replanner {
 
   /// Doplní program, když v cíli nic není. Nemaže a nepřepisuje: existující
   /// aktivity jsou to nejcennější, co v plánu je.
+  /// Zástupný blok programu přes celý pobyt.
+  ///
+  /// Není to plán, je to místo, které čeká na vyplnění — proto
+  /// [PlanConfidence.rough] a proto zmizí, jakmile si člověk založí první
+  /// vlastní bod ([isStayPlaceholder]). Bez toho by nový bod skončil až za
+  /// ním, tedy na konci pobytu, a posunul by odjezd domů: přidat „Turistika
+  /// 3 h" k dvoudennímu výletu znamenalo návrat v pondělí ve 4:59.
   TripPlan _fillStay(TripPlan p, PlanContext ctx, Set<String> changed) {
     if (p.segment(PlanSegment.stay).isNotEmpty) return p;
 
@@ -886,8 +908,15 @@ class Replanner {
     //
     // Pravidlo je: co uživatel řekl, drží. Ustoupit má program, který
     // vyplnil engine.
+    // Konec použitelné části posledního dne termínu. Za něj se návrat posouvat
+    // nesmí: výlet na sobotu a neděli, který končí příjezdem domů v pondělí
+    // ráno, není přepočet, ale chyba. Když program přeroste i tuhle mez,
+    // ustoupí program.
+    final bool pastLastDay = stayEnd.isAfter(ctx.instant(ctx.dayEndLocal));
+
     final bool homewardFixed = p.leaveAt != null ||
         p.homeBy != null ||
+        pastLastDay ||
         p.segment(PlanSegment.homeward).any(
           (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
         );

@@ -214,8 +214,20 @@ class _JourneySearchSheetState extends State<_JourneySearchSheet> {
       controller: widget.controller,
       padding: const EdgeInsets.fromLTRB(Sp.lg, 0, Sp.lg, Sp.xl),
       children: <Widget>[
-        Text(widget.title, style: context.texts.titleMedium),
-        const SizedBox(height: Sp.sm),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(widget.title, style: context.texts.titleMedium),
+            ),
+            // Na telefonu se panel zavírá stažením dolů, na myši ne.
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Zavřít',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+        const SizedBox(height: Sp.xs),
 
         // --- zadání ---------------------------------------------------------
         SegmentedButton<bool>(

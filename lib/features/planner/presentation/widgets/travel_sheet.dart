@@ -123,6 +123,13 @@ class _TravelSheet extends ConsumerWidget {
                 style: context.texts.labelSmall
                     ?.copyWith(color: context.colors.onSurfaceVariant),
               ),
+            // Na telefonu se panel zavírá stažením dolů, na myši ne — a bez
+            // křížku z něj na webu není cesta ven.
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Zavřít',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ],
         ),
         const SizedBox(height: Sp.sm),
@@ -385,7 +392,7 @@ class _RideLine extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    formatLength(item.duration.inMinutes),
+                    formatSpan(item.duration.inMinutes),
                     style: context.texts.labelSmall
                         ?.copyWith(color: context.colors.onSurfaceVariant),
                   ),

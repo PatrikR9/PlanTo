@@ -41,10 +41,10 @@ String planItemTitle(PlanItem item) {
         return where == null || where.isEmpty ? 'Přestup' : 'Přestup — $where';
       }
     case 'plan.activity_default':
-      {
-        final String? place = p['place'];
-        return place == null || place.isEmpty ? 'Program' : 'Program v $place';
-      }
+      // Bez místa. „Program v Špindlerův Mlýn,aut.st." je špatně česky
+      // (7. pád se ze jména zastávky vyskloňovat nedá) a jméno zastávky
+      // s „,aut.st." na konci stejně není místo, kde se program odehrává.
+      return 'Program';
     default:
       {
         final String? custom = p['title']?.trim();
@@ -102,11 +102,19 @@ String? planItemSubtitle(PlanItem item) {
 /// nepřevede — jízdní řády se čtou v hodinách a minutách.
 String formatSpan(int minutes) {
   if (minutes < 0) return formatLength(minutes);
-  if (minutes >= 1440) return formatDuration(minutes);
   if (minutes < 60) return '$minutes min';
-  final int h = minutes ~/ 60;
-  final int m = minutes % 60;
-  return m == 0 ? '$h h' : '$h h $m min';
+  if (minutes < 1440) {
+    final int h = minutes ~/ 60;
+    final int m = minutes % 60;
+    return m == 0 ? '$h h' : '$h h $m min';
+  }
+  // `formatDuration` dává „1 den 6,8 h" — desetinná čárka je v pořádku
+  // u délky výletu, kde se rozhoduje mezi dvěma a třemi dny. U pobytu je to
+  // číslo, které si nikdo nepřevede na hodiny a minuty.
+  final int days = minutes ~/ 1440;
+  final int rest = minutes % 1440;
+  final String head = '$days ${pluralDays(days)}';
+  return rest == 0 ? head : '$head ${formatSpan(rest)}';
 }
 
 /// `9:42`, nebo `ne 9:42`, když ten čas není v první den výletu.
