@@ -1,0 +1,1200 @@
+
+═══ supabase db start ═══
+Starting database...
+17.6.1.147: Pulling from supabase/postgres
+e6f31ffc071e: Pulling fs layer
+4f6b6b1a4609: Pulling fs layer
+dc3b143c9965: Pulling fs layer
+6fecfa41ecdf: Pulling fs layer
+36855527ad56: Pulling fs layer
+57f17c555a1d: Pulling fs layer
+22657ce3916b: Pulling fs layer
+4a8a948a20a1: Pulling fs layer
+c69c883788c2: Pulling fs layer
+402a657037f7: Pulling fs layer
+1919761c6087: Pulling fs layer
+c1982089289d: Pulling fs layer
+e8d660c766b4: Pulling fs layer
+6606a3b48548: Pulling fs layer
+4b94d6725167: Pulling fs layer
+419968c5d4ec: Pulling fs layer
+b3aa69d42fb3: Pulling fs layer
+8a1a455d6c9c: Pulling fs layer
+56e1cbcf74bd: Pulling fs layer
+6fc35583eb7d: Pulling fs layer
+47d3c811240c: Pulling fs layer
+590cc424bef4: Pulling fs layer
+3afc885a989e: Pulling fs layer
+949ccf96ee0e: Pulling fs layer
+601d055fccd0: Pulling fs layer
+1a628653eb69: Pulling fs layer
+65eebe2699d7: Pulling fs layer
+769605400bd0: Pulling fs layer
+95c59282d779: Pulling fs layer
+6fecfa41ecdf: Waiting
+36855527ad56: Waiting
+1919761c6087: Waiting
+b3aa69d42fb3: Waiting
+c1982089289d: Waiting
+8a1a455d6c9c: Waiting
+e8d660c766b4: Waiting
+56e1cbcf74bd: Waiting
+6606a3b48548: Waiting
+6fc35583eb7d: Waiting
+4b94d6725167: Waiting
+47d3c811240c: Waiting
+419968c5d4ec: Waiting
+590cc424bef4: Waiting
+57f17c555a1d: Waiting
+3afc885a989e: Waiting
+22657ce3916b: Waiting
+949ccf96ee0e: Waiting
+601d055fccd0: Waiting
+1a628653eb69: Waiting
+95c59282d779: Waiting
+65eebe2699d7: Waiting
+4a8a948a20a1: Waiting
+769605400bd0: Waiting
+c69c883788c2: Waiting
+402a657037f7: Waiting
+dc3b143c9965: Verifying Checksum
+dc3b143c9965: Download complete
+e6f31ffc071e: Download complete
+36855527ad56: Download complete
+4f6b6b1a4609: Download complete
+e6f31ffc071e: Pull complete
+22657ce3916b: Verifying Checksum
+22657ce3916b: Download complete
+4a8a948a20a1: Verifying Checksum
+4a8a948a20a1: Download complete
+57f17c555a1d: Download complete
+c69c883788c2: Verifying Checksum
+c69c883788c2: Download complete
+402a657037f7: Verifying Checksum
+402a657037f7: Download complete
+1919761c6087: Verifying Checksum
+1919761c6087: Download complete
+c1982089289d: Verifying Checksum
+c1982089289d: Download complete
+e8d660c766b4: Download complete
+6606a3b48548: Verifying Checksum
+6606a3b48548: Download complete
+4b94d6725167: Verifying Checksum
+4b94d6725167: Download complete
+419968c5d4ec: Verifying Checksum
+419968c5d4ec: Download complete
+8a1a455d6c9c: Download complete
+b3aa69d42fb3: Verifying Checksum
+b3aa69d42fb3: Download complete
+56e1cbcf74bd: Verifying Checksum
+56e1cbcf74bd: Download complete
+6fc35583eb7d: Verifying Checksum
+6fc35583eb7d: Download complete
+47d3c811240c: Verifying Checksum
+47d3c811240c: Download complete
+590cc424bef4: Download complete
+3afc885a989e: Verifying Checksum
+3afc885a989e: Download complete
+949ccf96ee0e: Download complete
+601d055fccd0: Verifying Checksum
+601d055fccd0: Download complete
+1a628653eb69: Verifying Checksum
+1a628653eb69: Download complete
+65eebe2699d7: Verifying Checksum
+65eebe2699d7: Download complete
+769605400bd0: Download complete
+95c59282d779: Verifying Checksum
+95c59282d779: Download complete
+4f6b6b1a4609: Pull complete
+dc3b143c9965: Pull complete
+6fecfa41ecdf: Verifying Checksum
+6fecfa41ecdf: Download complete
+6fecfa41ecdf: Pull complete
+36855527ad56: Pull complete
+57f17c555a1d: Pull complete
+22657ce3916b: Pull complete
+4a8a948a20a1: Pull complete
+c69c883788c2: Pull complete
+402a657037f7: Pull complete
+1919761c6087: Pull complete
+c1982089289d: Pull complete
+e8d660c766b4: Pull complete
+6606a3b48548: Pull complete
+4b94d6725167: Pull complete
+419968c5d4ec: Pull complete
+b3aa69d42fb3: Pull complete
+8a1a455d6c9c: Pull complete
+56e1cbcf74bd: Pull complete
+6fc35583eb7d: Pull complete
+47d3c811240c: Pull complete
+590cc424bef4: Pull complete
+3afc885a989e: Pull complete
+949ccf96ee0e: Pull complete
+601d055fccd0: Pull complete
+1a628653eb69: Pull complete
+65eebe2699d7: Pull complete
+769605400bd0: Pull complete
+95c59282d779: Pull complete
+Digest: sha256:ac581882596ed0e46937ea6dd53a627d09f53e005d7264c2082a7ff7b62eaaca
+Status: Downloaded newer image for ghcr.io/supabase/postgres:17.6.1.147
+ghcr.io/supabase/postgres:17.6.1.147
+Initialising schema...
+v2.129.3: Pulling from supabase/realtime
+062e450697fa: Pulling fs layer
+aadc1df55248: Pulling fs layer
+07f6c7f37eb7: Pulling fs layer
+219bccc39f10: Pulling fs layer
+9d445f162b30: Pulling fs layer
+f066bdfa8565: Pulling fs layer
+0ced55f3e717: Pulling fs layer
+e39a20378c07: Pulling fs layer
+4683247db99b: Pulling fs layer
+ac006f7e52ef: Pulling fs layer
+62d958520b0b: Pulling fs layer
+219bccc39f10: Waiting
+4f4fb700ef54: Pulling fs layer
+9d445f162b30: Waiting
+f066bdfa8565: Waiting
+0ced55f3e717: Waiting
+e39a20378c07: Waiting
+4683247db99b: Waiting
+ac006f7e52ef: Waiting
+62d958520b0b: Waiting
+4f4fb700ef54: Waiting
+07f6c7f37eb7: Verifying Checksum
+07f6c7f37eb7: Download complete
+062e450697fa: Verifying Checksum
+062e450697fa: Download complete
+219bccc39f10: Verifying Checksum
+219bccc39f10: Download complete
+9d445f162b30: Verifying Checksum
+9d445f162b30: Download complete
+aadc1df55248: Verifying Checksum
+aadc1df55248: Download complete
+f066bdfa8565: Verifying Checksum
+f066bdfa8565: Download complete
+e39a20378c07: Download complete
+0ced55f3e717: Download complete
+4683247db99b: Verifying Checksum
+4683247db99b: Download complete
+62d958520b0b: Verifying Checksum
+62d958520b0b: Download complete
+4f4fb700ef54: Verifying Checksum
+4f4fb700ef54: Download complete
+ac006f7e52ef: Verifying Checksum
+ac006f7e52ef: Download complete
+062e450697fa: Pull complete
+aadc1df55248: Pull complete
+07f6c7f37eb7: Pull complete
+219bccc39f10: Pull complete
+9d445f162b30: Pull complete
+f066bdfa8565: Pull complete
+0ced55f3e717: Pull complete
+e39a20378c07: Pull complete
+4683247db99b: Pull complete
+ac006f7e52ef: Pull complete
+62d958520b0b: Pull complete
+4f4fb700ef54: Pull complete
+Digest: sha256:3211f8ebd59edcd0aa772186f1c8249c82c6b1ae5565f40dedb7aa93e951fe37
+Status: Downloaded newer image for ghcr.io/supabase/realtime:v2.129.3
+ghcr.io/supabase/realtime:v2.129.3
+v1.67.15: Pulling from supabase/storage-api
+e6f31ffc071e: Already exists
+16733d1099a5: Pulling fs layer
+09ddda476dba: Pulling fs layer
+0d8aa8e026f1: Pulling fs layer
+d2f04496a183: Pulling fs layer
+52cd27cac02e: Pulling fs layer
+79764ef34541: Pulling fs layer
+30271c513b2a: Pulling fs layer
+62e0f0677eec: Pulling fs layer
+0820d4270b55: Pulling fs layer
+0d0954e41d5f: Pulling fs layer
+62aead8ca551: Pulling fs layer
+6732ca920747: Pulling fs layer
+f37dd338cb6d: Pulling fs layer
+79764ef34541: Waiting
+30271c513b2a: Waiting
+62e0f0677eec: Waiting
+0820d4270b55: Waiting
+0d0954e41d5f: Waiting
+62aead8ca551: Waiting
+6732ca920747: Waiting
+f37dd338cb6d: Waiting
+d2f04496a183: Waiting
+52cd27cac02e: Waiting
+0d8aa8e026f1: Verifying Checksum
+0d8aa8e026f1: Download complete
+09ddda476dba: Verifying Checksum
+09ddda476dba: Download complete
+52cd27cac02e: Verifying Checksum
+52cd27cac02e: Download complete
+79764ef34541: Verifying Checksum
+79764ef34541: Download complete
+16733d1099a5: Verifying Checksum
+16733d1099a5: Download complete
+30271c513b2a: Download complete
+0820d4270b55: Verifying Checksum
+0820d4270b55: Download complete
+62e0f0677eec: Verifying Checksum
+62e0f0677eec: Download complete
+d2f04496a183: Verifying Checksum
+d2f04496a183: Download complete
+62aead8ca551: Verifying Checksum
+62aead8ca551: Download complete
+6732ca920747: Download complete
+f37dd338cb6d: Verifying Checksum
+f37dd338cb6d: Download complete
+0d0954e41d5f: Verifying Checksum
+0d0954e41d5f: Download complete
+16733d1099a5: Pull complete
+09ddda476dba: Pull complete
+0d8aa8e026f1: Pull complete
+d2f04496a183: Pull complete
+52cd27cac02e: Pull complete
+79764ef34541: Pull complete
+30271c513b2a: Pull complete
+62e0f0677eec: Pull complete
+0820d4270b55: Pull complete
+0d0954e41d5f: Pull complete
+62aead8ca551: Pull complete
+6732ca920747: Pull complete
+f37dd338cb6d: Pull complete
+Digest: sha256:545a5a40307a75a398417e0c74644c8e13afde3146a1252b66ab829db0a8191c
+Status: Downloaded newer image for ghcr.io/supabase/storage-api:v1.67.15
+ghcr.io/supabase/storage-api:v1.67.15
+v2.194.0: Pulling from supabase/gotrue
+55afa1ecc21d: Already exists
+565df2d910df: Pulling fs layer
+dc286a8aa197: Pulling fs layer
+ba68bd15f292: Pulling fs layer
+2a8ba8ff1218: Pulling fs layer
+90c8ace70fc4: Pulling fs layer
+2a8ba8ff1218: Waiting
+90c8ace70fc4: Waiting
+565df2d910df: Verifying Checksum
+565df2d910df: Download complete
+dc286a8aa197: Verifying Checksum
+dc286a8aa197: Download complete
+565df2d910df: Pull complete
+2a8ba8ff1218: Verifying Checksum
+2a8ba8ff1218: Download complete
+90c8ace70fc4: Verifying Checksum
+90c8ace70fc4: Download complete
+ba68bd15f292: Verifying Checksum
+ba68bd15f292: Download complete
+dc286a8aa197: Pull complete
+ba68bd15f292: Pull complete
+2a8ba8ff1218: Pull complete
+90c8ace70fc4: Pull complete
+Digest: sha256:2b352c02adf11a2025cd5993c246ef85db73743553c39194d2b1862d1cc4d1fd
+Status: Downloaded newer image for ghcr.io/supabase/gotrue:v2.194.0
+ghcr.io/supabase/gotrue:v2.194.0
+Seeding globals from roles.sql...
+Applying migration 20260728100000_init.sql...
+Applying migration 20260728100100_rls.sql...
+Applying migration 20260728100200_availability.sql...
+Applying migration 20260728100300_auth.sql...
+Applying migration 20260728100400_trips_api.sql...
+Applying migration 20260728100500_invites.sql...
+Applying migration 20260730120000_m5_dates.sql...
+Applying migration 20260731090000_granularity.sql...
+Applying migration 20260801090000_weather.sql...
+Applying migration 20260802090000_ical_feeds.sql...
+Applying migration 20260803090000_transport.sql...
+Applying migration 20260804090000_busy_write_rpc.sql...
+Applying migration 20260804120000_costs.sql...
+Applying migration 20260804140000_packing.sql...
+Applying migration 20260804140100_packing_seed.sql...
+Applying migration 20260804160000_activities.sql...
+Applying migration 20260808090000_transit_stops.sql...
+Applying migration 20260808100000_transport_search.sql...
+Applying migration 20260813090000_m13_flexible.sql...
+Applying migration 20260814090000_google_calendar.sql...
+Applying migration 20260821120000_trip_members.sql...
+Applying migration 20260821140000_local_time.sql...
+Applying migration 20260821160000_activities_expand.sql...
+Applying migration 20260824090000_plan_timeline.sql...
+Applying migration 20260825090000_availability_answered_only.sql...
+Applying migration 20260825120000_plan_multiday.sql...
+WARN: no files matched pattern: supabase/seed.sql
+[ok] supabase db start
+
+═══ supabase db lint ═══
+Connecting to local database...
+Linting schema: extensions
+Linting schema: public
+[
+  {
+    "function": "public.st_findextent",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "cannot determinate a result of dynamic SQL",
+        "statement": {
+          "lineNumber": "8",
+          "text": "FOR over EXECUTE statement"
+        },
+        "hint": "Don't use dynamic SQL and record type together, when you would check function.",
+        "detail": "There is a risk of related false alarms.",
+        "sqlState": "00000"
+      },
+      {
+        "level": "error",
+        "message": "record \"myrec\" is not assigned yet",
+        "statement": {
+          "lineNumber": "9",
+          "text": "RETURN"
+        },
+        "detail": "The tuple structure of a not-yet-assigned record is indeterminate.",
+        "context": "SQL expression \"myrec.extent\"",
+        "sqlState": "55000"
+      }
+    ]
+  },
+  {
+    "function": "public.st_findextent",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "cannot determinate a result of dynamic SQL",
+        "statement": {
+          "lineNumber": "8",
+          "text": "FOR over EXECUTE statement"
+        },
+        "hint": "Don't use dynamic SQL and record type together, when you would check function.",
+        "detail": "There is a risk of related false alarms.",
+        "sqlState": "00000"
+      },
+      {
+        "level": "error",
+        "message": "record \"myrec\" is not assigned yet",
+        "statement": {
+          "lineNumber": "9",
+          "text": "RETURN"
+        },
+        "detail": "The tuple structure of a not-yet-assigned record is indeterminate.",
+        "context": "SQL expression \"myrec.extent\"",
+        "sqlState": "55000"
+      }
+    ]
+  },
+  {
+    "function": "public.populate_geometry_columns",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "unused variable \"gc\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning",
+        "message": "unused variable \"gsrid\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning",
+        "message": "unused variable \"gndims\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning",
+        "message": "unused variable \"gtype\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning",
+        "message": "unused variable \"query\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning",
+        "message": "unused variable \"gc_is_valid\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "never read variable \"stale\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.populate_geometry_columns",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "cannot determinate a result of dynamic SQL",
+        "statement": {
+          "lineNumber": "47",
+          "text": "EXECUTE"
+        },
+        "hint": "Don't use dynamic SQL and record type together, when you would check function.",
+        "detail": "There is a risk of related false alarms.",
+        "sqlState": "00000"
+      },
+      {
+        "level": "error",
+        "message": "record \"gc\" is not assigned yet",
+        "statement": {
+          "lineNumber": "55",
+          "text": "assignment"
+        },
+        "detail": "The tuple structure of a not-yet-assigned record is indeterminate.",
+        "context": "PL/pgSQL assignment \"gsrid := gc.srid\"",
+        "sqlState": "55000"
+      }
+    ]
+  },
+  {
+    "function": "public.addgeometrycolumn",
+    "issues": [
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "28",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "34",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "39",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "51",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "70",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "88",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning",
+        "message": "unused variable \"rec\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "never read variable \"sr\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unused parameter \"catalog_name\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.addgeometrycolumn",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "routine is marked as STABLE, but expression is VOLATILE",
+        "statement": {
+          "lineNumber": "5",
+          "text": "SQL statement"
+        },
+        "hint": "When you fix this issue, please, recheck other functions that uses this function.",
+        "detail": "there is a risk of unwanted behave",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.dropgeometrycolumn",
+    "issues": [
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "34",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "never read variable \"myrec\"",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unused parameter \"catalog_name\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.dropgeometrytable",
+    "issues": [
+      {
+        "level": "warning extra",
+        "message": "unused parameter \"catalog_name\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.updategeometrysrid",
+    "issues": [
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "36",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unreachable code",
+        "statement": {
+          "lineNumber": "43",
+          "text": "RETURN"
+        },
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "unused parameter \"catalogn_name\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.get_proj4_from_srid",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "routine is marked as IMMUTABLE, but expression is STABLE",
+        "statement": {
+          "lineNumber": "3",
+          "text": "RETURN"
+        },
+        "hint": "When you fix this issue, please, recheck other functions that uses this function.",
+        "detail": "there is a risk of unwanted behave",
+        "sqlState": "00000"
+      },
+      {
+        "level": "warning extra",
+        "message": "expression is not pure expression",
+        "statement": {
+          "lineNumber": "3",
+          "text": "RETURN"
+        },
+        "query": {
+          "position": "1",
+          "text": "proj4text::text FROM public.spatial_ref_sys WHERE srid= $1"
+        },
+        "hint": "Maybe you forgot to use a semicolon.",
+        "detail": "there is a possibility of unwanted behave",
+        "sqlState": "42601"
+      }
+    ]
+  },
+  {
+    "function": "public.postgis_full_version",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "routine is marked as IMMUTABLE, but expression is STABLE",
+        "statement": {
+          "lineNumber": "33",
+          "text": "SQL statement"
+        },
+        "hint": "When you fix this issue, please, recheck other functions that uses this function.",
+        "detail": "there is a risk of unwanted behave",
+        "sqlState": "00000"
+      },
+      {
+        "level": "error",
+        "message": "function public.postgis_gdal_version() does not exist",
+        "statement": {
+          "lineNumber": "35",
+          "text": "SQL statement"
+        },
+        "query": {
+          "position": "8",
+          "text": "SELECT public.postgis_gdal_version()"
+        },
+        "hint": "No function matches the given name and argument types. You might need to add explicit type casts.",
+        "sqlState": "42883"
+      }
+    ]
+  },
+  {
+    "function": "public.lockrow",
+    "issues": [
+      {
+        "level": "error",
+        "message": "relation \"authorization_table\" does not exist",
+        "statement": {
+          "lineNumber": "18",
+          "text": "EXECUTE"
+        },
+        "query": {
+          "position": "13",
+          "text": "DELETE FROM authorization_table WHERE expires \u003c now()"
+        },
+        "sqlState": "42P01"
+      }
+    ]
+  },
+  {
+    "function": "public.addauth",
+    "issues": [
+      {
+        "level": "error",
+        "message": "relation \"temp_lock_have_table\" does not exist",
+        "statement": {
+          "lineNumber": "24",
+          "text": "SQL statement"
+        },
+        "query": {
+          "position": "13",
+          "text": "INSERT INTO temp_lock_have_table VALUES (getTransactionID(), lockid)"
+        },
+        "sqlState": "42P01"
+      }
+    ]
+  },
+  {
+    "function": "public.enablelongtransactions",
+    "issues": [
+      {
+        "level": "warning extra",
+        "message": "never read variable \"rec\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.longtransactionsenabled",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "target type is different type than source type",
+        "statement": {
+          "lineNumber": "7",
+          "text": "RETURN"
+        },
+        "hint": "The input expression type does not have an assignment cast to the target type.",
+        "detail": "cast \"text\" value to \"boolean\" type",
+        "context": "at RETURN",
+        "sqlState": "42804"
+      },
+      {
+        "level": "warning",
+        "message": "target type is different type than source type",
+        "statement": {
+          "lineNumber": "9",
+          "text": "RETURN"
+        },
+        "hint": "The input expression type does not have an assignment cast to the target type.",
+        "detail": "cast \"text\" value to \"boolean\" type",
+        "context": "at RETURN",
+        "sqlState": "42804"
+      },
+      {
+        "level": "warning extra",
+        "message": "never read variable \"rec\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.st_letters",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "target type is different type than source type",
+        "statement": {
+          "lineNumber": "98",
+          "text": "statement block"
+        },
+        "hint": "The input expression type does not have an assignment cast to the target type.",
+        "detail": "cast \"text\" value to \"json\" type",
+        "context": "during statement block local variable \"font_default\" initialization on line 18",
+        "sqlState": "42804"
+      }
+    ]
+  },
+  {
+    "function": "public.import_transit_stops",
+    "issues": [
+      {
+        "level": "warning extra",
+        "message": "never read variable \"v_before\"",
+        "sqlState": "00000"
+      }
+    ]
+  },
+  {
+    "function": "public.rebuild_transit_places",
+    "issues": [
+      {
+        "level": "error",
+        "message": "relation \"_clust\" does not exist",
+        "statement": {
+          "lineNumber": "41",
+          "text": "SQL statement"
+        },
+        "query": {
+          "position": "77",
+          "text": "create temporary table _grp on commit drop as\n  with live as (select * from _clust)\n  select\n    -- Klíč z těžiště shluku, zaokrouhleného na ~1 km. Přidaný sloupek\n    -- těžištěm osmičlenného uzlu prakticky nehne, takže uložený výběr\n    -- uživatele přežije aktualizaci dat. Kdyby přesto zmizel, výlet drží\n    -- vlastní souřadnice a jméno a nerozbije se.\n    norm_name || '|' || family || '|' ||\n      round(st_y(st_centroid(st_collect(point::geometry)))::numeric, 2)::text\n      || ',' ||\n      round(st_x(st_centroid(st_collect(point::geometry)))::numeric, 2)::text\n      as group_key,\n    norm_name,\n    family,\n    cluster_id,\n    -- Zobrazovaný název: nejčastější varianta, při shodě delší. Feedy píšou\n    -- „Praha hl.n.\" i „Praha hlavní nádraží\" a vybrat se musí jeden, pořád\n    -- stejný.\n    (array_agg(name order by departures_per_day desc, length(name) desc, name))[1]\n      as name,\n    (array_agg(city     order by (city is null), departures_per_day desc))[1] as city,\n    (array_agg(district order by (district is null), departures_per_day desc))[1] as district,\n    (array_agg(region   order by (region is null), departures_per_day desc))[1] as region,\n    (array_agg(country  order by departures_per_day desc))[1] as country,\n    (array_agg(mode     order by departures_per_day desc, mode))[1] as mode,\n    array_agg(distinct mode) as modes,\n    st_centroid(st_collect(point::geometry))::geography as point,\n    count(*)::int as stop_count,\n    -- Bezbariérovost skupiny: 1 (ano) jen když to tvrdí aspoň jeden sloupek.\n    max(nullif(wheelchair, 0))::smallint as wheelchair,\n    sum(departures_per_day)::int as departures_per_day,\n    array_agg(distinct feed_id) as feeds,\n    -- Členové se nesou s sebou. Odvozovat je podruhé stejným výrazem by\n    -- znamenalo dvě kopie definice klíče, které se dřív nebo později\n    -- rozejdou — a projeví se to jako místo bez zastávek.\n    array_agg(stop_id) as stop_ids\n  from live\n  -- Podle shluku, ne podle group_key: group_key je agregát (těžiště) a\n  -- podle agregátu se seskupovat nedá.\n  group by norm_name, family, cluster_id"
+        },
+        "sqlState": "42P01"
+      }
+    ]
+  },
+  {
+    "function": "public.save_trip_plan",
+    "issues": [
+      {
+        "level": "warning",
+        "message": "target type is different type than source type",
+        "statement": {
+          "lineNumber": "10",
+          "text": "statement block"
+        },
+        "hint": "The input expression type does not have an assignment cast to the target type.",
+        "detail": "cast \"text\" value to \"uuid[]\" type",
+        "context": "during statement block local variable \"v_keep\" initialization on line 8",
+        "sqlState": "42804"
+      }
+    ]
+  }
+]
+[ok] supabase db lint
+
+─── supabase/tests/availability_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/availability_test.sql ═══
+BEGIN
+SET
+INSERT 0 3
+INSERT 0 3
+INSERT 0 1
+INSERT 0 3
+INSERT 0 1
+INSERT 0 1
+SET
+SET
+psql:supabase/tests/availability_test.sql:88: NOTICE:  availability solver: OK
+DO
+SET
+psql:supabase/tests/availability_test.sql:99: NOTICE:  membership guard: OK
+DO
+ROLLBACK
+[ok] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/availability_test.sql
+
+─── supabase/tests/busy_write_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/busy_write_test.sql ═══
+BEGIN
+SET
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+SET
+SET
+DO
+ set_device_busy 
+-----------------
+ 
+(1 row)
+
+DO
+ set_device_busy 
+-----------------
+ 
+(1 row)
+
+DO
+ set_device_busy 
+-----------------
+ 
+(1 row)
+
+DO
+ set_device_busy 
+-----------------
+ 
+(1 row)
+
+DO
+ set_device_busy 
+-----------------
+ 
+(1 row)
+
+ clear_my_busy 
+---------------
+ 
+(1 row)
+
+DO
+SET
+DO
+ROLLBACK
+[ok] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/busy_write_test.sql
+
+─── supabase/tests/costs_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/costs_test.sql ═══
+BEGIN
+SET
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 3
+SET
+SET
+DO
+psql:supabase/tests/costs_test.sql:115: ERROR:  jidlo neskaluje: 1 den = 150, 3 dny = 150
+CONTEXT:  PL/pgSQL function inline_code_block line 12 at RAISE
+[FAILED] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/costs_test.sql
+
+─── supabase/tests/dates_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/dates_test.sql ═══
+BEGIN
+SET
+INSERT 0 3
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+INSERT 0 4
+SET
+SET
+ set_manual_busy 
+-----------------
+ 
+(1 row)
+
+psql:supabase/tests/dates_test.sql:110: NOTICE:  manual availability: OK
+DO
+ set_manual_busy 
+-----------------
+ 
+(1 row)
+
+psql:supabase/tests/dates_test.sql:131: NOTICE:  partial-day blocks: OK
+DO
+SET
+psql:supabase/tests/dates_test.sql:144: NOTICE:  manual membership guard: OK
+DO
+SET
+psql:supabase/tests/dates_test.sql:175: ERROR:  expected 4 two-day blocks, got 5
+CONTEXT:  PL/pgSQL function inline_code_block line 7 at ASSERT
+[FAILED] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/dates_test.sql
+
+─── supabase/tests/flexible_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/flexible_test.sql ═══
+BEGIN
+SET
+INSERT 0 2
+INSERT 0 2
+DO
+DO
+SET
+SET
+DO
+DO
+DO
+DO
+SET
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+SET
+SET
+DO
+SET
+ update_trip 
+-------------
+ 
+(1 row)
+
+DO
+ update_trip 
+-------------
+ 
+(1 row)
+
+DO
+ update_trip 
+-------------
+ 
+(1 row)
+
+DO
+ update_trip 
+-------------
+ 
+(1 row)
+
+DO
+SET
+INSERT 0 1
+INSERT 0 1
+SET
+ update_trip 
+-------------
+ 
+(1 row)
+
+DO
+ update_trip 
+-------------
+ 
+(1 row)
+
+DO
+ROLLBACK
+[ok] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/flexible_test.sql
+
+─── supabase/tests/packing_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/packing_test.sql ═══
+BEGIN
+SET
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 2
+SET
+SET
+DO
+DO
+SET
+UPDATE 1
+INSERT 0 1
+SET
+SET
+DO
+SET
+UPDATE 1
+SET
+SET
+psql:supabase/tests/packing_test.sql:161: ERROR:  celovka nechybi ani neni pri navratu za sera
+CONTEXT:  PL/pgSQL function inline_code_block line 11 at RAISE
+[FAILED] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/packing_test.sql
+
+─── supabase/tests/transit_stops_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/transit_stops_test.sql ═══
+BEGIN
+SET
+INSERT 0 1
+INSERT 0 0
+psql:supabase/tests/transit_stops_test.sql:47: NOTICE:  pt_norm: OK
+DO
+INSERT 0 1
+CREATE FUNCTION
+ _stage 
+--------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(8 rows)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ _stage 
+--------
+ 
+(1 row)
+
+ import_transit_stops 
+----------------------
+ (18,0,0,0)
+(1 row)
+
+ rebuild_transit_places 
+------------------------
+                      9
+(1 row)
+
+psql:supabase/tests/transit_stops_test.sql:131: NOTICE:  import: OK
+DO
+psql:supabase/tests/transit_stops_test.sql:162: ERROR:  relation "_clust" already exists
+CONTEXT:  SQL statement "create temporary table _clust on commit drop as
+  select
+    s.id as stop_id,
+    s.name, s.city, s.district, s.region, s.country,
+    s.mode, s.point, s.wheelchair, s.departures_per_day, s.feed_id,
+    pt_norm(s.name) as norm_name,
+    -- Kolejová doprava se od silniční odděluje proto, že „Kolín" vlak a
+    -- „Kolín, aut.nádr." jsou dvě různá místa a spoj mezi nimi je pěší
+    -- přesun, ne přestup na stejné zastávce.
+    case when s.mode in ('train', 'metro') then 'rail' else 'road' end
+      as family,
+    st_clusterdbscan(s.point::geometry, eps => 0.05, minpoints => 1)
+      over (
+        partition by pt_norm(s.name),
+                     case when s.mode in ('train', 'metro')
+                          then 'rail' else 'road' end
+      ) as cluster_id
+  from transit_stops s
+  where s.retired_at is null
+    -- location_type 2/3/4 jsou vchody, uzly a nástupní plochy. Nejsou to
+    -- zastávky a v seznamu k výběru nemají co dělat.
+    and s.location_type in (0, 1)"
+PL/pgSQL function rebuild_transit_places() line 16 at SQL statement
+SQL statement "SELECT rebuild_transit_places()"
+PL/pgSQL function inline_code_block line 22 at PERFORM
+[FAILED] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/transit_stops_test.sql
+
+─── supabase/tests/transport_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/transport_test.sql ═══
+BEGIN
+SET
+INSERT 0 2
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+SET
+SET
+psql:supabase/tests/transport_test.sql:55: NOTICE:  no destination: OK
+DO
+ set_trip_destination 
+----------------------
+ 
+(1 row)
+
+psql:supabase/tests/transport_test.sql:94: NOTICE:  estimates: OK
+DO
+psql:supabase/tests/transport_test.sql:119: NOTICE:  car sharing: OK
+DO
+SET
+UPDATE 1
+SET
+SET
+psql:supabase/tests/transport_test.sql:136: NOTICE:  transport preference: OK
+DO
+SET
+psql:supabase/tests/transport_test.sql:149: NOTICE:  destination organiser guard: OK
+DO
+ROLLBACK
+[ok] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/transport_test.sql
+
+─── supabase/tests/weather_test.sql ───
+
+═══ psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/weather_test.sql ═══
+BEGIN
+SET
+psql:supabase/tests/weather_test.sql:46: NOTICE:  weather scoring: OK
+DO
+psql:supabase/tests/weather_test.sql:72: NOTICE:  activity profiles: OK
+DO
+psql:supabase/tests/weather_test.sql:113: NOTICE:  daylight: OK
+DO
+psql:supabase/tests/weather_test.sql:153: NOTICE:  ranking with and without a forecast: OK
+DO
+INSERT 0 1
+INSERT 0 0
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+SET
+SET
+psql:supabase/tests/weather_test.sql:234: NOTICE:  weather reaches the ranking: OK
+DO
+ROLLBACK
+[ok] psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/weather_test.sql

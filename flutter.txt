@@ -1,0 +1,179 @@
+
+═══ dart format --output=none --set-exit-if-changed lib test ═══
+Changed lib/features/planner/domain/replanner.dart
+Changed lib/features/planner/presentation/plan_controller.dart
+Changed lib/features/planner/presentation/screens/plan_tab.dart
+Changed lib/features/planner/presentation/screens/program_tab.dart
+Changed lib/features/planner/presentation/widgets/plan_item_sheet.dart
+Changed lib/features/planner/presentation/widgets/travel_sheet.dart
+Formatted 128 files (6 changed) in 0.32 seconds.
+[FAILED] dart format --output=none --set-exit-if-changed lib test
+
+═══ flutter analyze --fatal-infos ═══
+Analyzing PlanTo...                                             
+No issues found! (ran in 11.0s)
+[ok] flutter analyze --fatal-infos
+
+═══ flutter test --coverage ═══
+
+::group::✅ Passing tests
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: validace vrací důvod, ne jen zákaz
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: validace setkání se obejde bez původu
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: validace výlet delší než okno nemá co nabídnout
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: validace na hodiny se neplánuje rok dopředu
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: okno konec se převádí tam a zpátky beze změny
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: okno nedotčený formulář nevyrobí žádný patch
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: patch nese jen změněná pole
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: patch vymazání se pozná od nedotčení
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: patch setkání neposílá pole, která nemá
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: varování před uložením zúžení okna ohlásí smazané hlasy
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: varování před uložením přeskok mezi hodinami a dny ohlásí celé hlasování
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: varování před uložením změna, která se termínů netýká, nevaruje
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_draft_test.dart: NewTrip posílá exkluzivní konec okna
+✅ /home/runner/work/PlanTo/PlanTo/test/smoke_test.dart: PtScoreRing renders the score and an accessible label
+✅ /home/runner/work/PlanTo/PlanTo/test/smoke_test.dart: PtScoreRing rejects out-of-range scores
+✅ /home/runner/work/PlanTo/PlanTo/test/smoke_test.dart: PtButton does not fire while loading
+✅ /home/runner/work/PlanTo/PlanTo/test/smoke_test.dart: theme both themes expose the PlanTo extension
+✅ /home/runner/work/PlanTo/PlanTo/test/cs_format_test.dart: formatPeople má všechny tři tvary
+✅ /home/runner/work/PlanTo/PlanTo/test/cs_format_test.dart: formatDuration pod hodinu minuty, nad hodinu hodiny
+✅ /home/runner/work/PlanTo/PlanTo/test/cs_format_test.dart: formatDuration od jednoho dne dny, se správným tvarem
+✅ /home/runner/work/PlanTo/PlanTo/test/cs_format_test.dart: formatDuration zbytek se připojí, ne zaokrouhlí
+✅ /home/runner/work/PlanTo/PlanTo/test/cs_format_test.dart: lastDayOfWindow vrací půlnoc i přes přechod letního času
+✅ /home/runner/work/PlanTo/PlanTo/test/cs_format_test.dart: lastDayOfWindow přes hranici měsíce
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.allDayToLocalMidnight z UTC půlnoci udělá místní půlnoc téhož dne
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.allDayToLocalMidnight nezávisí na zóně, ve které test běží
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare rounds outward to 15 minutes
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare leaves exact quarter-hours alone
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare merges overlapping blocks
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare merges touching blocks
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare keeps a real gap as two blocks
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare clips to the trip window
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare drops anything entirely outside the window
+✅ /home/runner/work/PlanTo/PlanTo/test/busy_interval_test.dart: BusyIntervals.prepare sorts unordered input
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: vícedenní výlet jednodenní výlet má den návratu shodný se dnem odjezdu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: vícedenní výlet dvoudenní výlet ví, že trvá dva dny
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: vícedenní výlet cesta zpět se hledá na poslední den termínu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: vícedenní výlet cesta tam se hledá pořád na první den
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě „vyrazíme v pět" hledá odjezd, ne příjezd domů
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě cesta tam se tím nepřepočítává
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě nastavení odjezdu ruší „být doma do" a naopak
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě zadání přežije uložení a načtení
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě posun odjezdu se sám nevrátí — ustoupí program, ne spoj
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě bez zadání smí program odjezd naopak odsunout
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě první vlastní bod nahradí zástupný blok programu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě program nesmí posunout návrat za poslední den termínu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_multiday_test.dart: čas na místě délka pobytu je od příjezdu po odjezd, ne po návrat domů
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: sestavení plánu z obou cest a programu vznikne jedna chronologická osa
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: sestavení plánu přestup je vlastní položka s délkou čekání
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: sestavení plánu program vyplní čas mezi příjezdem a odjezdem zpět
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: sestavení plánu jízdné visí na spoji a je označené jako odhad
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: sestavení plánu bez jízdního řádu to plán řekne nahlas
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: co se kvůli změně hledá znovu cesta tam a cesta zpět jsou dva samostatné dotazy
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: co se kvůli změně hledá znovu požadavek na příjezd hýbe jenom cestou tam
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: co se kvůli změně hledá znovu deadline návratu hýbe jenom cestou zpět
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: co se kvůli změně hledá znovu posun aktivity nehledá nic, dokud se vejde do plánu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: zamčené a flexibilní položky flexibilní program se posune za pozdější příjezd
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: zamčené a flexibilní položky zamčený program se nehne a aplikace to řekne
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: zamčené a flexibilní položky ruční úprava se pozná i po dalším přepočtu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: zamčené a flexibilní položky zamknout a odemknout jde bez ztráty ostatního stavu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: minimální nutná změna prodloužení programu si vyžádá jenom nový spoj domů
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: minimální nutná změna zamčený návrat se nevymění — zkrátí se program
+::endgroup::
+::group::❌ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: minimální nutná změna přepočet zachová maximum původního plánu (failed)
+Expected: <10>
+  Actual: <9>
+
+package:matcher                                     expect
+package:flutter_test/src/widget_tester.dart 473:18  expect
+test/plan_replanner_test.dart 343:7                 main.<fn>.<fn>
+::endgroup::
+::group::✅ Passing tests
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: ručně vybraný spoj nevymění se kvůli něčemu, o co uživatel nežádal
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: ručně vybraný spoj když ho nové zadání vyloučí, vymění se — a řekne se to
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: když to nejde nenalezený návrat nabídne nejbližší možný čas
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: když to nejde nenalezená cesta tam plán nesmaže
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: když to nejde pozdější příjezd, než uživatel chtěl, je taky informace
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: persistence stav položky přežije uložení i načtení
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: persistence nová položka jde na server bez ID, existující s ním
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: výběr spoje při deadlinu vyhrává nejpozdější, který to stihne
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: výběr spoje nejbližší nevyhovující spoj se dá nabídnout jako náhrada
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_replanner_test.dart: výběr spoje bez deadlinu se bere první odjezd po zadaném čase
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateVote round-trips through the database wire value
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateVote an unknown or missing value is no vote, not a crash
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate availability is a percentage of the group, rounded
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate a trip with no participants does not divide by zero
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate counts votes cast, not participants
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate day strips the clock, so grouping by day works in time mode
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate slack is the room left after the activity, not before it
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate weather no forecast is unknown, not zero
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate weather only WMO 95/96/99 count as a storm
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate weather warns when the activity would run past sunset
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: DateCandidate weather no sunset data means no dark warning, not a false one
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: ManualBusyBlock a whole day sends no times at all
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: ManualBusyBlock a partial day sends zero-padded wall-clock times
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: ManualBusyBlock the date is never locale-formatted
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: ManualBusyBlock reads back a row from my_busy_blocks
+✅ /home/runner/work/PlanTo/PlanTo/test/date_candidate_test.dart: ManualBusyBlock an all-day row drops the times it was stored with
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: isPlausibleEmail accepts ordinary addresses
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: isPlausibleEmail rejects obvious nonsense
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty prázdný úsek nevyrobí žádný řádek
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: SignInController trims and forwards the email, reports success
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: SignInController signUp reports whether a session came back
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty jedna jízda jsou dvě zastávky a mezi nimi spoj
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty přestup na téže zastávce je jeden řádek se dvěma časy
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: SignInController signUp on a taken address is an error, not "check your inbox"
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: SignInController signUp returns null on failure, not false
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty pěší přechod mezi zastávkami je text, ne bod
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty odchod z domova a dojití domů mají vlastní krajní zastávku
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: SignInController signIn forwards the address and password
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty jízdné se sečte a nese měnu položky
+✅ /home/runner/work/PlanTo/PlanTo/test/auth_test.dart: SignInController captures failures in state instead of throwing
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_travel_outline_test.dart: skládání cesty program na místě do cesty nepatří a nic nepokazí
+✅ /home/runner/work/PlanTo/PlanTo/test/program_suggestion_test.dart: nabídka programu výlet bez štítků dostane jen obecné bloky
+✅ /home/runner/work/PlanTo/PlanTo/test/program_suggestion_test.dart: nabídka programu nabídka vychází ze štítků a drží jejich pořadí
+✅ /home/runner/work/PlanTo/PlanTo/test/program_suggestion_test.dart: nabídka programu stejný štítek dvakrát nabídku nezdvojí
+✅ /home/runner/work/PlanTo/PlanTo/test/program_suggestion_test.dart: nabídka programu jídlo a pití je jídlo, zbytek je program
+✅ /home/runner/work/PlanTo/PlanTo/test/program_suggestion_test.dart: nabídka programu každý štítek má nenulovou délku
+✅ /home/runner/work/PlanTo/PlanTo/test/program_suggestion_test.dart: nabídka programu délka se liší podle toho, o co jde
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: Trip counts who has not shared a calendar yet
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: Trip needs two calendars before proposing dates
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: Trip destination is undecided until one is set
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: Trip is not date-locked until a date is set
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: Trip lockedEnd is exclusive, so a one-day trip ends the day it starts
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: délka výletu pod jeden den se hledá čas, od jednoho dne celé dny
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: délka výletu slot existuje právě v hodinovém módu
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: délka výletu dny se zaokrouhlují nahoru
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: TripKind maps the database value, defaulting to trip
+✅ /home/runner/work/PlanTo/PlanTo/test/trip_test.dart: TripKind setkání nemá původ ani cíl
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire trasa s přestupem se přeloží se vším, co osa potřebuje
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire místní časy jsou nástěnné hodiny výletu, ne zóna telefonu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire trasa bez přestupu má nula přestupů a jeden úsek jízdy
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire čekání na přestupech se počítá z časů, nepřenáší se
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire pěší úsek je poznat a nepočítá se jako přestup
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire jízdné je vždycky rozpětí a vždycky odhad
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: Journey.fromWire zpoždění se pozná z rozdílu proti jízdnímu řádu
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: JourneySearch.fromWire žádná nalezená trasa je prázdný výsledek, ne chyba
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: JourneySearch.fromWire výpadek poskytovatele se pozná od prázdného výsledku
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: JourneySearch.fromWire atribuce zdrojů se nese s odpovědí
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: JourneySearch.fromWire poškozená odpověď nevyhodí výjimku
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: převod zóny okamžik a nástěnné hodiny se převádějí tam i zpět
+✅ /home/runner/work/PlanTo/PlanTo/test/plan_journey_test.dart: převod zóny posun zóny se odvodí z dvojice, kterou posílá server
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: googleConsentUrl míří na obrazovku souhlasu Googlu
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: googleConsentUrl žádá jen o obsazenost
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: googleConsentUrl žádá o refresh token, jinak by se souhlas opakoval pokaždé
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: googleConsentUrl nese výlet a platformu ve state
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: googleConsentUrl na Androidu se vrací do aplikace, ne do prohlížeče
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: oauthRedirectForPage web pod podadresářem na GitHub Pages
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: oauthRedirectForPage index.html v adrese nesmí skončit v návratové adrese
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: oauthRedirectForPage chybějící koncové lomítko se doplní, ne uřízne adresář
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: oauthRedirectForPage lokální flutter run -d chrome zůstává na localhostu
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: hostedOauthRedirectFor z INVITE_BASE končícího /i zůstane lomítko oddělující adresář
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: hostedOauthRedirectFor adresa v kořeni domény
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: hostedOauthRedirectFor INVITE_BASE bez /i dostane lomítko navíc
+✅ /home/runner/work/PlanTo/PlanTo/test/google_calendar_test.dart: state je base64url bez výplně, aby přežil cestu v URL
+✅ /home/runner/work/PlanTo/PlanTo/test/widget_test.dart: app boots into the trips shell without a backend
+::endgroup::
+
+::error::145 tests passed, 1 failed.
+[FAILED] flutter test --coverage
+fixes.patch: 123 řádků
