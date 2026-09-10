@@ -1,0 +1,123 @@
+diff --git a/lib/features/planner/domain/replanner.dart b/lib/features/planner/domain/replanner.dart
+index e578867..d6260bc 100644
+--- a/lib/features/planner/domain/replanner.dart
++++ b/lib/features/planner/domain/replanner.dart
+@@ -918,8 +918,9 @@ class Replanner {
+         p.homeBy != null ||
+         pastLastDay ||
+         p.segment(PlanSegment.homeward).any(
+-          (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
+-        );
++              (PlanItem i) =>
++                  i.isLocked || i.source == PlanItemSource.userSelected,
++            );
+ 
+     if (!homewardFixed) {
+       // Spoj domů si vybral engine, takže se smí hledat jiný. To je ta levná
+diff --git a/lib/features/planner/presentation/plan_controller.dart b/lib/features/planner/presentation/plan_controller.dart
+index f4af9bb..67f9314 100644
+--- a/lib/features/planner/presentation/plan_controller.dart
++++ b/lib/features/planner/presentation/plan_controller.dart
+@@ -215,12 +215,10 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
+ 
+     final DateTime when = whenLocal != null
+         ? ctx.instant(whenLocal)
+-        : (current ??
+-            (homeward ? ctx.defaultHomeBy : ctx.defaultDepartAfter));
++        : (current ?? (homeward ? ctx.defaultHomeBy : ctx.defaultDepartAfter));
+ 
+-    final bool by = whenLocal != null
+-        ? arriveBy
+-        : (homeward && current == null);
++    final bool by =
++        whenLocal != null ? arriveBy : (homeward && current == null);
+ 
+     final JourneyQuery query = JourneyQuery(
+       origin: homeward ? ctx.destination : ctx.origin,
+diff --git a/lib/features/planner/presentation/screens/plan_tab.dart b/lib/features/planner/presentation/screens/plan_tab.dart
+index 914bf5a..442f302 100644
+--- a/lib/features/planner/presentation/screens/plan_tab.dart
++++ b/lib/features/planner/presentation/screens/plan_tab.dart
+@@ -226,7 +226,6 @@ class _Body extends ConsumerWidget {
+   bool _segmentChanged(TripPlan plan, PlanSegment segment) => plan
+       .segment(segment)
+       .any((PlanItem i) => state.changedIds.contains(i.id));
+-
+ }
+ 
+ /// Co se bude na místě dít — jenom souhrn.
+diff --git a/lib/features/planner/presentation/screens/program_tab.dart b/lib/features/planner/presentation/screens/program_tab.dart
+index a074857..38214ad 100644
+--- a/lib/features/planner/presentation/screens/program_tab.dart
++++ b/lib/features/planner/presentation/screens/program_tab.dart
+@@ -84,8 +84,7 @@ class _Body extends ConsumerWidget {
+                 'dít.',
+             icon: Icons.event_note_outlined,
+             actionLabel: 'Otevřít Plán',
+-            onAction: () =>
+-                context.go(Routes.tripDetail(trip.id, tab: 'plan')),
++            onAction: () => context.go(Routes.tripDetail(trip.id, tab: 'plan')),
+           ),
+         ],
+       );
+@@ -102,7 +101,6 @@ class _Body extends ConsumerWidget {
+           const LinearProgressIndicator(minHeight: 2),
+           const SizedBox(height: Sp.sm),
+         ],
+-
+         StayWindow(
+           plan: plan,
+           lastDay: state.context?.returnDate,
+@@ -111,7 +109,6 @@ class _Body extends ConsumerWidget {
+               _controller(ref).apply(SetLeaveAt(local)),
+         ),
+         const SizedBox(height: Sp.md),
+-
+         if (items.isEmpty)
+           PtEmptyState(
+             title: 'Zatím prázdno',
+@@ -131,14 +128,12 @@ class _Body extends ConsumerWidget {
+             onAddAt: (DateTime start, Duration length) =>
+                 _addCustom(context, ref, plan, start, length),
+           ),
+-
+         const SizedBox(height: Sp.lg),
+         _Suggestions(
+           trip: trip,
+           enabled: !state.isReplanning && from != null,
+           onPick: (ProgramSuggestion s) => _addSuggestion(ref, plan, s),
+         ),
+-
+         const SizedBox(height: Sp.md),
+         PtButton(
+           label: 'Vlastní bod',
+diff --git a/lib/features/planner/presentation/widgets/plan_item_sheet.dart b/lib/features/planner/presentation/widgets/plan_item_sheet.dart
+index 919c9da..30b3ecd 100644
+--- a/lib/features/planner/presentation/widgets/plan_item_sheet.dart
++++ b/lib/features/planner/presentation/widgets/plan_item_sheet.dart
+@@ -247,9 +247,8 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
+     // Konec před začátkem znamená přes půlnoc. Program, který má trvat minus
+     // dvě hodiny, je vždycky překlep — den se proto přičte.
+     setState(() {
+-      _end = picked.isAfter(_start)
+-          ? picked
+-          : picked.add(const Duration(days: 1));
++      _end =
++          picked.isAfter(_start) ? picked : picked.add(const Duration(days: 1));
+     });
+   }
+ 
+diff --git a/lib/features/planner/presentation/widgets/travel_sheet.dart b/lib/features/planner/presentation/widgets/travel_sheet.dart
+index fd321c4..ec1ce76 100644
+--- a/lib/features/planner/presentation/widgets/travel_sheet.dart
++++ b/lib/features/planner/presentation/widgets/travel_sheet.dart
+@@ -98,8 +98,7 @@ class _TravelSheet extends ConsumerWidget {
+     // obrazovka to musí říct — jinak vypadá „Přehledat" jako tlačítko, které
+     // nic nedělá.
+     final bool userPicked = plan.segment(segment).any(
+-          (PlanItem i) =>
+-              i.isLocked || i.source == PlanItemSource.userSelected,
++          (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
+         );
+ 
+     return ListView(

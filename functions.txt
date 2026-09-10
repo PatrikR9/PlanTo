@@ -1,0 +1,164 @@
+
+═══ deno check supabase/functions/_shared/ics.ts supabase/functions/_shared/ics_test.ts supabase/functions/_shared/transport.ts supabase/functions/_shared/transport_test.ts supabase/functions/google-calendar/index.ts supabase/functions/ical-sync/index.ts supabase/functions/transport-search/index.ts supabase/functions/weather/index.ts ═══
+[0m[32mDownload[0m https://jsr.io/@std/assert/meta.json
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/meta.json
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19_meta.json
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0_meta.json
+[0m[32mDownload[0m https://jsr.io/@std/internal/meta.json
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fauth-js
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fpostgrest-js
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fstorage-js
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2ffunctions-js
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2frealtime-js
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14_meta.json
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/mod.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/index.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/almost_equals.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/array_includes.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/equals.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/exists.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/false.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/greater_or_equal.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/greater.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/instance_of.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/is_error.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/less_or_equal.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/less.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/match.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/not_equals.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/not_instance_of.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/not_match.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/not_strict_equals.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/object_match.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/rejects.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/strict_equals.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/string_includes.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/throws.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/assert.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/assertion_error.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/equal.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/fail.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/unimplemented.ts
+[0m[32mDownload[0m https://jsr.io/@std/assert/1.0.19/unreachable.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/SupabaseClient.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/types.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/constants.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/fetch.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/helpers.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/SupabaseAuthClient.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/rest/types/common/rpc.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/rest/types/common/common.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/version.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/_internal/tracing/index.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/lib/tracingRegistry.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/_internal/tracing/types.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/_internal/tracing/create-extractor.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/_internal/tracing/parse.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/_internal/tracing/validate.ts
+[0m[32mDownload[0m https://jsr.io/@supabase/supabase-js/2.116.0/src/_internal/tracing/defaults.ts
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14/format.ts
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14/build_message.ts
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14/diff.ts
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14/diff_str.ts
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14/styles.ts
+[0m[32mDownload[0m https://jsr.io/@std/internal/1.0.14/types.ts
+[0m[32mDownload[0m https://registry.npmjs.org/tslib
+[0m[32mDownload[0m https://registry.npmjs.org/iceberg-js
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fphoenix
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/functions-js/-/functions-js-2.116.0.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/auth-js/-/auth-js-2.116.0.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-2.116.0.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/realtime-js/-/realtime-js-2.116.0.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.116.0.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.5.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/iceberg-js/-/iceberg-js-0.8.1.tgz
+[0m[32mCheck[0m supabase/functions/_shared/ics.ts
+[0m[32mCheck[0m supabase/functions/_shared/ics_test.ts
+[0m[32mCheck[0m supabase/functions/_shared/transport.ts
+[0m[32mCheck[0m supabase/functions/_shared/transport_test.ts
+[0m[32mCheck[0m supabase/functions/google-calendar/index.ts
+[0m[32mCheck[0m supabase/functions/ical-sync/index.ts
+[0m[32mCheck[0m supabase/functions/transport-search/index.ts
+[0m[32mCheck[0m supabase/functions/weather/index.ts
+[ok] deno check supabase/functions/_shared/ics.ts supabase/functions/_shared/ics_test.ts supabase/functions/_shared/transport.ts supabase/functions/_shared/transport_test.ts supabase/functions/google-calendar/index.ts supabase/functions/ical-sync/index.ts supabase/functions/transport-search/index.ts supabase/functions/weather/index.ts
+
+═══ deno test supabase/functions/_shared/ ═══
+[0m[32mCheck[0m supabase/functions/_shared/ics_test.ts
+[0m[32mCheck[0m supabase/functions/_shared/transport_test.ts
+[0m[38;5;245mrunning 13 tests from ./supabase/functions/_shared/ics_test.ts[0m
+a plain event becomes one busy block ... [0m[32mok[0m [0m[38;5;245m(15ms)[0m
+a UTC event is not shifted twice ... [0m[32mok[0m [0m[38;5;245m(198µs)[0m
+an all-day event covers the whole local day ... [0m[32mok[0m [0m[38;5;245m(396µs)[0m
+TRANSPARENT and CANCELLED events are not busy ... [0m[32mok[0m [0m[38;5;245m(182µs)[0m
+a weekly rule expands inside the window only ... [0m[31mFAILED[0m [0m[38;5;245m(23ms)[0m
+UNTIL stops the series ... [0m[32mok[0m [0m[38;5;245m(747µs)[0m
+EXDATE removes one occurrence ... [0m[32mok[0m [0m[38;5;245m(657µs)[0m
+a moved instance is not counted at both times ... [0m[32mok[0m [0m[38;5;245m(941µs)[0m
+overlapping and touching blocks are merged ... [0m[32mok[0m [0m[38;5;245m(178µs)[0m
+an event straddling the window edge is clipped ... [0m[32mok[0m [0m[38;5;245m(118µs)[0m
+folded lines are rejoined ... [0m[32mok[0m [0m[38;5;245m(425µs)[0m
+DURATION is used when there is no DTEND ... [0m[32mok[0m [0m[38;5;245m(275µs)[0m
+an event outside the window contributes nothing ... [0m[32mok[0m [0m[38;5;245m(96µs)[0m
+[0m[38;5;245mrunning 34 tests from ./supabase/functions/_shared/transport_test.ts[0m
+známé pravidlo dá rozpětí, ne jedno číslo ... [0m[32mok[0m [0m[38;5;245m(845µs)[0m
+neznámý druh dopravy spadne na obecné pravidlo a sníží confidence ... [0m[32mok[0m [0m[38;5;245m(145µs)[0m
+nejslabší článek určuje confidence celého odhadu ... [0m[32mok[0m [0m[38;5;245m(110µs)[0m
+chybějící vzdálenost se dopočítá z času, ale přizná se ... [0m[32mok[0m [0m[38;5;245m(214µs)[0m
+minimální jízdné se uplatní na krátkou jízdu ... [0m[32mok[0m [0m[38;5;245m(128µs)[0m
+chůze se neúčtuje ... [0m[32mok[0m [0m[38;5;245m(116µs)[0m
+ranking je deterministický ... [0m[32mok[0m [0m[38;5;245m(635µs)[0m
+nejrychlejší, nejlevnější a nejmíň přestupů jsou tři různé otázky ... [0m[32mok[0m [0m[38;5;245m(167µs)[0m
+ve větší skupině roste váha ceny ... [0m[32mok[0m [0m[38;5;245m(240µs)[0m
+prázdný vstup nevrací výběr ... [0m[32mok[0m [0m[38;5;245m(73µs)[0m
+bez ceny se nejlevnější neurčuje ... [0m[32mok[0m [0m[38;5;245m(90µs)[0m
+důvody jsou kódy, ne věty ... [0m[32mok[0m [0m[38;5;245m(109µs)[0m
+stejný dotaz dá stejný klíč ... [0m[32mok[0m [0m[38;5;245m(156µs)[0m
+jiné časové okno je jiný klíč ... [0m[32mok[0m [0m[38;5;245m(100µs)[0m
+okno se zaokrouhluje na čtvrthodinu, ne na sekundu ... [0m[32mok[0m [0m[38;5;245m(83µs)[0m
+příjezd a odjezd nejsou zaměnitelné ... [0m[32mok[0m [0m[38;5;245m(78µs)[0m
+pěší úseky na krajích nejsou přestupy ... [0m[32mok[0m [0m[38;5;245m(467µs)[0m
+dvě jízdy znamenají jeden přestup ... [0m[32mok[0m [0m[38;5;245m(119µs)[0m
+prázdná nebo poškozená odpověď nevyhodí výjimku ... [0m[32mok[0m [0m[38;5;245m(106µs)[0m
+ID varianty je odvozené, ne náhodné ... [0m[32mok[0m [0m[38;5;245m(148µs)[0m
+odkaz do IDOS nese obě zastávky i datum ... [0m[32mok[0m [0m[38;5;245m(885µs)[0m
+cesta tam a cesta zpět nesdílejí klíč ... [0m[32mok[0m [0m[38;5;245m(75µs)[0m
+trolejbus se posílá jako BUS, protože MOTIS jiný nezná ... [0m[32mok[0m [0m[38;5;245m(161µs)[0m
+plná sada se zjednoduší na TRANSIT ... [0m[32mok[0m [0m[38;5;245m(70µs)[0m
+prázdný výběr znamená všechno, ne nic ... [0m[32mok[0m [0m[38;5;245m(76µs)[0m
+úzký výběr se rozvine na podtypy, ne na jedinou hodnotu ... [0m[32mok[0m [0m[38;5;245m(104µs)[0m
+místní čas je nástěnné hodiny v zóně výletu ... [0m[32mok[0m [0m[38;5;245m(782µs)[0m
+neznámá zóna nebo nesmyslný čas nespadnou ... [0m[32mok[0m [0m[38;5;245m(382µs)[0m
+místní časy se doplní do varianty i do každého legu ... [0m[32mok[0m [0m[38;5;245m(518µs)[0m
+odpověď MOTISu se přeloží na náš model se vším, co osa potřebuje ... [0m[32mok[0m [0m[38;5;245m(242µs)[0m
+víc přestupů se spočítá správně ... [0m[32mok[0m [0m[38;5;245m(143µs)[0m
+žádná nalezená trasa je prázdný seznam, ne vymyšlený spoj ... [0m[32mok[0m [0m[38;5;245m(64µs)[0m
+zrušený spoj se nenabízí ... [0m[32mok[0m [0m[38;5;245m(82µs)[0m
+CABLE_CAR i AERIAL_LIFT jsou lanovka ... [0m[32mok[0m [0m[38;5;245m(120µs)[0m
+
+[0m[1m[37m[41m ERRORS [0m
+
+a weekly rule expands inside the window only [0m[38;5;245m=> ./supabase/functions/_shared/ics_test.ts:77:6[0m
+[0m[1m[31merror[0m: AssertionError: Values are not equal.
+
+
+    [90m[1m[Diff][22m[39m [31m[1mActual[22m[39m / [32m[1mExpected[22m[39m
+
+
+[31m[1m-   2026-09-[41m[37m04T08[31m[49m:00:00.000Z
+[22m[39m[32m[1m+   2026-09-[42m[37m04T07[32m[49m:00:00.000Z
+[22m[39m
+
+  throw new AssertionError(message);
+[0m[31m        ^[0m
+    at [0m[1m[3massertEquals[0m ([0m[36mhttps://jsr.io/@std/assert/1.0.19/equals.ts[0m:[0m[33m67[0m:[0m[33m9[0m)
+    at [0m[2m[38;5;245mfile:///home/runner/work/PlanTo/PlanTo/[0m[0m[36msupabase/functions/_shared/ics_test.ts[0m:[0m[33m90[0m:[0m[33m3[0m
+
+[0m[1m[37m[41m FAILURES [0m
+
+a weekly rule expands inside the window only [0m[38;5;245m=> ./supabase/functions/_shared/ics_test.ts:77:6[0m
+
+[0m[31mFAILED[0m | 46 passed | 1 failed [0m[38;5;245m(102ms)[0m
+
+[0m[1m[31merror[0m: Test failed
+[FAILED] deno test supabase/functions/_shared/
