@@ -1,0 +1,633 @@
+diff --git a/lib/app/app.dart b/lib/app/app.dart
+index 26f5b88..ffcd3e9 100644
+--- a/lib/app/app.dart
++++ b/lib/app/app.dart
+@@ -1,8 +1,10 @@
++import 'package:cupertino_ui/cupertino_ui.dart';
+ import 'package:flutter/foundation.dart' show kReleaseMode;
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_localizations/flutter_localizations.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../core/design_system/components/components.dart';
+ import 'env/env.dart';
+diff --git a/lib/app/bootstrap.dart b/lib/app/bootstrap.dart
+index 4e9ae16..d0d92c7 100644
+--- a/lib/app/bootstrap.dart
++++ b/lib/app/bootstrap.dart
+@@ -1,7 +1,7 @@
+ import 'dart:async';
+ 
+ import 'package:flutter/foundation.dart';
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:intl/date_symbol_data_local.dart';
+ import 'package:intl/intl.dart';
+diff --git a/lib/app/router/router.dart b/lib/app/router/router.dart
+index 191824a..4263fe0 100644
+--- a/lib/app/router/router.dart
++++ b/lib/app/router/router.dart
+@@ -1,6 +1,6 @@
+ import 'package:app_links/app_links.dart';
+ import 'package:flutter/foundation.dart' show kIsWeb;
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:supabase_flutter/supabase_flutter.dart' show Session;
+diff --git a/lib/app/router/shell_scaffold.dart b/lib/app/router/shell_scaffold.dart
+index 3adae89..83fb3b7 100644
+--- a/lib/app/router/shell_scaffold.dart
++++ b/lib/app/router/shell_scaffold.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:go_router/go_router.dart';
+ 
+ import '../../core/design_system/components/components.dart';
+diff --git a/lib/core/design_system/components/async_value_view.dart b/lib/core/design_system/components/async_value_view.dart
+index a281beb..066771e 100644
+--- a/lib/core/design_system/components/async_value_view.dart
++++ b/lib/core/design_system/components/async_value_view.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../error/error_text.dart';
+diff --git a/lib/core/design_system/components/pt_button.dart b/lib/core/design_system/components/pt_button.dart
+index c8169bc..4b62161 100644
+--- a/lib/core/design_system/components/pt_button.dart
++++ b/lib/core/design_system/components/pt_button.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../theme/app_theme.dart';
+ import '../tokens/tokens.dart';
+diff --git a/lib/core/design_system/components/pt_card.dart b/lib/core/design_system/components/pt_card.dart
+index 05162e1..52918b8 100644
+--- a/lib/core/design_system/components/pt_card.dart
++++ b/lib/core/design_system/components/pt_card.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../theme/app_theme.dart';
+ import '../tokens/tokens.dart';
+diff --git a/lib/core/design_system/components/pt_score_ring.dart b/lib/core/design_system/components/pt_score_ring.dart
+index d50a04c..077b2ad 100644
+--- a/lib/core/design_system/components/pt_score_ring.dart
++++ b/lib/core/design_system/components/pt_score_ring.dart
+@@ -1,6 +1,6 @@
+ import 'dart:math' as math;
+ 
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../theme/app_theme.dart';
+ import '../tokens/tokens.dart';
+diff --git a/lib/core/design_system/components/pt_states.dart b/lib/core/design_system/components/pt_states.dart
+index 1961b7e..bb1d5fd 100644
+--- a/lib/core/design_system/components/pt_states.dart
++++ b/lib/core/design_system/components/pt_states.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../theme/app_theme.dart';
+ import '../tokens/tokens.dart';
+diff --git a/lib/core/design_system/theme/app_theme.dart b/lib/core/design_system/theme/app_theme.dart
+index 9e1d282..cbf8920 100644
+--- a/lib/core/design_system/theme/app_theme.dart
++++ b/lib/core/design_system/theme/app_theme.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../tokens/tokens.dart';
+ import '../tokens/typography.dart';
+diff --git a/lib/core/design_system/theme/planto_theme.dart b/lib/core/design_system/theme/planto_theme.dart
+index f57e110..828d95b 100644
+--- a/lib/core/design_system/theme/planto_theme.dart
++++ b/lib/core/design_system/theme/planto_theme.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ /// Semantic colours that Material 3's ColorScheme has no slot for.
+ ///
+diff --git a/lib/core/design_system/tokens/typography.dart b/lib/core/design_system/tokens/typography.dart
+index 5a684be..1a81fd4 100644
+--- a/lib/core/design_system/tokens/typography.dart
++++ b/lib/core/design_system/tokens/typography.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ /// Type scale from architecture section 7.1.
+ ///
+diff --git a/lib/features/auth/presentation/screens/otp_verify_screen.dart b/lib/features/auth/presentation/screens/otp_verify_screen.dart
+index 3c7d6d7..10278d4 100644
+--- a/lib/features/auth/presentation/screens/otp_verify_screen.dart
++++ b/lib/features/auth/presentation/screens/otp_verify_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+diff --git a/lib/features/auth/presentation/screens/sign_in_screen.dart b/lib/features/auth/presentation/screens/sign_in_screen.dart
+index e41445d..8d7f324 100644
+--- a/lib/features/auth/presentation/screens/sign_in_screen.dart
++++ b/lib/features/auth/presentation/screens/sign_in_screen.dart
+@@ -1,6 +1,6 @@
+ import 'dart:async';
+ 
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+diff --git a/lib/features/availability/presentation/screens/calendar_callback_screen.dart b/lib/features/availability/presentation/screens/calendar_callback_screen.dart
+index 35a6787..c824093 100644
+--- a/lib/features/availability/presentation/screens/calendar_callback_screen.dart
++++ b/lib/features/availability/presentation/screens/calendar_callback_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+diff --git a/lib/features/availability/presentation/screens/manual_availability_screen.dart b/lib/features/availability/presentation/screens/manual_availability_screen.dart
+index aa8d579..4d8ae4c 100644
+--- a/lib/features/availability/presentation/screens/manual_availability_screen.dart
++++ b/lib/features/availability/presentation/screens/manual_availability_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:intl/intl.dart';
+ 
+diff --git a/lib/features/availability/presentation/widgets/availability_chooser.dart b/lib/features/availability/presentation/widgets/availability_chooser.dart
+index 81c579e..c52bb99 100644
+--- a/lib/features/availability/presentation/widgets/availability_chooser.dart
++++ b/lib/features/availability/presentation/widgets/availability_chooser.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../app/env/env.dart';
+diff --git a/lib/features/availability/presentation/widgets/availability_strip.dart b/lib/features/availability/presentation/widgets/availability_strip.dart
+index 20c2de3..b15456a 100644
+--- a/lib/features/availability/presentation/widgets/availability_strip.dart
++++ b/lib/features/availability/presentation/widgets/availability_strip.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/availability/presentation/widgets/calendar_feed_card.dart b/lib/features/availability/presentation/widgets/calendar_feed_card.dart
+index a3a02d1..134ba59 100644
+--- a/lib/features/availability/presentation/widgets/calendar_feed_card.dart
++++ b/lib/features/availability/presentation/widgets/calendar_feed_card.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:intl/intl.dart';
+ 
+diff --git a/lib/features/availability/presentation/widgets/name_gate.dart b/lib/features/availability/presentation/widgets/name_gate.dart
+index f0fe3ce..a6d15e9 100644
+--- a/lib/features/availability/presentation/widgets/name_gate.dart
++++ b/lib/features/availability/presentation/widgets/name_gate.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/costs/presentation/screens/costs_tab.dart b/lib/features/costs/presentation/screens/costs_tab.dart
+index e6484f6..dff9e59 100644
+--- a/lib/features/costs/presentation/screens/costs_tab.dart
++++ b/lib/features/costs/presentation/screens/costs_tab.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/dates/presentation/screens/dates_tab.dart b/lib/features/dates/presentation/screens/dates_tab.dart
+index 070d91b..681ba09 100644
+--- a/lib/features/dates/presentation/screens/dates_tab.dart
++++ b/lib/features/dates/presentation/screens/dates_tab.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:intl/intl.dart';
+diff --git a/lib/features/dates/presentation/widgets/availability_grid.dart b/lib/features/dates/presentation/widgets/availability_grid.dart
+index 5bfacaa..99c2161 100644
+--- a/lib/features/dates/presentation/widgets/availability_grid.dart
++++ b/lib/features/dates/presentation/widgets/availability_grid.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/dates/presentation/widgets/date_candidate_card.dart b/lib/features/dates/presentation/widgets/date_candidate_card.dart
+index 0741d93..a43cedf 100644
+--- a/lib/features/dates/presentation/widgets/date_candidate_card.dart
++++ b/lib/features/dates/presentation/widgets/date_candidate_card.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/dates/presentation/widgets/weather_glyph.dart b/lib/features/dates/presentation/widgets/weather_glyph.dart
+index be80b43..f014f1d 100644
+--- a/lib/features/dates/presentation/widgets/weather_glyph.dart
++++ b/lib/features/dates/presentation/widgets/weather_glyph.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ /// WMO 4677 weather codes, as Open-Meteo reports them, mapped to an icon and
+ /// a Czech phrase.
+diff --git a/lib/features/invites/presentation/screens/invite_preview_screen.dart b/lib/features/invites/presentation/screens/invite_preview_screen.dart
+index 0baefa0..fdcad8b 100644
+--- a/lib/features/invites/presentation/screens/invite_preview_screen.dart
++++ b/lib/features/invites/presentation/screens/invite_preview_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:intl/intl.dart';
+diff --git a/lib/features/invites/presentation/screens/share_invite_sheet.dart b/lib/features/invites/presentation/screens/share_invite_sheet.dart
+index 58b6e6a..efa7b2c 100644
+--- a/lib/features/invites/presentation/screens/share_invite_sheet.dart
++++ b/lib/features/invites/presentation/screens/share_invite_sheet.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+diff --git a/lib/features/packing/presentation/screens/packing_tab.dart b/lib/features/packing/presentation/screens/packing_tab.dart
+index 342c233..3a6406a 100644
+--- a/lib/features/packing/presentation/screens/packing_tab.dart
++++ b/lib/features/packing/presentation/screens/packing_tab.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/planner/domain/replanner.dart b/lib/features/planner/domain/replanner.dart
+index e578867..d6260bc 100644
+--- a/lib/features/planner/domain/replanner.dart
++++ b/lib/features/planner/domain/replanner.dart
+@@ -918,8 +918,9 @@ class Replanner {
+         p.homeBy != null ||
+         pastLastDay ||
+         p.segment(PlanSegment.homeward).any(
+-          (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
+-        );
++              (PlanItem i) =>
++                  i.isLocked || i.source == PlanItemSource.userSelected,
++            );
+ 
+     if (!homewardFixed) {
+       // Spoj domů si vybral engine, takže se smí hledat jiný. To je ta levná
+diff --git a/lib/features/planner/presentation/plan_controller.dart b/lib/features/planner/presentation/plan_controller.dart
+index f4af9bb..67f9314 100644
+--- a/lib/features/planner/presentation/plan_controller.dart
++++ b/lib/features/planner/presentation/plan_controller.dart
+@@ -215,12 +215,10 @@ class PlanController extends FamilyAsyncNotifier<PlanState, String> {
+ 
+     final DateTime when = whenLocal != null
+         ? ctx.instant(whenLocal)
+-        : (current ??
+-            (homeward ? ctx.defaultHomeBy : ctx.defaultDepartAfter));
++        : (current ?? (homeward ? ctx.defaultHomeBy : ctx.defaultDepartAfter));
+ 
+-    final bool by = whenLocal != null
+-        ? arriveBy
+-        : (homeward && current == null);
++    final bool by =
++        whenLocal != null ? arriveBy : (homeward && current == null);
+ 
+     final JourneyQuery query = JourneyQuery(
+       origin: homeward ? ctx.destination : ctx.origin,
+diff --git a/lib/features/planner/presentation/plan_strings.dart b/lib/features/planner/presentation/plan_strings.dart
+index a6e94ae..9ef3a90 100644
+--- a/lib/features/planner/presentation/plan_strings.dart
++++ b/lib/features/planner/presentation/plan_strings.dart
+@@ -5,7 +5,7 @@
+ /// nenapíše dvakrát trochu jinak.
+ library;
+ 
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../core/format/cs_format.dart';
+diff --git a/lib/features/planner/presentation/screens/plan_tab.dart b/lib/features/planner/presentation/screens/plan_tab.dart
+index 914bf5a..b6c8946 100644
+--- a/lib/features/planner/presentation/screens/plan_tab.dart
++++ b/lib/features/planner/presentation/screens/plan_tab.dart
+@@ -1,5 +1,5 @@
+ import 'package:collection/collection.dart';
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:intl/intl.dart';
+@@ -226,7 +226,6 @@ class _Body extends ConsumerWidget {
+   bool _segmentChanged(TripPlan plan, PlanSegment segment) => plan
+       .segment(segment)
+       .any((PlanItem i) => state.changedIds.contains(i.id));
+-
+ }
+ 
+ /// Co se bude na místě dít — jenom souhrn.
+diff --git a/lib/features/planner/presentation/screens/program_tab.dart b/lib/features/planner/presentation/screens/program_tab.dart
+index a074857..d80df4a 100644
+--- a/lib/features/planner/presentation/screens/program_tab.dart
++++ b/lib/features/planner/presentation/screens/program_tab.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+@@ -84,8 +84,7 @@ class _Body extends ConsumerWidget {
+                 'dít.',
+             icon: Icons.event_note_outlined,
+             actionLabel: 'Otevřít Plán',
+-            onAction: () =>
+-                context.go(Routes.tripDetail(trip.id, tab: 'plan')),
++            onAction: () => context.go(Routes.tripDetail(trip.id, tab: 'plan')),
+           ),
+         ],
+       );
+@@ -102,7 +101,6 @@ class _Body extends ConsumerWidget {
+           const LinearProgressIndicator(minHeight: 2),
+           const SizedBox(height: Sp.sm),
+         ],
+-
+         StayWindow(
+           plan: plan,
+           lastDay: state.context?.returnDate,
+@@ -111,7 +109,6 @@ class _Body extends ConsumerWidget {
+               _controller(ref).apply(SetLeaveAt(local)),
+         ),
+         const SizedBox(height: Sp.md),
+-
+         if (items.isEmpty)
+           PtEmptyState(
+             title: 'Zatím prázdno',
+@@ -131,14 +128,12 @@ class _Body extends ConsumerWidget {
+             onAddAt: (DateTime start, Duration length) =>
+                 _addCustom(context, ref, plan, start, length),
+           ),
+-
+         const SizedBox(height: Sp.lg),
+         _Suggestions(
+           trip: trip,
+           enabled: !state.isReplanning && from != null,
+           onPick: (ProgramSuggestion s) => _addSuggestion(ref, plan, s),
+         ),
+-
+         const SizedBox(height: Sp.md),
+         PtButton(
+           label: 'Vlastní bod',
+diff --git a/lib/features/planner/presentation/widgets/journey_options_sheet.dart b/lib/features/planner/presentation/widgets/journey_options_sheet.dart
+index ccaeeaa..2684d22 100644
+--- a/lib/features/planner/presentation/widgets/journey_options_sheet.dart
++++ b/lib/features/planner/presentation/widgets/journey_options_sheet.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/planner/presentation/widgets/plan_item_sheet.dart b/lib/features/planner/presentation/widgets/plan_item_sheet.dart
+index 919c9da..f199205 100644
+--- a/lib/features/planner/presentation/widgets/plan_item_sheet.dart
++++ b/lib/features/planner/presentation/widgets/plan_item_sheet.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+ import '../../../../core/format/cs_format.dart';
+@@ -247,9 +247,8 @@ class _PlanItemSheetState extends State<_PlanItemSheet> {
+     // Konec před začátkem znamená přes půlnoc. Program, který má trvat minus
+     // dvě hodiny, je vždycky překlep — den se proto přičte.
+     setState(() {
+-      _end = picked.isAfter(_start)
+-          ? picked
+-          : picked.add(const Duration(days: 1));
++      _end =
++          picked.isAfter(_start) ? picked : picked.add(const Duration(days: 1));
+     });
+   }
+ 
+diff --git a/lib/features/planner/presentation/widgets/plan_timeline.dart b/lib/features/planner/presentation/widgets/plan_timeline.dart
+index 8d05573..59ee9f4 100644
+--- a/lib/features/planner/presentation/widgets/plan_timeline.dart
++++ b/lib/features/planner/presentation/widgets/plan_timeline.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+ import '../../../../core/format/cs_format.dart';
+diff --git a/lib/features/planner/presentation/widgets/stay_window.dart b/lib/features/planner/presentation/widgets/stay_window.dart
+index 006d527..7a6560f 100644
+--- a/lib/features/planner/presentation/widgets/stay_window.dart
++++ b/lib/features/planner/presentation/widgets/stay_window.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+ import '../../domain/plan_item.dart';
+diff --git a/lib/features/planner/presentation/widgets/time_picking.dart b/lib/features/planner/presentation/widgets/time_picking.dart
+index 9b158e2..98ad0b4 100644
+--- a/lib/features/planner/presentation/widgets/time_picking.dart
++++ b/lib/features/planner/presentation/widgets/time_picking.dart
+@@ -6,7 +6,7 @@
+ /// překlad na okamžik dělá engine — jediný, kdo zná posun zóny.
+ library;
+ 
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ Future<DateTime?> pickLocalTime(BuildContext context, DateTime? seed) async {
+   final DateTime base = seed ?? DateTime.now();
+diff --git a/lib/features/planner/presentation/widgets/travel_card.dart b/lib/features/planner/presentation/widgets/travel_card.dart
+index c70352e..a48cccd 100644
+--- a/lib/features/planner/presentation/widgets/travel_card.dart
++++ b/lib/features/planner/presentation/widgets/travel_card.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+ import '../../domain/plan_item.dart';
+diff --git a/lib/features/planner/presentation/widgets/travel_sheet.dart b/lib/features/planner/presentation/widgets/travel_sheet.dart
+index fd321c4..d09789e 100644
+--- a/lib/features/planner/presentation/widgets/travel_sheet.dart
++++ b/lib/features/planner/presentation/widgets/travel_sheet.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:intl/intl.dart';
+ 
+@@ -98,8 +98,7 @@ class _TravelSheet extends ConsumerWidget {
+     // obrazovka to musí říct — jinak vypadá „Přehledat" jako tlačítko, které
+     // nic nedělá.
+     final bool userPicked = plan.segment(segment).any(
+-          (PlanItem i) =>
+-              i.isLocked || i.source == PlanItemSource.userSelected,
++          (PlanItem i) => i.isLocked || i.source == PlanItemSource.userSelected,
+         );
+ 
+     return ListView(
+diff --git a/lib/features/transport/presentation/widgets/destination_card.dart b/lib/features/transport/presentation/widgets/destination_card.dart
+index 6e41ca8..fff0ad5 100644
+--- a/lib/features/transport/presentation/widgets/destination_card.dart
++++ b/lib/features/transport/presentation/widgets/destination_card.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:url_launcher/url_launcher.dart';
+diff --git a/lib/features/transport/presentation/widgets/stop_picker_sheet.dart b/lib/features/transport/presentation/widgets/stop_picker_sheet.dart
+index 27fb37b..1c65bc6 100644
+--- a/lib/features/transport/presentation/widgets/stop_picker_sheet.dart
++++ b/lib/features/transport/presentation/widgets/stop_picker_sheet.dart
+@@ -1,6 +1,6 @@
+ import 'dart:async';
+ 
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/trips/presentation/screens/create_trip_screen.dart b/lib/features/trips/presentation/screens/create_trip_screen.dart
+index c806628..4874ed6 100644
+--- a/lib/features/trips/presentation/screens/create_trip_screen.dart
++++ b/lib/features/trips/presentation/screens/create_trip_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+diff --git a/lib/features/trips/presentation/screens/edit_trip_screen.dart b/lib/features/trips/presentation/screens/edit_trip_screen.dart
+index 2c36e39..36666f7 100644
+--- a/lib/features/trips/presentation/screens/edit_trip_screen.dart
++++ b/lib/features/trips/presentation/screens/edit_trip_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/trips/presentation/screens/profile_screen.dart b/lib/features/trips/presentation/screens/profile_screen.dart
+index 8c9cc5d..37925a8 100644
+--- a/lib/features/trips/presentation/screens/profile_screen.dart
++++ b/lib/features/trips/presentation/screens/profile_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
+ import '../../../../core/entitlement/entitlement.dart';
+diff --git a/lib/features/trips/presentation/screens/trip_detail_screen.dart b/lib/features/trips/presentation/screens/trip_detail_screen.dart
+index 9b1bd3d..ef7e6a2 100644
+--- a/lib/features/trips/presentation/screens/trip_detail_screen.dart
++++ b/lib/features/trips/presentation/screens/trip_detail_screen.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ import 'package:intl/intl.dart';
+diff --git a/lib/features/trips/presentation/screens/trips_list_screen.dart b/lib/features/trips/presentation/screens/trips_list_screen.dart
+index ae7dbe2..7edc532 100644
+--- a/lib/features/trips/presentation/screens/trips_list_screen.dart
++++ b/lib/features/trips/presentation/screens/trips_list_screen.dart
+@@ -1,6 +1,6 @@
+ import 'dart:async';
+ 
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+diff --git a/lib/features/trips/presentation/widgets/activity_picker.dart b/lib/features/trips/presentation/widgets/activity_picker.dart
+index e383ca9..2cccbff 100644
+--- a/lib/features/trips/presentation/widgets/activity_picker.dart
++++ b/lib/features/trips/presentation/widgets/activity_picker.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+ import '../../domain/activity_tag.dart';
+diff --git a/lib/features/trips/presentation/widgets/duration_field.dart b/lib/features/trips/presentation/widgets/duration_field.dart
+index 9421097..27b10b3 100644
+--- a/lib/features/trips/presentation/widgets/duration_field.dart
++++ b/lib/features/trips/presentation/widgets/duration_field.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter/services.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/trips/presentation/widgets/trip_card.dart b/lib/features/trips/presentation/widgets/trip_card.dart
+index 0af0adb..c5cab97 100644
+--- a/lib/features/trips/presentation/widgets/trip_card.dart
++++ b/lib/features/trips/presentation/widgets/trip_card.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/lib/features/trips/presentation/widgets/trip_form_fields.dart b/lib/features/trips/presentation/widgets/trip_form_fields.dart
+index 18ea309..9516055 100644
+--- a/lib/features/trips/presentation/widgets/trip_form_fields.dart
++++ b/lib/features/trips/presentation/widgets/trip_form_fields.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:intl/intl.dart';
+ 
+ import '../../../../core/design_system/components/components.dart';
+diff --git a/test/smoke_test.dart b/test/smoke_test.dart
+index 25f8f63..5664e4b 100644
+--- a/test/smoke_test.dart
++++ b/test/smoke_test.dart
+@@ -1,4 +1,4 @@
+-import 'package:flutter/material.dart';
++import 'package:material_ui/material_ui.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ import 'package:planto/core/design_system/components/components.dart';
+ 
